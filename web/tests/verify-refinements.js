@@ -3,7 +3,14 @@
  * Directly imports and tests production utilities from src/lib/utils.ts (Zero duplication).
  */
 
-import { calculateDeadlineUrgency, calculateDefenseReadiness, formatCurrency } from '../src/lib/utils.ts';
+import { 
+  calculateDeadlineUrgency, 
+  calculateDefenseReadiness, 
+  formatCurrency,
+  calculateTacticalRecommendation,
+  getPolicyMatch,
+  generateMultilingualRebuttal
+} from '../src/lib/utils.ts';
 
 let passed = 0;
 let failed = 0;
@@ -75,6 +82,45 @@ const totalPages = Math.ceil(mockDisputes.length / pageSize);
 assert(totalPages === 2, '3 items at 2 per page equals 2 pages');
 const page1 = mockDisputes.slice(0, pageSize);
 assert(page1.length === 2, 'Page 1 has 2 items');
+
+// Test 8: Tactical Recommendation Engine
+const mockDisputeINR = {
+  id: 'd-1',
+  paypalDisputeId: 'PP-101',
+  amount: 250,
+  currency: 'USD',
+  reason: 'MERCHANDISE_OR_SERVICE_NOT_RECEIVED',
+  deadline: new Date(Date.now() + 48 * 3600 * 1000).toISOString()
+};
+const carrierDelivered = {
+  carrier: 'FEDEX',
+  trackingNumber: '78492019',
+  status: 'DELIVERED',
+  deliveryDate: 'Today',
+  deliveryLocation: 'Front Porch',
+  signedBy: 'John Doe'
+};
+const tacticalFight = calculateTacticalRecommendation(mockDisputeINR, 1, carrierDelivered);
+assert(tacticalFight.action === 'FIGHT_DISPUTE', 'Tactical engine recommends FIGHT when signed POD attached');
+assert(tacticalFight.winProbability >= 80, 'Win probability exceeds 80% with carrier signature');
+
+const tacticalConcede = calculateTacticalRecommendation(mockDisputeINR, 0, null);
+assert(tacticalConcede.action === 'CONCEDE_REFUND' || tacticalConcede.winProbability < 60, 'Recommends caution/concession when no proofs attached');
+
+// Test 9: Store Policy & Compliance Matcher
+const policyINR = getPolicyMatch('MERCHANDISE_NOT_RECEIVED');
+assert(policyINR.complianceStatus === 'VIOLATION_BY_BUYER', 'Non-receipt with POD flagged as buyer violation');
+assert(policyINR.policyName.includes('Shipping'), 'Resolves shipping fulfillment policy clause');
+
+// Test 10: Multilingual Rebuttal Generation
+const rebuttalEN = generateMultilingualRebuttal('en', 'PP-999', 150, 'Alice', carrierDelivered);
+assert(rebuttalEN.includes('FORMAL SELLER REBUTTAL') && rebuttalEN.includes('FEDEX'), 'Generates English legal rebuttal with carrier facts');
+
+const rebuttalDE = generateMultilingualRebuttal('de', 'PP-999', 150, 'Alice', carrierDelivered);
+assert(rebuttalDE.includes('Sehr geehrtes PayPal') && rebuttalDE.includes('FEDEX'), 'Generates German legal rebuttal');
+
+const rebuttalFR = generateMultilingualRebuttal('fr', 'PP-999', 150, 'Alice', carrierDelivered);
+assert(rebuttalFR.includes('LITIGE PAYPAL') && rebuttalFR.includes('FEDEX'), 'Generates French legal rebuttal');
 
 console.log(`\nResults: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);
