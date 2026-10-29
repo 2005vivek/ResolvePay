@@ -35,3 +35,13 @@ client/node_modules/
 
 # Project-specific
 HELP.md
+
+.m2/
+
+# Web & Mobile dependencies
+web/node_modules/
+web/.next/
+mobile/node_modules/
+mobile/.expo/
+
+*.tsbuildinfo

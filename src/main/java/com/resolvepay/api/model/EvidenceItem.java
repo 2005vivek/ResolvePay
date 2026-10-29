@@ -18,6 +18,9 @@ public class EvidenceItem {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Column(name = "merchant_id", nullable = false, length = 100)
+    private String merchantId = "merchant_resolvepay_01";
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "dispute_id", nullable = false)
     private Dispute dispute;
@@ -39,4 +42,10 @@ public class EvidenceItem {
 
     @Column(name = "content_hash", length = 64)
     private String contentHash;
+
+    @Column(name = "extracted_facts", columnDefinition = "TEXT")
+    private String extractedFacts;
+
+    @Column(name = "file_url", columnDefinition = "TEXT")
+    private String fileUrl;
 }

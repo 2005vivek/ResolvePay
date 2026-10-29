@@ -1,3 +1,5 @@
+server:
+  port: 8085
 
 spring:
   application:
@@ -6,13 +8,13 @@ spring:
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:resolvepay}
     username: ${DB_USER:postgres}
-    password: ${DB_PASS}
+    password: ${DB_PASS:}
     driver-class-name: org.postgresql.Driver
 
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     show-sql: false
     properties:
       hibernate:
@@ -25,7 +27,7 @@ spring:
 
   threads:
     virtual:
-      enabled: true
+      enabled: false
 
   ai:
     retry:
@@ -36,7 +38,7 @@ spring:
         multiplier: 1.5
     google:
       genai:
-        api-key: ${GEMINI_API_KEY}
+        api-key: ${GEMINI_API_KEY:mock-gemini-key}
         chat:
           options:
             model: ${GEMINI_MODEL:gemini-3.5-flash-lite}
@@ -44,6 +46,17 @@ spring:
             temperature: 0.7
 
 paypal:
-  client-id: ${PAYPAL_CLIENT_ID}
-  client-secret: ${PAYPAL_CLIENT_SECRET}
+  client-id: ${PAYPAL_CLIENT_ID:mock-client-id}
+  client-secret: ${PAYPAL_CLIENT_SECRET:mock-client-secret}
+  webhook-id: ${PAYPAL_WEBHOOK_ID:}
   mode: sandbox
+
+resolvepay:
+  security:
+    auth-token: ${RESOLVEPAY_AUTH_TOKEN:rzp_live_sec_789f2a4b8c1d}
+    default-merchant-id: ${DEFAULT_MERCHANT_ID:merchant_resolvepay_01}
+  cors:
+    allowed-origins: ${RESOLVEPAY_CORS_ORIGINS:http://localhost:3000,http://127.0.0.1:3000}
+  simulation:
+    enabled: ${RESOLVEPAY_SIMULATION_ENABLED:true}
+
