@@ -1,0 +1,37 @@
+
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+
+# Build output
+target/
+build/
+dist/
+client/node_modules/
+
+# IDE files
+.idea/
+.vscode/
+*.iws
+*.iml
+*.ipr
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache/
+.apt_generated
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/nbdist/
+/.nb-gradle/
+
+# Maven wrapper
+.mvn/wrapper/maven-wrapper.jar
+
+# Project-specific
+HELP.md
