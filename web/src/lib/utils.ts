@@ -17,7 +17,12 @@ export function calculateDeadlineUrgency(deadlineIso?: string | null): DeadlineU
     };
   }
 
-  const deadline = new Date(deadlineIso);
+  let normalized = deadlineIso.trim();
+  if (normalized.includes('T') && !normalized.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(normalized)) {
+    normalized += 'Z';
+  }
+
+  const deadline = new Date(normalized);
   if (isNaN(deadline.getTime())) {
     return {
       label: 'Invalid deadline',

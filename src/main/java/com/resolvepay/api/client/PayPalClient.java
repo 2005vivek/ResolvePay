@@ -10,6 +10,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.time.Instant;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
@@ -25,8 +26,9 @@ public class PayPalClient {
     private final String configuredWebhookId;
     private final ObjectMapper objectMapper;
 
-    // Cache access token for reuse
+    // Cache access token with authoritative expiration tracking
     private String currentAccessToken;
+    private Instant tokenExpiryTime;
 
     public PayPalClient(
             @Value("${paypal.client-id}") String clientId,
@@ -150,8 +152,8 @@ public class PayPalClient {
         }
     }
 
-    public String getAccessToken() {
-        if (currentAccessToken != null) {
+    public synchronized String getAccessToken() {
+        if (currentAccessToken != null && tokenExpiryTime != null && Instant.now().isBefore(tokenExpiryTime)) {
             return currentAccessToken;
         }
 
@@ -166,8 +168,11 @@ public class PayPalClient {
                 .retrieve()
                 .body(PayPalAuthResponse.class);
 
-        if (response != null) {
+        if (response != null && response.getAccessToken() != null) {
             this.currentAccessToken = response.getAccessToken();
+            int expiresIn = response.getExpiresIn() != null ? response.getExpiresIn() : 32400;
+            // 60-second early refresh safety buffer
+            this.tokenExpiryTime = Instant.now().plusSeconds(Math.max(expiresIn - 60, 60));
         }
 
         return this.currentAccessToken;

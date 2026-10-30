@@ -44,4 +44,7 @@ web/.next/
 mobile/node_modules/
 mobile/.expo/
 
+# Local evidence storage
+storage/
+
 *.tsbuildinfo

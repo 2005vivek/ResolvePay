@@ -281,6 +281,12 @@ export default function DashboardPage() {
     return disputes.find(d => d.status !== 'UNDER_REVIEW' && d.status !== 'RESOLVED') || disputes[0] || null;
   }, [disputes]);
 
+  const isTargetDefended = targetDisputeForWhatsApp?.status === 'UNDER_REVIEW' || targetDisputeForWhatsApp?.status === 'RESOLVED' || whatsAppSubmitted;
+
+  useEffect(() => {
+    setWhatsAppSubmitted(false);
+  }, [targetDisputeForWhatsApp?.id]);
+
   // Interactive WhatsApp Submit
   async function handleWhatsAppApprove() {
     if (!targetDisputeForWhatsApp) return;
@@ -989,10 +995,10 @@ export default function DashboardPage() {
                   <div className="space-y-2 pt-2">
                     <button
                       onClick={handleWhatsAppApprove}
-                      disabled={whatsAppSubmitted}
+                      disabled={isTargetDefended}
                       className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition disabled:opacity-50"
                     >
-                      {whatsAppSubmitted ? (
+                      {isTargetDefended ? (
                         <>
                           <Check className="w-4 h-4" />
                           <span>Submitted & Defended in PayPal</span>
