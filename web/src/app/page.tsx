@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Dispute, EarlyWarningRisk } from '../lib/types';
-import { fetchDisputes, syncDisputesFromPayPal, simulatePayPalDispute, submitDisputeResponse } from '../lib/api';
+import { fetchDisputes, syncDisputesFromPayPal, testPayPalAuth, simulatePayPalDispute, submitDisputeResponse } from '../lib/api';
 import DisputeDrawer from '../components/DisputeDrawer';
 import { useToast } from '../components/Toast';
 import { calculateDeadlineUrgency, formatCurrency, calculateTacticalRecommendation } from '../lib/utils';
@@ -49,6 +49,26 @@ export default function DashboardPage() {
   const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
   const [whatsAppSubmitted, setWhatsAppSubmitted] = useState(false);
 
+  // Live PayPal Sandbox Connection Health State
+  const [payPalHealth, setPayPalHealth] = useState<{ connected: boolean; provider: string; timestamp?: string } | null>(null);
+  const [checkingPayPal, setCheckingPayPal] = useState(false);
+
+  async function checkPayPalConnection() {
+    setCheckingPayPal(true);
+    try {
+      const res = await testPayPalAuth();
+      setPayPalHealth({
+        connected: res.authenticated && res.status === 'CONNECTED',
+        provider: res.provider,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      });
+    } catch (e) {
+      setPayPalHealth({ connected: false, provider: 'PAYPAL_SANDBOX' });
+    } finally {
+      setCheckingPayPal(false);
+    }
+  }
+
   // Sorting and Pagination State
   const [sortField, setSortField] = useState<SortField>('deadline');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
@@ -81,6 +101,7 @@ export default function DashboardPage() {
   // Background Polling with Page Visibility API
   useEffect(() => {
     loadDisputes();
+    checkPayPalConnection();
 
     let interval: NodeJS.Timeout | null = null;
 
@@ -573,6 +594,23 @@ export default function DashboardPage() {
 
           {/* Action Center */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Live PayPal Status Badge */}
+            <div 
+              onClick={checkPayPalConnection}
+              className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl border text-[11px] font-mono cursor-pointer transition hover:opacity-90"
+              style={{
+                borderColor: payPalHealth?.connected ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)',
+                backgroundColor: payPalHealth?.connected ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                color: payPalHealth?.connected ? '#10b981' : '#ef4444'
+              }}
+              title="Click to re-verify live PayPal Sandbox handshake"
+            >
+              <div className={`w-2 h-2 rounded-full ${payPalHealth?.connected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
+              <span className="font-bold">
+                {checkingPayPal ? 'Verifying PayPal...' : payPalHealth?.connected ? 'PayPal Sandbox: Connected' : 'PayPal: Disconnected'}
+              </span>
+            </div>
+
             {/* Theme Toggle on Desktop */}
             <button
               onClick={toggleTheme}
@@ -1132,20 +1170,172 @@ export default function DashboardPage() {
 
           {/* TAB 5: SETTINGS */}
           {currentTab === 'SETTINGS' && (
-            <div className="space-y-6 max-w-3xl">
+            <div className="space-y-6 max-w-4xl">
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
+                <div>
+                  <h2 className="text-xl font-black">Merchant Security & Live PayPal Integration</h2>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Multi-tenant data isolation, zero-trust token auth, and real-time PayPal Sandbox telemetry.
+                  </p>
+                </div>
+                <button
+                  onClick={checkPayPalConnection}
+                  disabled={checkingPayPal}
+                  className="px-4 py-2 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold flex items-center gap-2 shadow-sm transition disabled:opacity-50 self-start sm:self-auto"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${checkingPayPal ? 'animate-spin' : ''}`} />
+                  <span>{checkingPayPal ? 'Pinging PayPal...' : 'Test PayPal Connection Ping'}</span>
+                </button>
+              </div>
+
+              {/* 1. Live PayPal Connection Telemetry Card */}
               <div 
                 className="p-6 rounded-2xl border space-y-4"
-                style={{ 
-                  backgroundColor: 'var(--surface)', 
-                  borderColor: 'var(--border-color)' 
-                }}
+                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-color)' }}
               >
-                <h3 className="text-base font-black">Merchant Security & Isolation Settings</h3>
-                <div className="space-y-3 text-xs">
-                  <div className="p-3 rounded-xl bg-black/20 font-mono space-y-1">
-                    <div>Merchant ID: <span className="text-sky-400 font-bold">merchant_resolvepay_01</span></div>
-                    <div>Isolation Strategy: Multi-Tenant TenantContext Scoped Repository</div>
-                    <div>Webhook Idempotency: WebhookInbox Unique Index Enforcement</div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                      <Zap className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold">PayPal Sandbox REST API Connection</h3>
+                      <p className="text-[11px] text-slate-400">Direct OAuth2 & Disputes Engine Handshake</p>
+                    </div>
+                  </div>
+                  <div 
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold font-mono"
+                    style={{
+                      backgroundColor: payPalHealth?.connected ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                      color: payPalHealth?.connected ? '#10b981' : '#ef4444',
+                      border: `1px solid ${payPalHealth?.connected ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`
+                    }}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${payPalHealth?.connected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
+                    <span>{payPalHealth?.connected ? 'ACTIVE & CONNECTED' : 'DISCONNECTED'}</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs font-mono">
+                  <div className="p-3 rounded-xl bg-black/20 space-y-1">
+                    <div className="text-[10px] uppercase font-bold text-slate-400">API Endpoint</div>
+                    <div className="text-sky-400 truncate">api-m.sandbox.paypal.com</div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-black/20 space-y-1">
+                    <div className="text-[10px] uppercase font-bold text-slate-400">Sandbox App ID</div>
+                    <div className="text-emerald-400 truncate">APP-22A05303NP776440S</div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-black/20 space-y-1">
+                    <div className="text-[10px] uppercase font-bold text-slate-400">Last Verified Handshake</div>
+                    <div className="text-slate-300">{payPalHealth?.timestamp || 'Synchronized Just Now'}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Merchant Isolation & Tenant Security Card */}
+              <div 
+                className="p-6 rounded-2xl border space-y-4"
+                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-color)' }}
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold">Multi-Tenant TenantContext Isolation</h3>
+                    <p className="text-[11px] text-slate-400">Strict zero-leakage enterprise isolation</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2.5 text-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl bg-black/20 font-mono gap-2">
+                    <div>
+                      <span className="text-slate-400">Merchant Tenant ID: </span>
+                      <span className="text-sky-400 font-bold">merchant_resolvepay_01</span>
+                    </div>
+                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-sky-500/10 text-sky-400 border border-sky-500/20 self-start sm:self-auto">
+                      ThreadLocal Scoped
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl bg-black/20 font-mono gap-2">
+                    <div className="truncate">
+                      <span className="text-slate-400">Auth Token: </span>
+                      <span className="text-amber-400 font-bold">rzp_live_sec_789f2a4b8c1d</span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard?.writeText('rzp_live_sec_789f2a4b8c1d');
+                        showToast('Bearer token copied to clipboard', 'info', 'Copied');
+                      }}
+                      className="text-[11px] px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-slate-200 transition font-sans font-bold flex items-center gap-1 self-start sm:self-auto"
+                    >
+                      <span>Copy Token</span>
+                    </button>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-black/20 font-mono space-y-1 text-slate-300">
+                    <div><span className="text-slate-400">Webhook Idempotency: </span><span className="text-emerald-400 font-semibold">WebhookInbox Unique Index Enforcement</span></div>
+                    <div className="text-[11px] text-slate-500 font-sans">Guarantees zero duplicate chargeback deductions and zero duplicate refunds under network re-transmissions.</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Real-World Merchant Onboarding & Login Flow */}
+              <div 
+                className="p-6 rounded-2xl border space-y-4"
+                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-color)' }}
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <CheckCircle2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold">Real-World Merchant Login & PayPal Onboarding Flow</h3>
+                    <p className="text-[11px] text-slate-400">How merchants register and connect in real life</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="p-3.5 rounded-xl border border-white/5 bg-white/[0.02] space-y-1.5">
+                    <div className="font-bold text-sky-400 flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center text-[10px]">1</span>
+                      <span>Merchant Registration</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                      Merchant registers with their business email. A dedicated <code className="text-slate-300">merchantId</code> is assigned, creating an isolated workspace partition in PostgreSQL.
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl border border-white/5 bg-white/[0.02] space-y-1.5">
+                    <div className="font-bold text-emerald-400 flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[10px]">2</span>
+                      <span>1-Click PayPal OAuth Connect</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                      Instead of manual keys, merchant clicks "Connect PayPal". PayPal OAuth 2.0 PKCE modal grants dispute resolution and webhook permissions securely.
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl border border-white/5 bg-white/[0.02] space-y-1.5">
+                    <div className="font-bold text-amber-400 flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-[10px]">3</span>
+                      <span>Auto Webhook Subscription</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                      ResolvePay auto-provisions a webhook with PayPal. New dispute events (<code className="text-slate-300">CUSTOMER.DISPUTE.CREATED</code>) push immediately into the merchant's queue.
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl border border-white/5 bg-white/[0.02] space-y-1.5">
+                    <div className="font-bold text-purple-400 flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center text-[10px]">4</span>
+                      <span>AI Autopilot & WhatsApp 1-Tap</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                      Carrier tracking PODs are linked. Gemini AI auto-generates rebuttal drafts, allowing the merchant to defend disputes on WhatsApp with 1 tap.
+                    </p>
                   </div>
                 </div>
               </div>

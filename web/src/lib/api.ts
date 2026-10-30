@@ -45,6 +45,17 @@ export async function syncDisputesFromPayPal(): Promise<any> {
   return res.json();
 }
 
+export async function testPayPalAuth(): Promise<{ status: string; provider: string; authenticated: boolean; timestamp: string }> {
+  const res = await fetch(`${API_BASE_URL}/disputes/test-auth`, {
+    cache: 'no-store',
+    headers: { ...authHeaders },
+  });
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}: Failed to reach PayPal Sandbox`);
+  }
+  return res.json();
+}
+
 export async function generateAiDraft(id: string): Promise<string> {
   const res = await fetch(`${API_BASE_URL}/disputes/${id}/draft`, {
     method: 'POST',
