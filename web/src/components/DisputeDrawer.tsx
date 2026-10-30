@@ -312,6 +312,32 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
           </div>
         </div>
 
+        {/* PayPal Official SLA & Failure-to-Respond Policy Alert Banner */}
+        {!submittedStatus && (
+          <div 
+            className="px-4 sm:px-6 py-2.5 border-b text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition"
+            style={{
+              borderColor: 'var(--border-color)',
+              backgroundColor: deadlineInfo.urgency === 'CRITICAL' ? 'rgba(239, 68, 68, 0.12)' : 'rgba(245, 158, 11, 0.08)'
+            }}
+          >
+            <div className="flex items-start sm:items-center gap-2.5 text-slate-300">
+              <AlertTriangle className={`w-4 h-4 shrink-0 mt-0.5 sm:mt-0 ${deadlineInfo.urgency === 'CRITICAL' ? 'text-rose-400 animate-pulse' : 'text-amber-400'}`} />
+              <div>
+                <span className="font-bold text-white">PayPal SLA Policy (10-Day Response Window): </span>
+                <span className="text-[11px] text-slate-300 leading-snug">
+                  If merchant fails to submit evidence before deadline, PayPal invokes <strong className="text-rose-400">Automatic Default Loss</strong> (Auto-Forfeit), clawing back {formatCurrency(dispute.amount)} plus a non-refundable <strong>$15.00 Dispute Fee</strong>.
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 font-mono text-[11px]">
+              <span className="px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-400 font-bold">
+                Penalty: +$15.00 Fee
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Navigation Tabs */}
         <div 
           className="flex border-b px-4 sm:px-6 shrink-0 gap-2 overflow-x-auto text-xs font-semibold"
