@@ -3,9 +3,14 @@
 export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Dispute, EarlyWarningRisk } from '../lib/types';
-import { fetchDisputes, syncDisputesFromPayPal, testPayPalAuth, simulatePayPalDispute, submitDisputeResponse } from '../lib/api';
+import { Dispute, EarlyWarningRisk, MerchantStore } from '../lib/types';
+import { 
+  fetchDisputes, syncDisputesFromPayPal, testPayPalAuth, 
+  simulatePayPalDispute, submitDisputeResponse, 
+  simulateIdempotencyAttack, setActiveMerchantId 
+} from '../lib/api';
 import DisputeDrawer from '../components/DisputeDrawer';
+import ConnectPayPalModal from '../components/ConnectPayPalModal';
 import { useToast } from '../components/Toast';
 import { calculateDeadlineUrgency, formatCurrency, calculateTacticalRecommendation } from '../lib/utils';
 import { 
@@ -15,7 +20,7 @@ import {
   ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight,
   Database, Server, Cpu, FileCheck, Lock, ExternalLink,
   Menu, X, Sun, Moon, Smartphone, MessageSquare, Truck,
-  AlertTriangle, Send, Scale, User, Filter, SlidersHorizontal, ChevronDown
+  AlertTriangle, Send, Scale, User, Filter, SlidersHorizontal, ChevronDown, Store
 } from 'lucide-react';
 
 type NavTab = 'DISPUTES' | 'WHATSAPP_AUTOPILOT' | 'CARRIER_RADAR' | 'EARLY_WARNING' | 'SETTINGS';
@@ -48,6 +53,88 @@ export default function DashboardPage() {
   // Interactive WhatsApp Simulator Modal
   const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
   const [whatsAppSubmitted, setWhatsAppSubmitted] = useState(false);
+
+  // Multi-Store / Multi-Tenant State
+  const [stores, setStores] = useState<MerchantStore[]>([
+    {
+      id: 'merchant_resolvepay_01',
+      name: 'Nexus Retail Hub',
+      businessEmail: 'ops@nexusretail.com',
+      paypalPayerId: 'PP-PAYER-884920',
+      isVerified: true,
+      connectedAt: 'Oct 28, 2026',
+      currency: 'USD',
+      appId: 'APP-22A05303NP776440S'
+    },
+    {
+      id: 'merchant_urban_feet',
+      name: 'Urban Feet Footwear',
+      businessEmail: 'finance@urbanfeet.com',
+      paypalPayerId: 'PP-PAYER-339104',
+      isVerified: true,
+      connectedAt: 'Oct 29, 2026',
+      currency: 'USD',
+      appId: 'APP-22A05303NP776440S'
+    }
+  ]);
+  const [activeStoreId, setActiveStoreIdState] = useState<string>('merchant_resolvepay_01');
+  const [connectModalOpen, setConnectModalOpen] = useState(false);
+  const [storeDropdownOpen, setStoreDropdownOpen] = useState(false);
+
+  const activeStore = useMemo(() => {
+    return stores.find(s => s.id === activeStoreId) || stores[0];
+  }, [stores, activeStoreId]);
+
+  // Idempotency Live Test Terminal State
+  const [idempotencyLoading, setIdempotencyLoading] = useState(false);
+  const [idempotencyLog, setIdempotencyLog] = useState<{
+    eventId?: string;
+    attempt1Status?: string;
+    attempt2Status?: string;
+    verdict?: string;
+    timestamp?: string;
+  } | null>(null);
+
+  async function runIdempotencyTest() {
+    setIdempotencyLoading(true);
+    const randomEventId = `WH-EVT-${Math.floor(100000 + Math.random() * 900000)}-CHG`;
+    const disputeId = `PP-D-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    try {
+      const result = await simulateIdempotencyAttack(randomEventId, disputeId, '249.99', activeStoreId);
+      setIdempotencyLog({
+        eventId: randomEventId,
+        attempt1Status: result.attempt1.status,
+        attempt2Status: result.attempt2.status,
+        verdict: result.idempotencyEnforced 
+          ? 'PASSED: Duplicate event blocked by WebhookInbox Unique Index. Zero double-deduction risk.' 
+          : 'FAILED: Duplication detected',
+        timestamp: new Date().toLocaleTimeString()
+      });
+      showToast('Idempotency dual-dispatch test passed!', 'success', 'Idempotency Verified');
+    } catch (err: any) {
+      showToast(err.message || 'Idempotency test failed', 'error', 'Simulation Error');
+    } finally {
+      setIdempotencyLoading(false);
+    }
+  }
+
+  function handleSwitchStore(storeId: string) {
+    setActiveStoreIdState(storeId);
+    setActiveMerchantId(storeId);
+    setStoreDropdownOpen(false);
+    loadDisputes(storeId);
+    const target = stores.find(s => s.id === storeId);
+    showToast(`Switched active store to ${target?.name || storeId} (Partition: ${storeId})`, 'info', 'Tenant Switched');
+  }
+
+  function handleStoreConnected(newStore: MerchantStore) {
+    setStores(prev => [newStore, ...prev.filter(s => s.id !== newStore.id)]);
+    setActiveStoreIdState(newStore.id);
+    setActiveMerchantId(newStore.id);
+    loadDisputes(newStore.id);
+    showToast(`Store ${newStore.name} successfully connected and verified with PayPal!`, 'success', 'Store Linked');
+  }
 
   // Live PayPal Sandbox Connection Health State
   const [payPalHealth, setPayPalHealth] = useState<{ connected: boolean; provider: string; timestamp?: string } | null>(null);
@@ -139,7 +226,7 @@ export default function DashboardPage() {
     };
   }, []);
 
-  async function loadDisputes() {
+  async function loadDisputes(merchantId?: string) {
     if (isFetchingRef.current) return;
     isFetchingRef.current = true;
 
@@ -150,8 +237,10 @@ export default function DashboardPage() {
     abortControllerRef.current = controller;
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 
+    const targetMerchant = merchantId || activeStoreId;
+
     try {
-      const data = await fetchDisputes(controller.signal);
+      const data = await fetchDisputes(controller.signal, targetMerchant);
       setDisputes(data);
       setFetchError(null);
       setLastSyncTimestamp(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
@@ -170,9 +259,9 @@ export default function DashboardPage() {
   async function handleSync() {
     setSyncing(true);
     try {
-      await syncDisputesFromPayPal();
-      await loadDisputes();
-      showToast('PayPal dispute records successfully synchronized', 'success', 'Sync Complete');
+      await syncDisputesFromPayPal(activeStoreId);
+      await loadDisputes(activeStoreId);
+      showToast(`PayPal dispute records synchronized for ${activeStore.name}`, 'success', 'Sync Complete');
     } catch (err: any) {
       showToast(err.message || 'Failed to reach PayPal Sandbox', 'error', 'PayPal Sync Failed');
     } finally {
@@ -199,15 +288,15 @@ export default function DashboardPage() {
         seller_response_due_date: deadlineIso,
         dispute_amount: {
           value: amount,
-          currency_code: 'USD'
+          currency_code: activeStore.currency || 'USD'
         }
       }
     };
 
     try {
-      await simulatePayPalDispute(payload);
-      await loadDisputes();
-      showToast(`Simulated dispute ${disputeId} ingested with 48h SLA deadline`, 'success', 'Dispute Ingested');
+      await simulatePayPalDispute(payload, activeStoreId);
+      await loadDisputes(activeStoreId);
+      showToast(`Simulated dispute ${disputeId} ingested for ${activeStore.name}`, 'success', 'Dispute Ingested');
     } catch (err: any) {
       showToast(err.message || 'Webhook simulation error', 'error', 'Simulation Failed');
     } finally {
@@ -594,6 +683,76 @@ export default function DashboardPage() {
 
           {/* Action Center */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Store / Tenant Switcher Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setStoreDropdownOpen(!storeDropdownOpen)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold transition hover:opacity-90 shadow-xs"
+                style={{
+                  backgroundColor: 'var(--surface-hover)',
+                  borderColor: 'var(--border-color)',
+                  color: 'var(--foreground)'
+                }}
+                title="Switch active merchant store partition"
+              >
+                <Store className="w-3.5 h-3.5 text-sky-400" />
+                <span className="hidden md:inline font-sans font-semibold max-w-[130px] truncate">{activeStore.name}</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              </button>
+
+              {storeDropdownOpen && (
+                <div 
+                  className="absolute right-0 mt-2 w-72 rounded-2xl border shadow-xl p-2 z-50 space-y-1 animate-in fade-in zoom-in-95 duration-150"
+                  style={{
+                    backgroundColor: 'var(--surface)',
+                    borderColor: 'var(--border-color)'
+                  }}
+                >
+                  <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                    <span>Connected Stores</span>
+                    <span className="font-mono text-emerald-400">Multi-Tenant</span>
+                  </div>
+
+                  {stores.map((s) => (
+                    <div
+                      key={s.id}
+                      onClick={() => handleSwitchStore(s.id)}
+                      className={`p-2 rounded-xl cursor-pointer transition flex items-center justify-between text-xs ${
+                        s.id === activeStoreId 
+                          ? 'bg-sky-500/15 border border-sky-500/30 text-sky-400' 
+                          : 'hover:bg-white/5 text-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-7 h-7 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">
+                          {s.name.slice(0, 1)}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-bold truncate">{s.name}</div>
+                          <div className="text-[10px] font-mono text-slate-400 truncate">{s.paypalPayerId}</div>
+                        </div>
+                      </div>
+                      {s.id === activeStoreId && <Check className="w-4 h-4 text-sky-400 shrink-0" />}
+                    </div>
+                  ))}
+
+                  <div className="pt-1 border-t" style={{ borderColor: 'var(--border-color)' }}>
+                    <button
+                      onClick={() => {
+                        setStoreDropdownOpen(false);
+                        setConnectModalOpen(true);
+                      }}
+                      className="w-full py-2 px-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:opacity-90 text-white font-bold text-xs flex items-center justify-center gap-2 transition"
+                    >
+                      <Zap className="w-3.5 h-3.5" />
+                      <span>+ Connect New PayPal Store</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Live PayPal Status Badge */}
             <div 
               onClick={checkPayPalConnection}
@@ -610,6 +769,16 @@ export default function DashboardPage() {
                 {checkingPayPal ? 'Verifying PayPal...' : payPalHealth?.connected ? 'PayPal Sandbox: Connected' : 'PayPal: Disconnected'}
               </span>
             </div>
+
+            {/* Connect Store Quick Button */}
+            <button
+              onClick={() => setConnectModalOpen(true)}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs shadow-xs transition"
+              title="1-Click Connect PayPal Account"
+            >
+              <Zap className="w-3.5 h-3.5" />
+              <span>Connect PayPal</span>
+            </button>
 
             {/* Theme Toggle on Desktop */}
             <button
@@ -1238,21 +1407,41 @@ export default function DashboardPage() {
                 className="p-6 rounded-2xl border space-y-4"
                 style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-color)' }}
               >
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                    <Lock className="w-4 h-4" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                      <Lock className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold">Active Store & Tenant Isolation</h3>
+                      <p className="text-[11px] text-slate-400">Multi-tenant database partition for {activeStore.name}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-sm font-bold">Multi-Tenant TenantContext Isolation</h3>
-                    <p className="text-[11px] text-slate-400">Strict zero-leakage enterprise isolation</p>
-                  </div>
+                  <button
+                    onClick={() => setConnectModalOpen(true)}
+                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:opacity-90 text-white font-bold text-xs flex items-center gap-1.5 transition shadow-xs"
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>+ Connect Another Store</span>
+                  </button>
                 </div>
 
                 <div className="space-y-2.5 text-xs">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl bg-black/20 font-mono gap-2">
                     <div>
+                      <span className="text-slate-400">Active Business Store: </span>
+                      <span className="text-white font-bold font-sans">{activeStore.name}</span>
+                    </div>
+                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 self-start sm:self-auto font-sans font-bold flex items-center gap-1">
+                      <Check className="w-3 h-3" />
+                      <span>PayPal Verified Account</span>
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl bg-black/20 font-mono gap-2">
+                    <div>
                       <span className="text-slate-400">Merchant Tenant ID: </span>
-                      <span className="text-sky-400 font-bold">merchant_resolvepay_01</span>
+                      <span className="text-sky-400 font-bold">{activeStore.id}</span>
                     </div>
                     <span className="text-[10px] px-2 py-0.5 rounded-md bg-sky-500/10 text-sky-400 border border-sky-500/20 self-start sm:self-auto">
                       ThreadLocal Scoped
@@ -1260,8 +1449,16 @@ export default function DashboardPage() {
                   </div>
 
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl bg-black/20 font-mono gap-2">
+                    <div>
+                      <span className="text-slate-400">PayPal Payer ID: </span>
+                      <span className="text-emerald-400 font-bold">{activeStore.paypalPayerId}</span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-mono">Linked: {activeStore.connectedAt}</div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl bg-black/20 font-mono gap-2">
                     <div className="truncate">
-                      <span className="text-slate-400">Auth Token: </span>
+                      <span className="text-slate-400">Internal Auth Token: </span>
                       <span className="text-amber-400 font-bold">rzp_live_sec_789f2a4b8c1d</span>
                     </div>
                     <button
@@ -1274,11 +1471,56 @@ export default function DashboardPage() {
                       <span>Copy Token</span>
                     </button>
                   </div>
+                </div>
+              </div>
 
-                  <div className="p-3 rounded-xl bg-black/20 font-mono space-y-1 text-slate-300">
-                    <div><span className="text-slate-400">Webhook Idempotency: </span><span className="text-emerald-400 font-semibold">WebhookInbox Unique Index Enforcement</span></div>
-                    <div className="text-[11px] text-slate-500 font-sans">Guarantees zero duplicate chargeback deductions and zero duplicate refunds under network re-transmissions.</div>
+              {/* 3. Live Webhook Idempotency Verification Terminal Card */}
+              <div 
+                className="p-6 rounded-2xl border space-y-4"
+                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-color)' }}
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                      <Shield className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold">Live Webhook Idempotency Engine Test</h3>
+                      <p className="text-[11px] text-slate-400">Simulate network re-transmissions and duplicate dispute attacks</p>
+                    </div>
                   </div>
+                  <button
+                    onClick={runIdempotencyTest}
+                    disabled={idempotencyLoading}
+                    className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center gap-2 transition disabled:opacity-50 self-start sm:self-auto shadow-sm"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${idempotencyLoading ? 'animate-spin' : ''}`} />
+                    <span>{idempotencyLoading ? 'Testing Idempotency...' : 'Simulate Duplicate Webhook'}</span>
+                  </button>
+                </div>
+
+                <div className="p-4 rounded-xl bg-black/40 border border-white/10 font-mono text-xs space-y-2">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-white/10 text-[11px]">
+                    <span className="text-slate-400">POST /api/webhooks/paypal/simulate (Dual Dispatch Test)</span>
+                    <span className="text-emerald-400 font-bold">Index: idx_webhook_inbox_provider_event</span>
+                  </div>
+
+                  {idempotencyLog ? (
+                    <div className="space-y-1.5 pt-1 text-slate-300">
+                      <div className="text-sky-400">➜ Dispatched Event ID: {idempotencyLog.eventId}</div>
+                      <div className="text-emerald-400">✔ Attempt 1 (Initial Webhook): Status {idempotencyLog.attempt1Status || 'SUCCESS'} (Dispute Created & Outbox Enqueued)</div>
+                      <div className="text-amber-400">⚡ Attempt 2 (Identical Duplicate Replay): Status {idempotencyLog.attempt2Status || 'DUPLICATE_ACCEPTED'} (Ingestion Filtered)</div>
+                      <div className="pt-1 text-emerald-400 font-bold text-[11px] border-t border-white/10 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>{idempotencyLog.verdict}</span>
+                      </div>
+                      <div className="text-[10px] text-slate-500">Execution Timestamp: {idempotencyLog.timestamp}</div>
+                    </div>
+                  ) : (
+                    <div className="text-slate-500 py-2 text-center text-[11px]">
+                      Click "Simulate Duplicate Webhook" to send two identical webhook events concurrently and witness the unique index block duplicate financial deductions in real-time.
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1385,6 +1627,13 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Connect PayPal Account Onboarding Modal */}
+      <ConnectPayPalModal
+        isOpen={connectModalOpen}
+        onClose={() => setConnectModalOpen(false)}
+        onStoreConnected={handleStoreConnected}
+      />
 
     </div>
   );

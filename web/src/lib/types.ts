@@ -78,3 +78,14 @@ export interface EarlyWarningRisk {
   recommendedAction: string;
   timestamp: string;
 }
+
+export interface MerchantStore {
+  id: string;
+  name: string;
+  businessEmail: string;
+  paypalPayerId: string;
+  isVerified: boolean;
+  connectedAt: string;
+  currency: string;
+  appId?: string;
+}
