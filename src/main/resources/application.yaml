@@ -56,7 +56,7 @@ resolvepay:
     auth-token: ${RESOLVEPAY_AUTH_TOKEN:rzp_live_sec_789f2a4b8c1d}
     default-merchant-id: ${DEFAULT_MERCHANT_ID:merchant_resolvepay_01}
   cors:
-    allowed-origins: ${RESOLVEPAY_CORS_ORIGINS:http://localhost:3000,http://127.0.0.1:3000}
+    allowed-origins: ${RESOLVEPAY_CORS_ORIGINS:http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173}
   simulation:
     enabled: ${RESOLVEPAY_SIMULATION_ENABLED:true}
 
