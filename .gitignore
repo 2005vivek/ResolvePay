@@ -35,3 +35,9 @@ client/node_modules/
 
 # Project-specific
 HELP.md
+
+node_modules/
+client/node_modules/
+web/node_modules/
+.next/
+web/.next/

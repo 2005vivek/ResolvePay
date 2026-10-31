@@ -209,7 +209,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
       showToast(
         `Dispute ${dispute.paypalDisputeId} successfully defended via Transactional Outbox`, 
         'success', 
-        'Submitted to PayPal'
+        'Dispute Defended', true
       );
       onDisputeUpdated();
     } catch (err: any) {
@@ -237,7 +237,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
         >
           <div>
             <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="text-lg sm:text-xl font-black font-mono tracking-tight">
+              <span className="text-lg sm:text-xl font-bold font-serif-heading tracking-tight">
                 {dispute.paypalDisputeId}
               </span>
               
@@ -317,8 +317,9 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
           <div 
             className="px-4 sm:px-6 py-2.5 border-b text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition"
             style={{
-              borderColor: 'var(--border-color)',
-              backgroundColor: deadlineInfo.urgency === 'CRITICAL' ? 'rgba(239, 68, 68, 0.12)' : 'rgba(245, 158, 11, 0.08)'
+              borderColor: 'var(--sla-border)',
+              backgroundColor: 'var(--sla-bg)',
+              color: 'var(--sla-text)'
             }}
           >
             <div className="flex items-start sm:items-center gap-2.5 text-slate-300">
@@ -347,7 +348,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
             onClick={() => setActiveTab('ai')}
             className={`py-3 px-3 border-b-2 flex items-center gap-1.5 transition shrink-0 ${
               activeTab === 'ai'
-                ? 'border-sky-500 text-sky-400 font-bold'
+                ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] font-bold'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -359,7 +360,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
             onClick={() => setActiveTab('carrier')}
             className={`py-3 px-3 border-b-2 flex items-center gap-1.5 transition shrink-0 ${
               activeTab === 'carrier'
-                ? 'border-sky-500 text-sky-400 font-bold'
+                ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] font-bold'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -374,7 +375,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
             onClick={() => setActiveTab('evidence')}
             className={`py-3 px-3 border-b-2 flex items-center gap-1.5 transition shrink-0 ${
               activeTab === 'evidence'
-                ? 'border-sky-500 text-sky-400 font-bold'
+                ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] font-bold'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -386,7 +387,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
             onClick={() => setActiveTab('policy')}
             className={`py-3 px-3 border-b-2 flex items-center gap-1.5 transition shrink-0 ${
               activeTab === 'policy'
-                ? 'border-sky-500 text-sky-400 font-bold'
+                ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] font-bold'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -534,7 +535,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
                       onClick={() => setSelectedCarrier(carrier)}
                       className={`p-3 rounded-xl border text-xs font-bold flex flex-col items-center gap-1.5 transition ${
                         selectedCarrier === carrier
-                          ? 'bg-sky-500/20 border-sky-500 text-sky-400 shadow-xs'
+                          ? 'bg-sky-500/20 border-[var(--accent-primary)] text-[var(--accent-primary)] shadow-xs'
                           : 'bg-black/10 border-slate-700/60 text-slate-400 hover:text-white'
                       }`}
                     >
@@ -740,7 +741,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
             <button
               onClick={handleSubmitResponse}
               disabled={submitting || submittedStatus || !draftText.trim()}
-              className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20 transition disabled:opacity-50"
+              className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl hover:brightness-105 transition text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20 transition disabled:opacity-50"
             >
               {submitting ? (
                 <>

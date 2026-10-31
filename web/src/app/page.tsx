@@ -459,12 +459,12 @@ export default function DashboardPage() {
         }}
       >
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white shadow-md">
+          <div className="w-8 h-8 rounded-lg shadow-md transition-colors flex items-center justify-center text-white shadow-md">
             <ShieldAlert className="w-4 h-4" />
           </div>
           <div>
-            <span className="text-sm font-black tracking-tight">Resolve<span className="text-sky-500">Pay</span></span>
-            <span className="ml-1.5 px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-sky-500/20 text-sky-400">AI</span>
+            <span className="text-sm font-black tracking-tight">Resolve<span className="text-[var(--accent-primary)]">Pay</span></span>
+            <span className="ml-1.5 px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-[var(--accent-pill)]/20 text-[var(--accent-primary)]">AI</span>
           </div>
         </div>
 
@@ -512,13 +512,13 @@ export default function DashboardPage() {
         <div className="space-y-6">
           {/* Brand Header */}
           <div className="hidden md:flex items-center gap-3 px-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-sky-500/20">
+            <div className="w-10 h-10 rounded-xl shadow-md transition-colors flex items-center justify-center text-white shadow-lg shadow-sky-500/20">
               <ShieldAlert className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="text-base font-black tracking-tight">Resolve<span className="text-sky-500">Pay</span></span>
-                <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-sky-500/20 text-sky-400 border border-sky-500/30">
+                <span className="text-base font-black tracking-tight">Resolve<span className="text-[var(--accent-primary)]">Pay</span></span>
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-[var(--accent-pill)]/20 text-[var(--accent-primary)] border border-sky-500/30">
                   AI PRO
                 </span>
               </div>
@@ -532,7 +532,7 @@ export default function DashboardPage() {
               onClick={() => { setCurrentTab('DISPUTES'); setMobileMenuOpen(false); }}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
                 currentTab === 'DISPUTES'
-                  ? 'bg-sky-500 text-white shadow-md shadow-sky-500/25'
+                  ? 'bg-[var(--accent-pill)] text-white shadow-md shadow-sky-500/25'
                   : 'hover:bg-white/5 opacity-80 hover:opacity-100'
               }`}
             >
@@ -562,7 +562,7 @@ export default function DashboardPage() {
               onClick={() => { setCurrentTab('CARRIER_RADAR'); setMobileMenuOpen(false); }}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
                 currentTab === 'CARRIER_RADAR'
-                  ? 'bg-sky-500 text-white shadow-md shadow-sky-500/25'
+                  ? 'bg-[var(--accent-pill)] text-white shadow-md shadow-sky-500/25'
                   : 'hover:bg-white/5 opacity-80 hover:opacity-100'
               }`}
             >
@@ -574,7 +574,7 @@ export default function DashboardPage() {
               onClick={() => { setCurrentTab('EARLY_WARNING'); setMobileMenuOpen(false); }}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
                 currentTab === 'EARLY_WARNING'
-                  ? 'bg-sky-500 text-white shadow-md shadow-sky-500/25'
+                  ? 'bg-[var(--accent-pill)] text-white shadow-md shadow-sky-500/25'
                   : 'hover:bg-white/5 opacity-80 hover:opacity-100'
               }`}
             >
@@ -589,7 +589,7 @@ export default function DashboardPage() {
               onClick={() => { setCurrentTab('SETTINGS'); setMobileMenuOpen(false); }}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
                 currentTab === 'SETTINGS'
-                  ? 'bg-sky-500 text-white shadow-md shadow-sky-500/25'
+                  ? 'bg-[var(--accent-pill)] text-white shadow-md shadow-sky-500/25'
                   : 'hover:bg-white/5 opacity-80 hover:opacity-100'
               }`}
             >
@@ -637,7 +637,7 @@ export default function DashboardPage() {
             </div>
             <div className="flex items-center justify-between pt-1 border-t text-[10px]" style={{ borderColor: 'var(--border-color)', color: 'var(--text-muted)' }}>
               <span className="flex items-center gap-1">
-                <Lock className="w-3 h-3 text-sky-400" />
+                <Lock className="w-3 h-3 text-[var(--accent-primary)]" />
                 <span>Isolated Merchant</span>
               </span>
               <span>PostgreSQL</span>
@@ -695,7 +695,7 @@ export default function DashboardPage() {
                 }}
                 title="Switch active merchant store partition"
               >
-                <Store className="w-3.5 h-3.5 text-sky-400" />
+                <Store className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
                 <span className="hidden md:inline font-sans font-semibold max-w-[130px] truncate">{activeStore.name}</span>
                 <span className="w-2 h-2 rounded-full bg-emerald-400" />
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
@@ -720,12 +720,12 @@ export default function DashboardPage() {
                       onClick={() => handleSwitchStore(s.id)}
                       className={`p-2 rounded-xl cursor-pointer transition flex items-center justify-between text-xs ${
                         s.id === activeStoreId 
-                          ? 'bg-sky-500/15 border border-sky-500/30 text-sky-400' 
+                          ? 'bg-[var(--accent-pill)]/15 border border-sky-500/30 text-[var(--accent-primary)]' 
                           : 'hover:bg-white/5 text-slate-300'
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-7 h-7 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">
+                        <div className="w-7 h-7 rounded-lg bg-[var(--accent-pill)]/20 text-[var(--accent-primary)] flex items-center justify-center font-bold text-xs shrink-0">
                           {s.name.slice(0, 1)}
                         </div>
                         <div className="min-w-0">
@@ -733,7 +733,7 @@ export default function DashboardPage() {
                           <div className="text-[10px] font-mono text-slate-400 truncate">{s.paypalPayerId}</div>
                         </div>
                       </div>
-                      {s.id === activeStoreId && <Check className="w-4 h-4 text-sky-400 shrink-0" />}
+                      {s.id === activeStoreId && <Check className="w-4 h-4 text-[var(--accent-primary)] shrink-0" />}
                     </div>
                   ))}
 
@@ -756,11 +756,11 @@ export default function DashboardPage() {
             {/* Live PayPal Status Badge */}
             <div 
               onClick={checkPayPalConnection}
-              className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl border text-[11px] font-mono cursor-pointer transition hover:opacity-90"
+              className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full border text-[11px] cursor-pointer transition hover:opacity-90 shadow-2xs font-sans-body"
               style={{
-                borderColor: payPalHealth?.connected ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)',
-                backgroundColor: payPalHealth?.connected ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                color: payPalHealth?.connected ? '#10b981' : '#ef4444'
+                borderColor: 'var(--border-color)',
+                backgroundColor: 'var(--surface-hover)',
+                color: 'var(--text-secondary)'
               }}
               title="Click to re-verify live PayPal Sandbox handshake"
             >
@@ -815,7 +815,7 @@ export default function DashboardPage() {
               }}
               title="Sync from PayPal Sandbox"
             >
-              <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin text-sky-400' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin text-[var(--accent-primary)]' : ''}`} />
             </button>
           </div>
         </header>
@@ -845,7 +845,7 @@ export default function DashboardPage() {
                       <DollarSign className="w-4 h-4" />
                     </div>
                   </div>
-                  <div className="text-2xl sm:text-3xl font-black font-mono">
+                  <div className="text-2xl sm:text-3xl font-bold font-serif-heading">
                     {formatCurrency(totalAmountAtRisk)}
                   </div>
                   <div className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1">
@@ -870,7 +870,7 @@ export default function DashboardPage() {
                       <AlertCircle className="w-4 h-4" />
                     </div>
                   </div>
-                  <div className="text-2xl sm:text-3xl font-black font-mono text-rose-400">
+                  <div className="text-2xl sm:text-3xl font-bold font-serif-heading text-rose-400">
                     {pendingActionCount} <span className="text-xs font-normal" style={{ color: 'var(--text-muted)' }}>cases</span>
                   </div>
                   <div className="text-[11px] text-rose-400 font-semibold">
@@ -890,14 +890,14 @@ export default function DashboardPage() {
                     <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                       Defended & In Review
                     </span>
-                    <div className="p-2 rounded-xl bg-sky-500/15 text-sky-400 border border-sky-500/30">
+                    <div className="p-2 rounded-xl bg-[var(--accent-pill)]/15 text-[var(--accent-primary)] border border-sky-500/30">
                       <Clock className="w-4 h-4" />
                     </div>
                   </div>
-                  <div className="text-2xl sm:text-3xl font-black font-mono text-sky-400">
+                  <div className="text-2xl sm:text-3xl font-bold font-serif-heading text-[var(--accent-primary)]">
                     {underReviewCount} <span className="text-xs font-normal" style={{ color: 'var(--text-muted)' }}>defended</span>
                   </div>
-                  <div className="text-[11px] text-sky-400 font-semibold">
+                  <div className="text-[11px] text-[var(--accent-primary)] font-semibold">
                     Submitted via Outbox Pipeline
                   </div>
                 </div>
@@ -918,7 +918,7 @@ export default function DashboardPage() {
                       <Sparkles className="w-4 h-4" />
                     </div>
                   </div>
-                  <div className="text-2xl sm:text-3xl font-black font-mono text-emerald-400">
+                  <div className="text-2xl sm:text-3xl font-bold font-serif-heading text-emerald-400">
                     {defenseRatio}
                   </div>
                   <div className="text-[11px] text-emerald-400 font-semibold">
@@ -937,7 +937,7 @@ export default function DashboardPage() {
                       onClick={() => { setStatusFilter(filter); setCurrentPage(1); }}
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap ${
                         statusFilter === filter
-                          ? 'bg-sky-500 text-white shadow-xs'
+                          ? 'bg-[var(--accent-pill)] text-white shadow-xs'
                           : 'border text-slate-400 hover:text-white'
                       }`}
                       style={{
@@ -956,7 +956,7 @@ export default function DashboardPage() {
               </div>
 
               {/* MOBILE DISPUTE CARDS (Visible on mobile screens < md) */}
-              <div className="grid grid-cols-1 gap-3 md:hidden">
+              <div className="grid grid-cols-1 gap-4 md:hidden py-1">
                 {paginatedDisputes.map((dispute) => {
                   const deadlineInfo = calculateDeadlineUrgency(dispute.deadline);
                   const isPending = dispute.status !== 'UNDER_REVIEW' && dispute.status !== 'RESOLVED';
@@ -964,14 +964,14 @@ export default function DashboardPage() {
                     <div
                       key={dispute.id}
                       onClick={() => setSelectedDispute(dispute)}
-                      className="p-4 rounded-2xl border space-y-3 cursor-pointer active:scale-98 transition"
+                      className="p-5 rounded-2xl border space-y-3.5 cursor-pointer active:scale-98 transition shadow-xs"
                       style={{
                         backgroundColor: 'var(--surface)',
                         borderColor: 'var(--border-color)'
                       }}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-mono font-bold text-xs text-sky-400">
+                        <span className="font-mono font-bold text-xs text-[var(--accent-primary)]">
                           {dispute.paypalDisputeId}
                         </span>
                         <span className="font-mono font-black text-sm">
@@ -1060,7 +1060,7 @@ export default function DashboardPage() {
                           onClick={() => setSelectedDispute(dispute)}
                           className="cursor-pointer transition hover:bg-white/5"
                         >
-                          <td className="py-4 px-5 font-mono font-bold text-sky-400">
+                          <td className="py-4 px-5 font-mono font-bold text-[var(--accent-primary)]">
                             {dispute.paypalDisputeId}
                           </td>
                           <td className="py-4 px-5 font-mono font-bold">
@@ -1099,7 +1099,7 @@ export default function DashboardPage() {
                                 e.stopPropagation();
                                 setSelectedDispute(dispute);
                               }}
-                              className="px-3 py-1.5 rounded-lg bg-sky-500/15 hover:bg-sky-500/25 text-sky-400 border border-sky-500/30 font-bold text-xs inline-flex items-center gap-1 transition"
+                              className="px-3 py-1.5 rounded-lg bg-[var(--accent-pill)]/15 hover:bg-[var(--accent-pill)]/25 text-[var(--accent-primary)] border border-sky-500/30 font-bold text-xs inline-flex items-center gap-1 transition"
                             >
                               <span>Review Defense</span>
                               <ArrowUpRight className="w-3 h-3" />
@@ -1243,7 +1243,7 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-base font-black flex items-center gap-2">
-                      <Truck className="w-5 h-5 text-sky-400" />
+                      <Truck className="w-5 h-5 text-[var(--accent-primary)]" />
                       <span>Live Logistics EDI & Carrier Proof Integrations</span>
                     </h3>
                     <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
@@ -1268,7 +1268,7 @@ export default function DashboardPage() {
                       }}
                     >
                       <div className="flex items-center gap-3">
-                        <c.icon className="w-5 h-5 text-sky-400" />
+                        <c.icon className="w-5 h-5 text-[var(--accent-primary)]" />
                         <div>
                           <div className="font-bold">{c.carrier}</div>
                           <div className="text-[10px] text-emerald-400 font-mono">{c.status}</div>
@@ -1322,10 +1322,10 @@ export default function DashboardPage() {
                         "{risk.customerMessage}"
                       </p>
                       <div className="pt-2 flex items-center justify-between border-t border-slate-700/60">
-                        <span className="text-sky-400 font-semibold">{risk.recommendedAction}</span>
+                        <span className="text-[var(--accent-primary)] font-semibold">{risk.recommendedAction}</span>
                         <button 
                           onClick={() => showToast(`Sent 1-click preemptive resolution for ${risk.orderNumber}`, 'success', 'Interception Sent')}
-                          className="px-3 py-1 rounded bg-sky-500 hover:bg-sky-600 text-white font-bold text-[11px]"
+                          className="px-3 py-1 rounded bg-[var(--accent-pill)] hover:bg-sky-600 text-white font-bold text-[11px]"
                         >
                           Intercept Now
                         </button>
@@ -1351,7 +1351,7 @@ export default function DashboardPage() {
                 <button
                   onClick={checkPayPalConnection}
                   disabled={checkingPayPal}
-                  className="px-4 py-2 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold flex items-center gap-2 shadow-sm transition disabled:opacity-50 self-start sm:self-auto"
+                  className="px-4 py-2 rounded-xl bg-[var(--accent-pill)] hover:bg-sky-600 text-white text-xs font-bold flex items-center gap-2 shadow-sm transition disabled:opacity-50 self-start sm:self-auto"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${checkingPayPal ? 'animate-spin' : ''}`} />
                   <span>{checkingPayPal ? 'Pinging PayPal...' : 'Test PayPal Connection Ping'}</span>
@@ -1365,7 +1365,7 @@ export default function DashboardPage() {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                    <div className="p-2 rounded-xl bg-[var(--accent-pill)]/10 text-[var(--accent-primary)] border border-sky-500/20">
                       <Zap className="w-4 h-4" />
                     </div>
                     <div>
@@ -1389,7 +1389,7 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs font-mono">
                   <div className="p-3 rounded-xl bg-black/20 space-y-1">
                     <div className="text-[10px] uppercase font-bold text-slate-400">API Endpoint</div>
-                    <div className="text-sky-400 truncate">api-m.sandbox.paypal.com</div>
+                    <div className="text-[var(--accent-primary)] truncate">api-m.sandbox.paypal.com</div>
                   </div>
                   <div className="p-3 rounded-xl bg-black/20 space-y-1">
                     <div className="text-[10px] uppercase font-bold text-slate-400">Sandbox App ID</div>
@@ -1441,9 +1441,9 @@ export default function DashboardPage() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl bg-black/20 font-mono gap-2">
                     <div>
                       <span className="text-slate-400">Merchant Tenant ID: </span>
-                      <span className="text-sky-400 font-bold">{activeStore.id}</span>
+                      <span className="text-[var(--accent-primary)] font-bold">{activeStore.id}</span>
                     </div>
-                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-sky-500/10 text-sky-400 border border-sky-500/20 self-start sm:self-auto">
+                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-[var(--accent-pill)]/10 text-[var(--accent-primary)] border border-sky-500/20 self-start sm:self-auto">
                       ThreadLocal Scoped
                     </span>
                   </div>
@@ -1507,7 +1507,7 @@ export default function DashboardPage() {
 
                   {idempotencyLog ? (
                     <div className="space-y-1.5 pt-1 text-slate-300">
-                      <div className="text-sky-400">➜ Dispatched Event ID: {idempotencyLog.eventId}</div>
+                      <div className="text-[var(--accent-primary)]">➜ Dispatched Event ID: {idempotencyLog.eventId}</div>
                       <div className="text-emerald-400">✔ Attempt 1 (Initial Webhook): Status {idempotencyLog.attempt1Status || 'SUCCESS'} (Dispute Created & Outbox Enqueued)</div>
                       <div className="text-amber-400">⚡ Attempt 2 (Identical Duplicate Replay): Status {idempotencyLog.attempt2Status || 'DUPLICATE_ACCEPTED'} (Ingestion Filtered)</div>
                       <div className="pt-1 text-emerald-400 font-bold text-[11px] border-t border-white/10 flex items-center gap-1.5">
@@ -1541,8 +1541,8 @@ export default function DashboardPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   <div className="p-3.5 rounded-xl border border-white/5 bg-white/[0.02] space-y-1.5">
-                    <div className="font-bold text-sky-400 flex items-center gap-1.5">
-                      <span className="w-5 h-5 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center text-[10px]">1</span>
+                    <div className="font-bold text-[var(--accent-primary)] flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-[var(--accent-pill)]/20 text-[var(--accent-primary)] flex items-center justify-center text-[10px]">1</span>
                       <span>Merchant Registration</span>
                     </div>
                     <p className="text-[11px] text-slate-400 leading-relaxed">

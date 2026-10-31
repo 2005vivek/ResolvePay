@@ -40,8 +40,8 @@ function App() {
                     <span style={{
                         padding: '3px 10px',
                         borderRadius: '12px',
-                        fontSize: '12px',
-                        fontWeight: '600',
+                        fontSize: '11px',
+                        fontWeight: '700',
                         backgroundColor: bg,
                         color: color
                     }}>
@@ -79,11 +79,18 @@ function App() {
     }, [fetchDisputes]);
 
     return (
-        <div style={{ padding: '24px', fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', maxWidth: '1200px', margin: '0 auto' }}>
-            <div style={{ marginBottom: '20px', borderBottom: '1px solid #e5e7eb', paddingBottom: '16px' }}>
-                <h2 style={{ margin: '0 0 6px 0', color: '#111827', fontSize: '24px' }}>ResolvePay Dispute Dashboard</h2>
-                <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>
-                    Automated PayPal dispute management and AI resolution agent
+        <div style={{ padding: '24px', fontFamily: '"Arial", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', maxWidth: '1200px', margin: '0 auto', textAlign: 'left' }}>
+            <div style={{ marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                    <h2 style={{ margin: 0, fontFamily: '"Georgia", "Times New Roman", serif', fontWeight: 700, fontSize: '24px', color: 'var(--text-h)' }}>
+                        ResolvePay™ Dispute Defense
+                    </h2>
+                    <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border)', textTransform: 'uppercase' }}>
+                        Executive Console
+                    </span>
+                </div>
+                <p style={{ margin: 0, color: 'var(--text)', fontSize: '13px' }}>
+                    Automated PayPal dispute management and Gemini AI resolution agent
                 </p>
             </div>
 
@@ -109,11 +116,11 @@ function App() {
             {selectedDispute ? (
                 <div style={{
                     padding: '24px',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px',
-                    backgroundColor: '#ffffff',
-                    color: '#1f2937',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'
+                    border: '1px solid var(--border)',
+                    borderRadius: '12px',
+                    backgroundColor: 'var(--surface)',
+                    color: 'var(--text)',
+                    boxShadow: 'var(--shadow)'
                 }}>
                     <DisputeResolutionPanel
                         key={selectedDispute.id}
@@ -124,9 +131,15 @@ function App() {
                     />
                 </div>
             ) : (
-                <p style={{ color: '#9ca3af', fontStyle: 'italic', textAlign: 'center', padding: '32px 0' }}>
-                    Click a dispute row in the table above to view details and generate an AI resolution draft.
-                </p>
+                <div style={{
+                    padding: '40px',
+                    textAlign: 'center',
+                    border: '1px dashed var(--border)',
+                    borderRadius: '12px',
+                    color: 'var(--text)'
+                }}>
+                    Select a dispute above to inspect case details and generate an AI resolution draft.
+                </div>
             )}
         </div>
     );

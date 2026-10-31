@@ -86,10 +86,10 @@ export default function DisputeResolutionPanel({ disputeId, paypalDisputeId, dis
     };
 
     return (
-        <div style={{ textAlign: 'left' }}>
+        <div style={{ textAlign: 'left', fontFamily: '"Arial", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
                 <div>
-                    <h3 style={{ margin: 0, color: '#111827', fontSize: '18px' }}>
+                    <h3 style={{ margin: 0, color: 'var(--text-h)', fontSize: '18px', fontFamily: '"Georgia", "Times New Roman", serif', fontWeight: 700 }}>
                         AI Resolution Assistant {paypalDisputeId ? `— Case ${paypalDisputeId}` : ''}
                     </h3>
                     {disputeStatus && (
@@ -98,8 +98,8 @@ export default function DisputeResolutionPanel({ disputeId, paypalDisputeId, dis
                             marginTop: '6px',
                             padding: '3px 10px',
                             borderRadius: '12px',
-                            fontSize: '12px',
-                            fontWeight: '600',
+                            fontSize: '11px',
+                            fontWeight: '700',
                             backgroundColor: (submitSuccess?.status || disputeStatus) === 'REQUIRES_ACTION' ? '#fef3c7' : '#dbeafe',
                             color: (submitSuccess?.status || disputeStatus) === 'REQUIRES_ACTION' ? '#92400e' : '#1e40af'
                         }}>
@@ -112,19 +112,19 @@ export default function DisputeResolutionPanel({ disputeId, paypalDisputeId, dis
                     onClick={generateAiResponse}
                     disabled={isLoading || isSubmitting}
                     style={{
-                        backgroundColor: isLoading ? '#64748b' : '#2563eb',
+                        backgroundColor: isLoading ? '#64748b' : '#0F2942',
                         color: '#ffffff',
                         padding: '10px 20px',
                         border: 'none',
                         borderRadius: '6px',
                         cursor: isLoading || isSubmitting ? 'not-allowed' : 'pointer',
-                        fontWeight: '600',
-                        fontSize: '14px',
+                        fontWeight: '700',
+                        fontSize: '13px',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '8px',
                         boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                        transition: 'background-color 0.2s'
+                        transition: 'opacity 0.2s'
                     }}
                 >
                     {isLoading && (
@@ -142,8 +142,9 @@ export default function DisputeResolutionPanel({ disputeId, paypalDisputeId, dis
                 </button>
             </div>
 
+            {/* Error Banner with Slide-in animation */}
             {error && (
-                <div style={{
+                <div className="animate-top-slide" style={{
                     padding: '14px 16px',
                     backgroundColor: '#fef2f2',
                     color: '#991b1b',
@@ -156,8 +157,8 @@ export default function DisputeResolutionPanel({ disputeId, paypalDisputeId, dis
                     boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
                 }}>
                     <div>
-                        <strong style={{ display: 'block', marginBottom: '4px' }}>Request Error</strong>
-                        <span>{error}</span>
+                        <strong style={{ display: 'block', marginBottom: '4px', fontFamily: '"Georgia", "Times New Roman", serif', fontWeight: 700 }}>Request Error</strong>
+                        <span style={{ fontSize: '13px' }}>{error}</span>
                     </div>
                     <button
                         onClick={() => setError(null)}
@@ -178,24 +179,27 @@ export default function DisputeResolutionPanel({ disputeId, paypalDisputeId, dis
                 </div>
             )}
 
+            {/* Success Banner with Top Slide-in animation */}
             {submitSuccess && (
-                <div style={{
+                <div className="animate-top-slide" style={{
                     padding: '14px 16px',
                     backgroundColor: '#f0fdf4',
                     color: '#166534',
                     border: '1px solid #bbf7d0',
                     borderRadius: '8px',
                     marginBottom: '16px',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                        <span style={{ fontSize: '18px', fontWeight: 'bold' }}>&#10003;</span>
-                        <strong style={{ fontSize: '15px' }}>Submitted to PayPal Dispute Center</strong>
+                        <span style={{ fontSize: '16px', fontWeight: 'bold' }}>&#10003;</span>
+                        <strong style={{ fontSize: '14px', fontFamily: '"Georgia", "Times New Roman", serif', fontWeight: 700 }}>
+                            Submitted to PayPal Dispute Center
+                        </strong>
                     </div>
-                    <p style={{ margin: '4px 0 0 26px', fontSize: '13px' }}>
+                    <p style={{ margin: '4px 0 0 24px', fontSize: '12px' }}>
                         {submitSuccess.message}
                     </p>
-                    <p style={{ margin: '4px 0 0 26px', fontSize: '12px', color: '#15803d' }}>
+                    <p style={{ margin: '4px 0 0 24px', fontSize: '11px', color: '#15803d' }}>
                         Status updated to <strong>{submitSuccess.status}</strong> &bull; Recorded at {submitSuccess.submittedAt}
                     </p>
                 </div>
@@ -206,11 +210,11 @@ export default function DisputeResolutionPanel({ disputeId, paypalDisputeId, dis
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                         <label
                             htmlFor="draftArea"
-                            style={{ fontWeight: '600', color: '#374151', fontSize: '14px' }}
+                            style={{ fontWeight: '700', color: 'var(--text-h)', fontSize: '13px' }}
                         >
                             Review &amp; Edit Draft:
                         </label>
-                        <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                        <span style={{ fontSize: '11px', color: 'var(--text)' }}>
                             {draftContent.length} characters &bull; {draftContent.trim().split(/\s+/).filter(Boolean).length} words
                         </span>
                     </div>
@@ -227,31 +231,49 @@ export default function DisputeResolutionPanel({ disputeId, paypalDisputeId, dis
                             width: '100%',
                             padding: '14px',
                             borderRadius: '8px',
-                            border: '1px solid #d1d5db',
-                            backgroundColor: '#fafafa',
-                            color: '#111827',
-                            fontFamily: 'Consolas, Monaco, "Courier New", monospace',
-                            fontSize: '13.5px',
+                            border: '1px solid var(--border)',
+                            backgroundColor: 'var(--surface)',
+                            color: 'var(--text-h)',
+                            fontSize: '13px',
                             lineHeight: '1.6',
+                            fontFamily: '"Arial", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
                             boxSizing: 'border-box',
                             resize: 'vertical',
-                            boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)'
+                            outline: 'none',
+                            boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.03)'
                         }}
                     />
 
-                    <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '14px', gap: '10px' }}>
+                        <button
+                            onClick={() => setDraftContent('')}
+                            disabled={isSubmitting}
+                            style={{
+                                padding: '9px 18px',
+                                border: '1px solid var(--border)',
+                                borderRadius: '6px',
+                                backgroundColor: 'transparent',
+                                color: 'var(--text)',
+                                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                                fontSize: '13px',
+                                fontWeight: '600'
+                            }}
+                        >
+                            Clear
+                        </button>
+
                         <button
                             onClick={submitToPayPal}
-                            disabled={isSubmitting || isLoading}
+                            disabled={isSubmitting || !draftContent.trim()}
                             style={{
-                                backgroundColor: isSubmitting ? '#4ade80' : submitSuccess ? '#059669' : '#16a34a',
+                                backgroundColor: isSubmitting || !draftContent.trim() ? '#94a3b8' : '#047857',
                                 color: '#ffffff',
-                                padding: '10px 22px',
+                                padding: '9px 24px',
                                 border: 'none',
                                 borderRadius: '6px',
-                                cursor: isSubmitting || isLoading ? 'not-allowed' : 'pointer',
-                                fontWeight: '600',
-                                fontSize: '14px',
+                                cursor: isSubmitting || !draftContent.trim() ? 'not-allowed' : 'pointer',
+                                fontWeight: '700',
+                                fontSize: '13px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '8px',
@@ -269,28 +291,11 @@ export default function DisputeResolutionPanel({ disputeId, paypalDisputeId, dis
                                     animation: 'spin 1s linear infinite'
                                 }} />
                             )}
-                            {isSubmitting
-                                ? 'Submitting to PayPal...'
-                                : submitSuccess
-                                    ? 'Re-submit to PayPal'
-                                    : 'Submit to PayPal'}
+                            {isSubmitting ? 'Submitting to PayPal...' : 'Submit to PayPal'}
                         </button>
-
-                        {submitSuccess && (
-                            <span style={{ fontSize: '13px', color: '#16a34a', fontWeight: '500' }}>
-                                &#10003; Draft submitted successfully
-                            </span>
-                        )}
                     </div>
                 </div>
             )}
-
-            <style>{`
-                @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
-                }
-            `}</style>
         </div>
     );
 }

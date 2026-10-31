@@ -3,18 +3,32 @@
 @tailwind utilities;
 
 @layer base {
-  /* Default: Dark Luxe FinTech Theme (Linear / Stripe style) */
+  /* Default: Dark Luxe FinTech Theme with Velvet Plum Obsidian & Rose-Gold accents (Zero Blue) */
   :root {
-    --background: #090D16;
-    --foreground: #F8FAFC;
-    --surface: #0F172A;
-    --surface-hover: #1E293B;
-    --surface-active: #243248;
-    --border-color: #1E293B;
-    --border-subtle: #172236;
-    --card-bg: rgba(15, 23, 42, 0.75);
-    --text-muted: #94A3B8;
-    --text-secondary: #CBD5E1;
+    --background: #100A13;
+    --foreground: #FDF2F8;
+    --surface: #19111E;
+    --surface-hover: #241A2B;
+    --surface-active: #2F2137;
+    --border-color: #2F2137;
+    --border-subtle: #241A2B;
+    --border-strong: #4B3657;
+    --card-bg: rgba(25, 17, 30, 0.85);
+    --text-muted: #A38EA9;
+    --text-secondary: #E3D4E7;
+    --accent-primary: #F472B6;
+    --accent-primary-hover: #FB7185;
+    --accent-pill: #BE185D;
+    --accent-pill-text: #FFFFFF;
+    --status-emerald: #34D399;
+    --status-emerald-bg: rgba(52, 211, 153, 0.12);
+    --status-rose: #FB7185;
+    --status-rose-bg: rgba(251, 113, 133, 0.14);
+    --sla-bg: rgba(244, 114, 182, 0.07);
+    --sla-border: rgba(244, 114, 182, 0.22);
+    --sla-text: #FCE7F3;
+    --sla-badge-bg: rgba(244, 114, 182, 0.18);
+    --sla-badge-text: #F472B6;
   }
 
   /* Explicit Light Mode Override when html has class 'light' */
@@ -26,18 +40,70 @@
     --surface-active: #E2E8F0;
     --border-color: #E2E8F0;
     --border-subtle: #F1F5F9;
+    --border-strong: #CBD5E1;
     --card-bg: #FFFFFF;
     --text-muted: #64748B;
     --text-secondary: #334155;
+    --accent-primary: #0F2942;
+    --accent-primary-hover: #163e63;
+    --accent-pill: #0F2942;
+    --accent-pill-text: #FFFFFF;
+    --status-emerald: #047857;
+    --status-emerald-bg: #D1FAE5;
+    --status-rose: #B91C1C;
+    --status-rose-bg: #FEE2E2;
+    --sla-bg: #FFFBEB;
+    --sla-border: #FCD34D;
+    --sla-text: #92400E;
+    --sla-badge-bg: #FDE68A;
+    --sla-badge-text: #78350F;
   }
+}
+
+/* Executive Editorial Font Typography */
+.font-serif-heading {
+  font-family: "Georgia", "Times New Roman", "Baskerville", "Playfair Display", serif;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.font-sans-body {
+  font-family: "Arial", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
 }
 
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
+  font-family: "Arial", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   overflow-x: hidden;
   transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Fixed top sliding animation strictly constrained to viewport bounds */
+@keyframes slideDownIn {
+  0% {
+    transform: translateY(-80px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-top-slide {
+  animation: slideDownIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Spotlight Mask Backdrop with Rose-Plum Dark Hue */
+.spotlight-active {
+  background: radial-gradient(circle at 50% 25%, rgba(190, 24, 93, 0.15) 0%, rgba(16, 10, 19, 0.88) 75%, rgba(16, 10, 19, 0.96) 100%);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+html.light .spotlight-active {
+  background: radial-gradient(circle at 50% 25%, rgba(15, 41, 66, 0.35) 0%, rgba(0, 0, 0, 0.75) 75%, rgba(0, 0, 0, 0.88) 100%);
 }
 
 /* Custom modern sleek scrollbar */
@@ -49,33 +115,22 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.25);
+  background: rgba(163, 142, 169, 0.3);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.5);
+  background: rgba(163, 142, 169, 0.5);
 }
 
-/* Glassmorphism and Luxe Cards */
+/* Luxe Cards */
 .luxe-card {
   background: var(--surface);
   border: 1px solid var(--border-color);
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.15);
-  backdrop-filter: blur(12px);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .luxe-card:hover {
-  border-color: rgba(14, 165, 233, 0.4);
-  box-shadow: 0 8px 30px -4px rgba(14, 165, 233, 0.12);
-}
-
-/* Smooth Pulse Badge */
-@keyframes softPulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.7; transform: scale(0.98); }
-}
-
-.pulse-soft {
-  animation: softPulse 2.5s infinite ease-in-out;
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 16px -2px rgba(244, 114, 182, 0.15);
 }
