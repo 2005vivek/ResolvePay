@@ -1,5 +1,7 @@
 package com.resolvepay.api.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -21,9 +23,15 @@ public class Draft {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "dispute_id", nullable = false)
     private Dispute dispute;
+
+    @JsonProperty("disputeId")
+    public UUID getDisputeId() {
+        return dispute != null ? dispute.getId() : null;
+    }
 
     @Column(nullable = false)
     private Integer version;

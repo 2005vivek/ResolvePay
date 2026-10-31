@@ -1,5 +1,7 @@
 package com.resolvepay.api.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -18,9 +20,18 @@ public class EvidenceItem {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Column(name = "merchant_id", nullable = false, length = 100)
+    private String merchantId = "merchant_resolvepay_01";
+
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "dispute_id", nullable = false)
     private Dispute dispute;
+
+    @JsonProperty("disputeId")
+    public UUID getDisputeId() {
+        return dispute != null ? dispute.getId() : null;
+    }
 
     @Column(nullable = false, length = 50)
     private String type;
@@ -39,4 +50,10 @@ public class EvidenceItem {
 
     @Column(name = "content_hash", length = 64)
     private String contentHash;
+
+    @Column(name = "extracted_facts", columnDefinition = "TEXT")
+    private String extractedFacts;
+
+    @Column(name = "file_url", columnDefinition = "TEXT")
+    private String fileUrl;
 }

@@ -8,7 +8,16 @@
 target/
 build/
 dist/
+node_modules/
 client/node_modules/
+web/node_modules/
+.next/
+web/.next/
+mobile/node_modules/
+mobile/.expo/
+storage/
+*.tsbuildinfo
+.m2/
 
 # IDE files
 .idea/
@@ -35,9 +44,3 @@ client/node_modules/
 
 # Project-specific
 HELP.md
-
-node_modules/
-client/node_modules/
-web/node_modules/
-.next/
-web/.next/
