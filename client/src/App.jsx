@@ -56,7 +56,12 @@ function App() {
     ]);
 
     const fetchDisputes = useCallback(() => {
-        axios.get('http://localhost:8080/api/disputes')
+        axios.get('http://localhost:8085/api/disputes', {
+            headers: {
+                'Authorization': 'Bearer rzp_live_sec_789f2a4b8c1d',
+                'X-Merchant-Id': 'merchant_resolvepay_01'
+            }
+        })
             .then(response => {
                 setRowData(response.data);
                 if (response.data && response.data.length > 0) {

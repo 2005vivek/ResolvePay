@@ -15,9 +15,16 @@ export default function DisputeResolutionPanel({ disputeId, paypalDisputeId, dis
 
         try {
             const response = await axios.post(
-                `http://localhost:8080/api/disputes/${disputeId}/draft`,
+                `http://localhost:8085/api/disputes/${disputeId}/draft`,
                 null,
-                { responseType: 'text', timeout: 120000 }
+                { 
+                    responseType: 'text', 
+                    timeout: 120000,
+                    headers: {
+                        'Authorization': 'Bearer rzp_live_sec_789f2a4b8c1d',
+                        'X-Merchant-Id': 'merchant_resolvepay_01'
+                    }
+                }
             );
             setDraftContent(response.data);
         } catch (err) {
@@ -49,9 +56,15 @@ export default function DisputeResolutionPanel({ disputeId, paypalDisputeId, dis
 
         try {
             const response = await axios.post(
-                `http://localhost:8080/api/disputes/${disputeId}/submit`,
+                `http://localhost:8085/api/disputes/${disputeId}/submit`,
                 { draftText: draftContent },
-                { timeout: 120000 }
+                { 
+                    timeout: 120000,
+                    headers: {
+                        'Authorization': 'Bearer rzp_live_sec_789f2a4b8c1d',
+                        'X-Merchant-Id': 'merchant_resolvepay_01'
+                    }
+                }
             );
 
             setSubmitSuccess({
