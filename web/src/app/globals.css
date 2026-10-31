@@ -134,3 +134,12 @@ html.light .spotlight-active {
   border-color: var(--accent-primary);
   box-shadow: 0 4px 16px -2px rgba(244, 114, 182, 0.15);
 }
+
+/* Touch-friendly hidden scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

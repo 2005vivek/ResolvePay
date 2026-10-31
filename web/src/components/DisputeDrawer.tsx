@@ -341,7 +341,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
 
         {/* Navigation Tabs */}
         <div 
-          className="flex border-b px-4 sm:px-6 shrink-0 gap-2 overflow-x-auto text-xs font-semibold"
+          className="flex border-b px-4 sm:px-6 shrink-0 gap-2 overflow-x-auto no-scrollbar text-xs font-semibold"
           style={{ borderColor: 'var(--border-color)' }}
         >
           <button 

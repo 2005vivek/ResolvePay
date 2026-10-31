@@ -75,7 +75,7 @@ export default function ConnectPayPalModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
       <div 
-        className="w-full max-w-lg rounded-2xl border shadow-2xl overflow-hidden flex flex-col"
+        className="w-full max-w-lg rounded-2xl border shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
         style={{
           backgroundColor: 'var(--surface)',
           borderColor: 'var(--border-color)',
@@ -123,7 +123,7 @@ export default function ConnectPayPalModal({
         </div>
 
         {/* Modal Body */}
-        <div className="p-5 space-y-4">
+        <div className="p-4 sm:p-5 space-y-4 overflow-y-auto max-h-[calc(92vh-125px)] no-scrollbar">
 
           {/* STEP 1: Store & Merchant Registration */}
           {step === 1 && (

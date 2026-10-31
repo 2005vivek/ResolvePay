@@ -496,12 +496,21 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Mobile Drawer Backdrop */}
+      {mobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 md:hidden animate-in fade-in duration-200"
+          onClick={() => setMobileMenuOpen(false)}
+          aria-label="Close navigation drawer"
+        />
+      )}
+
       {/* ======================================================== */}
       {/* 2. SIDEBAR (Desktop & Mobile Drawer)                     */}
       {/* ======================================================== */}
       <aside 
         className={`
-          fixed md:static inset-y-0 left-0 z-50 w-72 flex flex-col justify-between p-5 border-r transition-transform duration-300 md:translate-x-0 shrink-0
+          fixed md:static inset-y-0 left-0 z-50 w-72 flex flex-col justify-between p-5 border-r transition-transform duration-300 md:translate-x-0 shrink-0 overflow-y-auto max-h-screen
           ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}
         style={{
@@ -653,19 +662,19 @@ export default function DashboardPage() {
         
         {/* Top Navbar */}
         <header 
-          className="px-4 sm:px-8 py-3.5 border-b sticky top-0 z-30 backdrop-blur-md flex items-center justify-between gap-4"
+          className="px-3 sm:px-8 py-3.5 border-b sticky top-[53px] md:top-0 z-30 backdrop-blur-md flex items-center justify-between gap-2.5 sm:gap-4"
           style={{
             backgroundColor: 'var(--surface)',
             borderColor: 'var(--border-color)'
           }}
         >
           {/* Search Bar */}
-          <div className="flex items-center gap-3 flex-1 max-w-md">
+          <div className="flex items-center gap-3 flex-1 min-w-0 max-w-md">
             <div className="relative w-full">
               <Search className="w-4 h-4 absolute left-3.5 top-2.5 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search by Dispute ID, Reason, or Amount..."
+                placeholder="Search disputes, reason, or amount..."
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -682,12 +691,12 @@ export default function DashboardPage() {
           </div>
 
           {/* Action Center */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             {/* Store / Tenant Switcher Dropdown */}
             <div className="relative">
               <button
                 onClick={() => setStoreDropdownOpen(!storeDropdownOpen)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold transition hover:opacity-90 shadow-xs"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border text-xs font-bold transition hover:opacity-90 shadow-xs shrink-0"
                 style={{
                   backgroundColor: 'var(--surface-hover)',
                   borderColor: 'var(--border-color)',
@@ -797,7 +806,7 @@ export default function DashboardPage() {
             <button
               onClick={() => handleSimulateWebhook('MERCHANDISE_OR_SERVICE_NOT_RECEIVED', '249.99')}
               disabled={simulating}
-              className="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition disabled:opacity-50"
+              className="p-2 sm:px-3 sm:py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition disabled:opacity-50 shrink-0"
               title="Simulates incoming PayPal dispute"
             >
               <Zap className="w-3.5 h-3.5" />
@@ -808,7 +817,7 @@ export default function DashboardPage() {
             <button
               onClick={handleSync}
               disabled={syncing}
-              className="p-2 rounded-xl border transition disabled:opacity-50"
+              className="p-2 rounded-xl border transition disabled:opacity-50 shrink-0"
               style={{ 
                 borderColor: 'var(--border-color)',
                 backgroundColor: 'var(--surface-hover)' 
@@ -930,7 +939,7 @@ export default function DashboardPage() {
 
               {/* Table / List Controls */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
-                <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
                   {(['ALL', 'ACTION_REQUIRED', 'UNDER_REVIEW', 'RESOLVED'] as const).map((filter) => (
                     <button
                       key={filter}
@@ -954,6 +963,32 @@ export default function DashboardPage() {
                   Showing {paginatedDisputes.length} of {processedDisputes.length} disputes
                 </div>
               </div>
+
+              {/* Empty state for search / status filter */}
+              {paginatedDisputes.length === 0 && (
+                <div 
+                  className="p-8 sm:p-12 rounded-2xl border text-center space-y-3"
+                  style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-color)' }}
+                >
+                  <div className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center text-slate-400" style={{ backgroundColor: 'var(--surface-hover)' }}>
+                    <Search className="w-6 h-6" />
+                  </div>
+                  <h4 className="font-bold text-sm">No Disputes Found</h4>
+                  <p className="text-xs max-w-sm mx-auto" style={{ color: 'var(--text-muted)' }}>
+                    {searchQuery 
+                      ? `No disputes matching "${searchQuery}". Try searching by another ID or keyword.`
+                      : `There are currently no disputes in the "${statusFilter.replace('_', ' ')}" queue.`}
+                  </p>
+                  {(searchQuery || statusFilter !== 'ALL') && (
+                    <button
+                      onClick={() => { setSearchQuery(''); setStatusFilter('ALL'); }}
+                      className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-sky-400 border border-sky-500/30 hover:bg-sky-500/10 transition"
+                    >
+                      Reset Filters
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* MOBILE DISPUTE CARDS (Visible on mobile screens < md) */}
               <div className="grid grid-cols-1 gap-4 md:hidden py-1">
@@ -1321,11 +1356,11 @@ export default function DashboardPage() {
                       <p className="text-slate-300 italic">
                         "{risk.customerMessage}"
                       </p>
-                      <div className="pt-2 flex items-center justify-between border-t border-slate-700/60">
-                        <span className="text-[var(--accent-primary)] font-semibold">{risk.recommendedAction}</span>
+                      <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-t border-slate-700/60">
+                        <span className="text-[var(--accent-primary)] font-semibold leading-snug">{risk.recommendedAction}</span>
                         <button 
                           onClick={() => showToast(`Sent 1-click preemptive resolution for ${risk.orderNumber}`, 'success', 'Interception Sent')}
-                          className="px-3 py-1 rounded bg-[var(--accent-pill)] hover:bg-sky-600 text-white font-bold text-[11px]"
+                          className="px-3 py-1.5 rounded bg-[var(--accent-pill)] hover:bg-sky-600 text-white font-bold text-[11px] self-start sm:self-auto shrink-0 transition"
                         >
                           Intercept Now
                         </button>
@@ -1363,9 +1398,9 @@ export default function DashboardPage() {
                 className="p-6 rounded-2xl border space-y-4"
                 style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-color)' }}
               >
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-xl bg-[var(--accent-pill)]/10 text-[var(--accent-primary)] border border-sky-500/20">
+                    <div className="p-2 rounded-xl bg-[var(--accent-pill)]/10 text-[var(--accent-primary)] border border-sky-500/20 shrink-0">
                       <Zap className="w-4 h-4" />
                     </div>
                     <div>
@@ -1374,7 +1409,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <div 
-                    className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold font-mono"
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold font-mono self-start sm:self-auto shrink-0"
                     style={{
                       backgroundColor: payPalHealth?.connected ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
                       color: payPalHealth?.connected ? '#10b981' : '#ef4444',
@@ -1407,9 +1442,9 @@ export default function DashboardPage() {
                 className="p-6 rounded-2xl border space-y-4"
                 style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-color)' }}
               >
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                    <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shrink-0">
                       <Lock className="w-4 h-4" />
                     </div>
                     <div>
@@ -1419,7 +1454,7 @@ export default function DashboardPage() {
                   </div>
                   <button
                     onClick={() => setConnectModalOpen(true)}
-                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:opacity-90 text-white font-bold text-xs flex items-center gap-1.5 transition shadow-xs"
+                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:opacity-90 text-white font-bold text-xs flex items-center gap-1.5 transition shadow-xs self-start sm:self-auto shrink-0"
                   >
                     <Zap className="w-3.5 h-3.5" />
                     <span>+ Connect Another Store</span>
@@ -1501,7 +1536,7 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="p-4 rounded-xl font-mono text-xs space-y-2.5 shadow-inner border" style={{ backgroundColor: '#0B0F17', borderColor: '#1F2937', color: '#F1F5F9' }}>
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-[11px]">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pb-2 border-b border-slate-800 text-[11px]">
                     <span className="text-slate-300 font-bold">POST /api/webhooks/paypal/simulate (Dual Dispatch Test)</span>
                     <span className="text-emerald-400 font-bold">Index: idx_webhook_inbox_provider_event</span>
                   </div>
