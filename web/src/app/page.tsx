@@ -441,7 +441,7 @@ export default function DashboardPage() {
 
   return (
     <div 
-      className="min-h-screen flex flex-col md:flex-row transition-colors duration-200"
+      className="min-h-screen md:h-screen flex flex-col md:flex-row md:overflow-hidden transition-colors duration-200"
       style={{
         backgroundColor: 'var(--background)',
         color: 'var(--foreground)'
@@ -510,7 +510,7 @@ export default function DashboardPage() {
       {/* ======================================================== */}
       <aside 
         className={`
-          fixed md:static inset-y-0 left-0 z-50 w-72 flex flex-col justify-between p-5 border-r transition-transform duration-300 md:translate-x-0 shrink-0 overflow-y-auto max-h-screen
+          fixed md:sticky top-0 inset-y-0 left-0 z-50 w-72 h-screen flex flex-col justify-between p-5 border-r transition-transform duration-300 md:translate-x-0 shrink-0 overflow-y-auto no-scrollbar
           ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}
         style={{
@@ -658,11 +658,11 @@ export default function DashboardPage() {
       {/* ======================================================== */}
       {/* 3. MAIN CONTENT WORKSPACE                                */}
       {/* ======================================================== */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 md:h-screen md:overflow-hidden">
         
         {/* Top Navbar */}
         <header 
-          className="px-3 sm:px-8 py-3.5 border-b sticky top-[53px] md:top-0 z-30 backdrop-blur-md flex items-center justify-between gap-2.5 sm:gap-4"
+          className="px-3 sm:px-8 py-3.5 border-b sticky top-[53px] md:top-0 z-30 backdrop-blur-md flex items-center justify-between gap-2.5 sm:gap-4 shrink-0"
           style={{
             backgroundColor: 'var(--surface)',
             borderColor: 'var(--border-color)'
