@@ -26,16 +26,16 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --text: #E3D4E7;
-    --text-h: #FDF2F8;
-    --bg: #100A13;
-    --surface: #19111E;
-    --border: #4B3657;
-    --code-bg: #241A2B;
-    --accent: #F472B6;
-    --accent-bg: rgba(244, 114, 182, 0.12);
-    --accent-border: rgba(244, 114, 182, 0.3);
-    --shadow: 0 4px 12px 0 rgba(16, 10, 19, 0.5);
+    --text: #D1D1D6;
+    --text-h: #FFFFFF;
+    --bg: #101010;
+    --surface: #181818;
+    --border: #2A2A2A;
+    --code-bg: #222222;
+    --accent: #F5A524;
+    --accent-bg: rgba(245, 165, 36, 0.14);
+    --accent-border: rgba(245, 165, 36, 0.35);
+    --shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.5);
   }
 }
 

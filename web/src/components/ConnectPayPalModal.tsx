@@ -187,7 +187,7 @@ export default function ConnectPayPalModal({
               <button
                 onClick={handleOAuthHandshake}
                 disabled={!storeName.trim() || !businessEmail.trim()}
-                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#003087] to-[#0070ba] hover:opacity-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition disabled:opacity-50"
+                style={{ backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }} className="w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-md transition disabled:opacity-50 hover:brightness-105 active:scale-98"
               >
                 <span>Authorize with PayPal</span>
                 <ArrowRight className="w-4 h-4" />
@@ -272,7 +272,7 @@ export default function ConnectPayPalModal({
 
               <button
                 onClick={handleComplete}
-                className="w-full py-2.5 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition"
+                style={{ backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }} className="w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-md transition hover:brightness-105 active:scale-98"
               >
                 <Check className="w-4 h-4" />
                 <span>Switch to {createdStore.name} Dashboard</span>

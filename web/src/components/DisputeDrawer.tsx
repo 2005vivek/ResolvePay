@@ -422,7 +422,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
                       onClick={() => handleLanguageChange(lang)}
                       className={`px-2.5 py-1 rounded-lg font-mono text-[11px] font-bold uppercase transition ${
                         selectedLanguage === lang
-                          ? 'bg-sky-500 text-white shadow-xs'
+                          ? 'bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] font-bold shadow-xs'
                           : 'bg-black/20 text-slate-400 hover:text-white'
                       }`}
                     >
@@ -535,7 +535,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
                       onClick={() => setSelectedCarrier(carrier)}
                       className={`p-3 rounded-xl border text-xs font-bold flex flex-col items-center gap-1.5 transition ${
                         selectedCarrier === carrier
-                          ? 'bg-sky-500/20 border-[var(--accent-primary)] text-[var(--accent-primary)] shadow-xs'
+                          ? 'bg-[var(--accent-primary)]/15 border-[var(--accent-primary)] text-[var(--accent-primary)] shadow-xs'
                           : 'bg-black/10 border-slate-700/60 text-slate-400 hover:text-white'
                       }`}
                     >
@@ -549,7 +549,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
                 <button
                   onClick={handleAutoFetchCarrier}
                   disabled={fetchingCarrier}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:opacity-90 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md transition disabled:opacity-50"
+                  style={{ backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }} className="w-full py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md transition disabled:opacity-50 hover:brightness-105 active:scale-98"
                 >
                   {fetchingCarrier ? (
                     <>
@@ -741,7 +741,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
             <button
               onClick={handleSubmitResponse}
               disabled={submitting || submittedStatus || !draftText.trim()}
-              className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl hover:brightness-105 transition text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20 transition disabled:opacity-50"
+              style={{ backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }} className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl hover:brightness-105 transition text-xs font-bold flex items-center justify-center gap-2 shadow-lg transition disabled:opacity-50 active:scale-98"
             >
               {submitting ? (
                 <>

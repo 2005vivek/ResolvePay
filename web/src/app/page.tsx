@@ -459,7 +459,7 @@ export default function DashboardPage() {
         }}
       >
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg shadow-md flex items-center justify-center shrink-0 text-white" style={{ backgroundColor: "var(--accent-pill)" }}>
+          <div className="w-8 h-8 rounded-lg shadow-md flex items-center justify-center shrink-0" style={{ backgroundColor: "var(--accent-pill)", color: "var(--accent-pill-text)" }}>
             <ShieldAlert className="w-4 h-4" />
           </div>
           <div>
@@ -521,7 +521,7 @@ export default function DashboardPage() {
         <div className="space-y-6">
           {/* Brand Header */}
           <div className="hidden md:flex items-center gap-3 px-2">
-            <div className="w-10 h-10 rounded-xl shadow-md flex items-center justify-center shrink-0 text-white" style={{ backgroundColor: "var(--accent-pill)" }}>
+            <div className="w-10 h-10 rounded-xl shadow-md flex items-center justify-center shrink-0" style={{ backgroundColor: "var(--accent-pill)", color: "var(--accent-pill-text)" }}>
               <ShieldAlert className="w-5 h-5" />
             </div>
             <div>
@@ -541,9 +541,14 @@ export default function DashboardPage() {
               onClick={() => { setCurrentTab('DISPUTES'); setMobileMenuOpen(false); }}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
                 currentTab === 'DISPUTES'
-                  ? 'bg-[var(--accent-pill)] text-white shadow-md shadow-sky-500/25'
-                  : 'hover:bg-white/5 opacity-80 hover:opacity-100'
+                  ? 'shadow-xs'
+                  : 'hover:bg-white/5 text-slate-400 hover:text-white'
               }`}
+              style={currentTab === 'DISPUTES' ? {
+                backgroundColor: 'var(--nav-active-bg)',
+                color: 'var(--nav-active-text)',
+                border: '1px solid var(--nav-active-border)'
+              } : undefined}
             >
               <Layers className="w-4 h-4" />
               <span>Disputes Queue</span>
@@ -556,9 +561,14 @@ export default function DashboardPage() {
               onClick={() => { setCurrentTab('WHATSAPP_AUTOPILOT'); setMobileMenuOpen(false); }}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
                 currentTab === 'WHATSAPP_AUTOPILOT'
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/25'
-                  : 'hover:bg-white/5 opacity-80 hover:opacity-100'
+                  ? 'shadow-xs'
+                  : 'hover:bg-white/5 text-slate-400 hover:text-white'
               }`}
+              style={currentTab === 'WHATSAPP_AUTOPILOT' ? {
+                backgroundColor: 'var(--nav-active-bg)',
+                color: 'var(--nav-active-text)',
+                border: '1px solid var(--nav-active-border)'
+              } : undefined}
             >
               <Smartphone className="w-4 h-4 text-emerald-400" />
               <span>WhatsApp 1-Tap</span>
@@ -571,9 +581,14 @@ export default function DashboardPage() {
               onClick={() => { setCurrentTab('CARRIER_RADAR'); setMobileMenuOpen(false); }}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
                 currentTab === 'CARRIER_RADAR'
-                  ? 'bg-[var(--accent-pill)] text-white shadow-md shadow-sky-500/25'
-                  : 'hover:bg-white/5 opacity-80 hover:opacity-100'
+                  ? 'shadow-xs'
+                  : 'hover:bg-white/5 text-slate-400 hover:text-white'
               }`}
+              style={currentTab === 'CARRIER_RADAR' ? {
+                backgroundColor: 'var(--nav-active-bg)',
+                color: 'var(--nav-active-text)',
+                border: '1px solid var(--nav-active-border)'
+              } : undefined}
             >
               <Truck className="w-4 h-4" />
               <span>Carrier Telemetry</span>
@@ -583,9 +598,14 @@ export default function DashboardPage() {
               onClick={() => { setCurrentTab('EARLY_WARNING'); setMobileMenuOpen(false); }}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
                 currentTab === 'EARLY_WARNING'
-                  ? 'bg-[var(--accent-pill)] text-white shadow-md shadow-sky-500/25'
-                  : 'hover:bg-white/5 opacity-80 hover:opacity-100'
+                  ? 'shadow-xs'
+                  : 'hover:bg-white/5 text-slate-400 hover:text-white'
               }`}
+              style={currentTab === 'EARLY_WARNING' ? {
+                backgroundColor: 'var(--nav-active-bg)',
+                color: 'var(--nav-active-text)',
+                border: '1px solid var(--nav-active-border)'
+              } : undefined}
             >
               <AlertTriangle className="w-4 h-4 text-amber-400" />
               <span>Early Threat Radar</span>
@@ -598,9 +618,14 @@ export default function DashboardPage() {
               onClick={() => { setCurrentTab('SETTINGS'); setMobileMenuOpen(false); }}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
                 currentTab === 'SETTINGS'
-                  ? 'bg-[var(--accent-pill)] text-white shadow-md shadow-sky-500/25'
-                  : 'hover:bg-white/5 opacity-80 hover:opacity-100'
+                  ? 'shadow-xs'
+                  : 'hover:bg-white/5 text-slate-400 hover:text-white'
               }`}
+              style={currentTab === 'SETTINGS' ? {
+                backgroundColor: 'var(--nav-active-bg)',
+                color: 'var(--nav-active-text)',
+                border: '1px solid var(--nav-active-border)'
+              } : undefined}
             >
               <Settings className="w-4 h-4" />
               <span>Merchant Security</span>
@@ -782,7 +807,7 @@ export default function DashboardPage() {
             {/* Connect Store Quick Button */}
             <button
               onClick={() => setConnectModalOpen(true)}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs shadow-xs transition"
+              style={{ backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }} className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs shadow-xs transition hover:brightness-105 active:scale-98"
               title="1-Click Connect PayPal Account"
             >
               <Zap className="w-3.5 h-3.5" />
@@ -944,14 +969,15 @@ export default function DashboardPage() {
                     <button
                       key={filter}
                       onClick={() => { setStatusFilter(filter); setCurrentPage(1); }}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap ${
                         statusFilter === filter
-                          ? 'bg-[var(--accent-pill)] text-white shadow-xs'
+                          ? 'shadow-xs'
                           : 'border text-slate-400 hover:text-white'
                       }`}
                       style={{
                         borderColor: statusFilter === filter ? 'transparent' : 'var(--border-color)',
-                        backgroundColor: statusFilter === filter ? undefined : 'var(--surface-hover)'
+                        backgroundColor: statusFilter === filter ? 'var(--btn-primary-bg)' : 'var(--surface-hover)',
+                        color: statusFilter === filter ? 'var(--btn-primary-text)' : undefined
                       }}
                     >
                       {filter === 'ALL' ? 'All Disputes' : filter.replace('_', ' ')}
@@ -1020,7 +1046,7 @@ export default function DashboardPage() {
 
                       <div className="flex items-center justify-between pt-2 border-t text-[11px]" style={{ borderColor: 'var(--border-color)' }}>
                         <span className={`px-2 py-0.5 rounded-full font-bold ${
-                          isPending ? 'bg-amber-500/15 text-amber-400' : 'bg-blue-500/15 text-blue-400'
+                          isPending ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
                         }`}>
                           {isPending ? 'Action Required' : 'Defended'}
                         </span>
@@ -1122,7 +1148,7 @@ export default function DashboardPage() {
                             <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] inline-flex items-center gap-1 ${
                               isPending
                                 ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-                                : 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
+                                : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
                             }`}>
                               {isPending ? <AlertCircle className="w-3 h-3" /> : <CheckCircle2 className="w-3 h-3" />}
                               <span>{isPending ? 'Action Required' : 'Defended'}</span>
@@ -1134,10 +1160,14 @@ export default function DashboardPage() {
                                 e.stopPropagation();
                                 setSelectedDispute(dispute);
                               }}
-                              className="px-3 py-1.5 rounded-lg bg-[var(--accent-pill)]/15 hover:bg-[var(--accent-pill)]/25 text-[var(--accent-primary)] border border-sky-500/30 font-bold text-xs inline-flex items-center gap-1 transition"
+                              style={{
+                                backgroundColor: 'var(--btn-primary-bg)',
+                                color: 'var(--btn-primary-text)'
+                              }}
+                              className="px-3.5 py-1.5 rounded-xl font-bold text-xs inline-flex items-center gap-1.5 transition shadow-xs hover:brightness-105 active:scale-98"
                             >
-                              <span>Review Defense</span>
-                              <ArrowUpRight className="w-3 h-3" />
+                              <span>Review defense</span>
+                              <ArrowUpRight className="w-3.5 h-3.5" />
                             </button>
                           </td>
                         </tr>
@@ -1360,7 +1390,7 @@ export default function DashboardPage() {
                         <span className="text-[var(--accent-primary)] font-semibold leading-snug">{risk.recommendedAction}</span>
                         <button 
                           onClick={() => showToast(`Sent 1-click preemptive resolution for ${risk.orderNumber}`, 'success', 'Interception Sent')}
-                          className="px-3 py-1.5 rounded bg-[var(--accent-pill)] hover:bg-sky-600 text-white font-bold text-[11px] self-start sm:self-auto shrink-0 transition"
+                          style={{ backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }} className="px-3.5 py-1.5 rounded-xl font-bold text-[11px] self-start sm:self-auto shrink-0 transition hover:brightness-105 active:scale-98 shadow-xs"
                         >
                           Intercept Now
                         </button>
@@ -1386,7 +1416,7 @@ export default function DashboardPage() {
                 <button
                   onClick={checkPayPalConnection}
                   disabled={checkingPayPal}
-                  className="px-4 py-2 rounded-xl bg-[var(--accent-pill)] hover:bg-sky-600 text-white text-xs font-bold flex items-center gap-2 shadow-sm transition disabled:opacity-50 self-start sm:self-auto"
+                  style={{ backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }} className="px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition disabled:opacity-50 self-start sm:self-auto hover:brightness-105 active:scale-98"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${checkingPayPal ? 'animate-spin' : ''}`} />
                   <span>{checkingPayPal ? 'Pinging PayPal...' : 'Test PayPal Connection Ping'}</span>
@@ -1454,7 +1484,7 @@ export default function DashboardPage() {
                   </div>
                   <button
                     onClick={() => setConnectModalOpen(true)}
-                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:opacity-90 text-white font-bold text-xs flex items-center gap-1.5 transition shadow-xs self-start sm:self-auto shrink-0"
+                    style={{ backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }} className="px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition shadow-xs self-start sm:self-auto shrink-0 hover:brightness-105 active:scale-98"
                   >
                     <Zap className="w-3.5 h-3.5" />
                     <span>+ Connect Another Store</span>
@@ -1528,7 +1558,7 @@ export default function DashboardPage() {
                   <button
                     onClick={runIdempotencyTest}
                     disabled={idempotencyLoading}
-                    className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center gap-2 transition disabled:opacity-50 self-start sm:self-auto shadow-sm"
+                    style={{ backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }} className="px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition disabled:opacity-50 self-start sm:self-auto shadow-sm hover:brightness-105 active:scale-98"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${idempotencyLoading ? 'animate-spin' : ''}`} />
                     <span>{idempotencyLoading ? 'Testing Idempotency...' : 'Simulate Duplicate Webhook'}</span>
