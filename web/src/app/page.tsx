@@ -459,7 +459,7 @@ export default function DashboardPage() {
         }}
       >
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg shadow-md transition-colors flex items-center justify-center text-white shadow-md">
+          <div className="w-8 h-8 rounded-lg shadow-md flex items-center justify-center shrink-0 text-white" style={{ backgroundColor: "var(--accent-pill)" }}>
             <ShieldAlert className="w-4 h-4" />
           </div>
           <div>
@@ -512,7 +512,7 @@ export default function DashboardPage() {
         <div className="space-y-6">
           {/* Brand Header */}
           <div className="hidden md:flex items-center gap-3 px-2">
-            <div className="w-10 h-10 rounded-xl shadow-md transition-colors flex items-center justify-center text-white shadow-lg shadow-sky-500/20">
+            <div className="w-10 h-10 rounded-xl shadow-md flex items-center justify-center shrink-0 text-white" style={{ backgroundColor: "var(--accent-pill)" }}>
               <ShieldAlert className="w-5 h-5" />
             </div>
             <div>
@@ -1387,17 +1387,17 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs font-mono">
-                  <div className="p-3 rounded-xl bg-black/20 space-y-1">
-                    <div className="text-[10px] uppercase font-bold text-slate-400">API Endpoint</div>
-                    <div className="text-[var(--accent-primary)] truncate">api-m.sandbox.paypal.com</div>
+                  <div className="p-3 rounded-xl border space-y-1 transition-colors" style={{ backgroundColor: 'var(--surface-hover)', borderColor: 'var(--border-color)' }}>
+                    <div className="text-[10px] uppercase font-bold" style={{ color: 'var(--text-muted)' }}>API Endpoint</div>
+                    <div className="font-bold truncate" style={{ color: 'var(--foreground)' }}>api-m.sandbox.paypal.com</div>
                   </div>
-                  <div className="p-3 rounded-xl bg-black/20 space-y-1">
-                    <div className="text-[10px] uppercase font-bold text-slate-400">Sandbox App ID</div>
-                    <div className="text-emerald-400 truncate">APP-22A05303NP776440S</div>
+                  <div className="p-3 rounded-xl border space-y-1 transition-colors" style={{ backgroundColor: 'var(--surface-hover)', borderColor: 'var(--border-color)' }}>
+                    <div className="text-[10px] uppercase font-bold" style={{ color: 'var(--text-muted)' }}>Sandbox App ID</div>
+                    <div className="font-bold truncate text-emerald-600 dark:text-emerald-400">APP-22A05303NP776440S</div>
                   </div>
-                  <div className="p-3 rounded-xl bg-black/20 space-y-1">
-                    <div className="text-[10px] uppercase font-bold text-slate-400">Last Verified Handshake</div>
-                    <div className="text-slate-300">{payPalHealth?.timestamp || 'Synchronized Just Now'}</div>
+                  <div className="p-3 rounded-xl border space-y-1 transition-colors" style={{ backgroundColor: 'var(--surface-hover)', borderColor: 'var(--border-color)' }}>
+                    <div className="text-[10px] uppercase font-bold" style={{ color: 'var(--text-muted)' }}>Last Verified Handshake</div>
+                    <div className="font-bold truncate" style={{ color: 'var(--foreground)' }}>{payPalHealth?.timestamp || 'Synchronized Just Now'}</div>
                   </div>
                 </div>
               </div>
@@ -1427,46 +1427,47 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="space-y-2.5 text-xs">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl bg-black/20 font-mono gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border font-mono gap-2 transition-colors" style={{ backgroundColor: 'var(--surface-hover)', borderColor: 'var(--border-color)' }}>
                     <div>
-                      <span className="text-slate-400">Active Business Store: </span>
-                      <span className="text-white font-bold font-sans">{activeStore.name}</span>
+                      <span style={{ color: 'var(--text-muted)' }}>Active Business Store: </span>
+                      <span className="font-bold font-sans" style={{ color: 'var(--foreground)' }}>{activeStore.name}</span>
                     </div>
-                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 self-start sm:self-auto font-sans font-bold flex items-center gap-1">
+                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 self-start sm:self-auto font-sans font-bold flex items-center gap-1">
                       <Check className="w-3 h-3" />
                       <span>PayPal Verified Account</span>
                     </span>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl bg-black/20 font-mono gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border font-mono gap-2 transition-colors" style={{ backgroundColor: 'var(--surface-hover)', borderColor: 'var(--border-color)' }}>
                     <div>
-                      <span className="text-slate-400">Merchant Tenant ID: </span>
-                      <span className="text-[var(--accent-primary)] font-bold">{activeStore.id}</span>
+                      <span style={{ color: 'var(--text-muted)' }}>Merchant Tenant ID: </span>
+                      <span className="font-bold" style={{ color: 'var(--foreground)' }}>{activeStore.id}</span>
                     </div>
-                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-[var(--accent-pill)]/10 text-[var(--accent-primary)] border border-sky-500/20 self-start sm:self-auto">
+                    <span className="text-[10px] px-2 py-0.5 rounded-md border self-start sm:self-auto font-bold" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-strong)', color: 'var(--accent-primary)' }}>
                       ThreadLocal Scoped
                     </span>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl bg-black/20 font-mono gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border font-mono gap-2 transition-colors" style={{ backgroundColor: 'var(--surface-hover)', borderColor: 'var(--border-color)' }}>
                     <div>
-                      <span className="text-slate-400">PayPal Payer ID: </span>
-                      <span className="text-emerald-400 font-bold">{activeStore.paypalPayerId}</span>
+                      <span style={{ color: 'var(--text-muted)' }}>PayPal Payer ID: </span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">{activeStore.paypalPayerId}</span>
                     </div>
-                    <div className="text-[10px] text-slate-400 font-mono">Linked: {activeStore.connectedAt}</div>
+                    <div className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>Linked: {activeStore.connectedAt}</div>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl bg-black/20 font-mono gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border font-mono gap-2 transition-colors" style={{ backgroundColor: 'var(--surface-hover)', borderColor: 'var(--border-color)' }}>
                     <div className="truncate">
-                      <span className="text-slate-400">Internal Auth Token: </span>
-                      <span className="text-amber-400 font-bold">rzp_live_sec_789f2a4b8c1d</span>
+                      <span style={{ color: 'var(--text-muted)' }}>Internal Auth Token: </span>
+                      <span className="text-amber-600 dark:text-amber-400 font-bold">rzp_live_sec_789f2a4b8c1d</span>
                     </div>
                     <button
                       onClick={() => {
                         navigator.clipboard?.writeText('rzp_live_sec_789f2a4b8c1d');
                         showToast('Bearer token copied to clipboard', 'info', 'Copied');
                       }}
-                      className="text-[11px] px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-slate-200 transition font-sans font-bold flex items-center gap-1 self-start sm:self-auto"
+                      className="text-[11px] px-2.5 py-1 rounded-lg border transition font-sans font-bold flex items-center gap-1 self-start sm:self-auto shadow-2xs hover:opacity-90"
+                      style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-strong)', color: 'var(--foreground)' }}
                     >
                       <span>Copy Token</span>
                     </button>
@@ -1499,9 +1500,9 @@ export default function DashboardPage() {
                   </button>
                 </div>
 
-                <div className="p-4 rounded-xl bg-black/40 border border-white/10 font-mono text-xs space-y-2">
-                  <div className="flex items-center justify-between pb-1.5 border-b border-white/10 text-[11px]">
-                    <span className="text-slate-400">POST /api/webhooks/paypal/simulate (Dual Dispatch Test)</span>
+                <div className="p-4 rounded-xl font-mono text-xs space-y-2.5 shadow-inner border" style={{ backgroundColor: '#0B0F17', borderColor: '#1F2937', color: '#F1F5F9' }}>
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-[11px]">
+                    <span className="text-slate-300 font-bold">POST /api/webhooks/paypal/simulate (Dual Dispatch Test)</span>
                     <span className="text-emerald-400 font-bold">Index: idx_webhook_inbox_provider_event</span>
                   </div>
 
@@ -1517,7 +1518,7 @@ export default function DashboardPage() {
                       <div className="text-[10px] text-slate-500">Execution Timestamp: {idempotencyLog.timestamp}</div>
                     </div>
                   ) : (
-                    <div className="text-slate-500 py-2 text-center text-[11px]">
+                    <div className="text-slate-400 py-3 text-center text-[11px] leading-relaxed">
                       Click "Simulate Duplicate Webhook" to send two identical webhook events concurrently and witness the unique index block duplicate financial deductions in real-time.
                     </div>
                   )}

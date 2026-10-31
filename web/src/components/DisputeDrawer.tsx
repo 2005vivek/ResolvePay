@@ -696,10 +696,10 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
                   <h4 className="text-sm font-black">Store Policy & Terms Compliance Check</h4>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-black/20 border border-slate-700/60 space-y-2 text-xs">
-                  <div className="font-bold text-sky-400">{policyMatch.policyName}</div>
-                  <div className="font-mono text-[11px] text-slate-300">{policyMatch.clause}</div>
-                  <p className="text-slate-400 leading-relaxed text-xs">
+                <div className="p-4 rounded-xl border space-y-2 text-xs transition-colors" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-color)', color: 'var(--foreground)' }}>
+                  <div className="font-bold text-[var(--accent-primary)]">{policyMatch.policyName}</div>
+                  <div className="font-mono text-[11px] font-semibold" style={{ color: 'var(--foreground)' }}>{policyMatch.clause}</div>
+                  <p className="leading-relaxed text-xs" style={{ color: 'var(--text-secondary)' }}>
                     {policyMatch.summary}
                   </p>
                 </div>
@@ -819,7 +819,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-4 rounded-xl bg-black/40 font-mono text-xs max-h-96 overflow-y-auto whitespace-pre-wrap text-slate-300">
+            <div className="p-4 rounded-xl font-mono text-xs max-h-96 overflow-y-auto whitespace-pre-wrap border shadow-inner" style={{ backgroundColor: '#0B0F17', borderColor: '#1E293B', color: '#F1F5F9' }}>
               {previewItem.extractedFacts || 'Certified document ingested. Multimodal AI fact extraction verified.'}
             </div>
           </div>

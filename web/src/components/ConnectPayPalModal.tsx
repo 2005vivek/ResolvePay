@@ -207,11 +207,11 @@ export default function ConnectPayPalModal({
                   Exchanging authorization code with <code className="text-sky-400">api-m.sandbox.paypal.com</code>
                 </p>
               </div>
-              <div className="p-3.5 rounded-xl bg-black/25 text-left text-xs font-mono space-y-1 text-slate-300 border border-white/5">
-                <div className="text-emerald-400">➜ POST /v1/oauth2/token HTTP/1.1</div>
-                <div>App ID: APP-22A05303NP776440S</div>
-                <div>Scope: https://uri.paypal.com/services/disputes/readwrite</div>
-                <div className="text-sky-400">Status: 200 OK (Access Token Granted)</div>
+              <div className="p-4 rounded-xl text-left text-xs font-mono space-y-1.5 border shadow-inner" style={{ backgroundColor: '#0B0F17', borderColor: '#1E293B', color: '#F1F5F9' }}>
+                <div className="text-emerald-400 font-bold">➜ POST /v1/oauth2/token HTTP/1.1</div>
+                <div className="text-slate-200">App ID: <span className="text-white font-semibold">APP-22A05303NP776440S</span></div>
+                <div className="text-slate-300">Scope: <span className="text-sky-300">https://uri.paypal.com/services/disputes/readwrite</span></div>
+                <div className="text-emerald-400 font-bold">Status: 200 OK (Access Token Granted)</div>
               </div>
             </div>
           )}
@@ -228,10 +228,10 @@ export default function ConnectPayPalModal({
                   Subscribing to dispute alerts and creating database isolation partition
                 </p>
               </div>
-              <div className="p-3.5 rounded-xl bg-black/25 text-left text-xs font-mono space-y-1 text-slate-300 border border-white/5">
-                <div className="text-emerald-400">➜ Webhook Listener: /api/webhooks/paypal</div>
-                <div>Filter Events: CUSTOMER.DISPUTE.CREATED, CUSTOMER.DISPUTE.RESOLVED</div>
-                <div>Idempotency Protection: ACTIVE</div>
+              <div className="p-4 rounded-xl text-left text-xs font-mono space-y-1.5 border shadow-inner" style={{ backgroundColor: '#0B0F17', borderColor: '#1E293B', color: '#F1F5F9' }}>
+                <div className="text-emerald-400 font-bold">➜ Webhook Listener: /api/webhooks/paypal</div>
+                <div className="text-slate-200">Filter Events: <span className="text-white">CUSTOMER.DISPUTE.CREATED, CUSTOMER.DISPUTE.RESOLVED</span></div>
+                <div className="text-emerald-400 font-bold">Idempotency Protection: ACTIVE</div>
               </div>
             </div>
           )}
@@ -247,26 +247,26 @@ export default function ConnectPayPalModal({
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-black/20 border border-white/5 space-y-2 text-xs font-mono">
+              <div className="p-4 rounded-xl border space-y-2 text-xs font-mono transition-colors" style={{ backgroundColor: 'var(--surface-hover)', borderColor: 'var(--border-color)', color: 'var(--foreground)' }}>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Store Name:</span>
-                  <span className="font-bold text-white font-sans">{createdStore.name}</span>
+                  <span style={{ color: 'var(--text-muted)' }}>Store Name:</span>
+                  <span className="font-bold font-sans" style={{ color: 'var(--foreground)' }}>{createdStore.name}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Merchant Tenant ID:</span>
-                  <span className="text-sky-400 font-bold">{createdStore.id}</span>
+                  <span style={{ color: 'var(--text-muted)' }}>Merchant Tenant ID:</span>
+                  <span className="font-bold" style={{ color: 'var(--accent-primary)' }}>{createdStore.id}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">PayPal Payer ID:</span>
-                  <span className="text-emerald-400 font-bold">{createdStore.paypalPayerId}</span>
+                  <span style={{ color: 'var(--text-muted)' }}>PayPal Payer ID:</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">{createdStore.paypalPayerId}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Sandbox App:</span>
-                  <span className="text-slate-300">{createdStore.appId}</span>
+                  <span style={{ color: 'var(--text-muted)' }}>Sandbox App:</span>
+                  <span style={{ color: 'var(--foreground)' }}>{createdStore.appId}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Data Isolation:</span>
-                  <span className="text-indigo-400 font-bold">ThreadLocal PostgreSQL Scoped</span>
+                  <span style={{ color: 'var(--text-muted)' }}>Data Isolation:</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">ThreadLocal PostgreSQL Scoped</span>
                 </div>
               </div>
 
