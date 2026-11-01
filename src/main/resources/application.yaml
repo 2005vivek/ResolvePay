@@ -1,5 +1,5 @@
 server:
-  port: 8085
+  port: ${PORT:8085}
   compression:
     enabled: true
     mime-types: application/json,text/plain,text/css,application/javascript
@@ -14,8 +14,8 @@ spring:
 
   datasource:
     url: ${SPRING_DATASOURCE_URL:${DATABASE_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:resolvepay}}}
-    username: ${DB_USER:postgres}
-    password: ${DB_PASS:}
+    username: ${SPRING_DATASOURCE_USERNAME:${DB_USER:postgres}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASS:}}
     driver-class-name: org.postgresql.Driver
     hikari:
       minimum-idle: 5
