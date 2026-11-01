@@ -37,7 +37,7 @@ assert(calculateDeadlineUrgency('invalid-date-string').urgency === 'NONE', 'Inva
 const criticalDate = new Date(Date.now() + 10 * 3600 * 1000).toISOString();
 const criticalResult = calculateDeadlineUrgency(criticalDate);
 assert(criticalResult.urgency === 'CRITICAL', 'Deadline in 10h is CRITICAL');
-assert(criticalResult.label.includes('m left') || criticalResult.label.includes('h left'), 'Countdown label is formatted');
+assert(criticalResult.label.includes('Due in') || criticalResult.label.includes('left'), 'Countdown label is formatted');
 
 const elevatedDate = new Date(Date.now() + 48 * 3600 * 1000).toISOString();
 assert(calculateDeadlineUrgency(elevatedDate).urgency === 'ELEVATED', 'Deadline in 48h is ELEVATED');
