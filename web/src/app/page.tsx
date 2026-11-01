@@ -156,6 +156,12 @@ export default function DashboardPage() {
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    // Register PWA Service Worker for offline support and native app install prompt
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
 
@@ -723,16 +729,16 @@ export default function DashboardPage() {
                 onClick={handleInstallApp}
                 className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border flex items-center justify-between text-xs font-bold transition active:scale-98 shadow-sm"
                 style={{
-                  backgroundColor: 'var(--accent-pill)',
-                  borderColor: 'rgba(245, 165, 36, 0.35)',
-                  color: 'var(--accent-primary)'
+                  backgroundColor: 'var(--surface-hover)',
+                  borderColor: 'var(--border-color)',
+                  color: 'var(--foreground)'
                 }}
               >
-                <span className="flex items-center gap-2">
-                  <Download className="w-4 h-4" />
-                  <span>Install Mobile App</span>
+                <span className="flex items-center gap-2.5">
+                  <Download className="w-4 h-4 text-amber-500" />
+                  <span className="font-semibold" style={{ color: 'var(--foreground)' }}>Install Mobile App</span>
                 </span>
-                <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-amber-500/20 text-amber-500 border border-amber-500/30">
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-500 border border-amber-500/30">
                   PWA
                 </span>
               </button>
@@ -2012,7 +2018,7 @@ export default function DashboardPage() {
 
       {/* WhatsApp Modal Trigger from Sidebar */}
       {whatsAppModalOpen && (
-        <div className="fixed inset-0 z-60 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
           <div 
             className="p-6 rounded-3xl max-w-md w-full border space-y-4 shadow-2xl animate-slide-up"
             style={{ 
@@ -2021,10 +2027,10 @@ export default function DashboardPage() {
             }}
           >
             <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: 'var(--border-color)' }}>
-              <span className="font-bold text-sm font-serif-heading">WhatsApp Autopilot Live Preview</span>
+              <span className="font-bold text-sm font-serif-heading" style={{ color: 'var(--foreground)' }}>WhatsApp Autopilot Live Preview</span>
               <button 
                 onClick={() => setWhatsAppModalOpen(false)} 
-                className="min-h-[44px] min-w-[44px] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--foreground)] transition"
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-[var(--text-muted)] hover:text-[var(--foreground)] transition"
                 aria-label="Close modal"
               >
                 <X className="w-5 h-5" />
@@ -2055,12 +2061,13 @@ export default function DashboardPage() {
 
       {/* PWA Mobile App Install Instructions Modal */}
       {showInstallGuide && (
-        <div className="fixed inset-0 z-70 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
           <div 
-            className="p-6 rounded-3xl max-w-md w-full border space-y-4 shadow-2xl"
+            className="p-6 rounded-3xl max-w-md w-full border space-y-4 shadow-2xl relative"
             style={{ 
               backgroundColor: 'var(--surface)', 
-              borderColor: 'var(--border-color)' 
+              borderColor: 'var(--border-color)',
+              color: 'var(--foreground)'
             }}
           >
             <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: 'var(--border-color)' }}>
@@ -2069,33 +2076,43 @@ export default function DashboardPage() {
                   <Download className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm">Install ResolvePay Mobile App</h3>
-                  <p className="text-[11px] text-slate-400">Add to your Home Screen</p>
+                  <h3 className="font-bold text-sm" style={{ color: 'var(--foreground)' }}>Install ResolvePay Mobile App</h3>
+                  <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Add to your Phone Home Screen</p>
                 </div>
               </div>
               <button 
                 onClick={() => setShowInstallGuide(false)} 
-                className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl text-slate-400 hover:text-[var(--foreground)] hover:bg-slate-500/10 transition"
+                className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl transition"
+                style={{ 
+                  color: 'var(--text-muted)',
+                  backgroundColor: 'var(--surface-hover)'
+                }}
                 aria-label="Close modal"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <p className="text-xs leading-relaxed text-slate-400">
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
               Install ResolvePay to your mobile home screen for a fullscreen native app experience with instant dispute resolution and fast biometric/touch access.
             </p>
 
             <div className="space-y-2.5 py-1">
-              <div className="p-3 rounded-2xl border border-dashed flex items-start gap-3" style={{ borderColor: 'var(--border-color)' }}>
+              <div 
+                className="p-3.5 rounded-2xl border flex items-start gap-3 transition" 
+                style={{ 
+                  backgroundColor: 'var(--surface-hover)', 
+                  borderColor: 'var(--border-color)' 
+                }}
+              >
                 <div className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
                   1
                 </div>
                 <div className="text-xs">
-                  <span className="font-semibold text-amber-500">
+                  <span className="font-bold text-amber-500">
                     {isIOSDevice ? 'Tap the Share Button' : 'Open the Browser Menu'}
                   </span>
-                  <p className="text-slate-400 mt-0.5">
+                  <p className="mt-0.5 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
                     {isIOSDevice 
                       ? 'In Safari, tap the Share icon (⎋) at the bottom navigation bar.' 
                       : 'Tap the three-dot menu icon (⋮) in the top-right corner of Chrome or Edge.'}
@@ -2103,15 +2120,21 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className="p-3 rounded-2xl border border-dashed flex items-start gap-3" style={{ borderColor: 'var(--border-color)' }}>
+              <div 
+                className="p-3.5 rounded-2xl border flex items-start gap-3 transition" 
+                style={{ 
+                  backgroundColor: 'var(--surface-hover)', 
+                  borderColor: 'var(--border-color)' 
+                }}
+              >
                 <div className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
                   2
                 </div>
                 <div className="text-xs">
-                  <span className="font-semibold text-amber-500">
+                  <span className="font-bold text-amber-500">
                     {isIOSDevice ? 'Tap "Add to Home Screen"' : 'Tap "Install app" or "Add to Home screen"'}
                   </span>
-                  <p className="text-slate-400 mt-0.5">
+                  <p className="mt-0.5 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
                     {isIOSDevice 
                       ? 'Scroll down the share sheet and tap ⊞ "Add to Home Screen", then tap "Add".' 
                       : 'Select "Install app" or "Add to Home screen" from the menu options.'}
@@ -2119,13 +2142,19 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className="p-3 rounded-2xl border border-dashed flex items-start gap-3" style={{ borderColor: 'var(--border-color)' }}>
+              <div 
+                className="p-3.5 rounded-2xl border flex items-start gap-3 transition" 
+                style={{ 
+                  backgroundColor: 'var(--surface-hover)', 
+                  borderColor: 'var(--border-color)' 
+                }}
+              >
                 <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
                   ✓
                 </div>
                 <div className="text-xs">
-                  <span className="font-semibold text-emerald-500">Launch from Home Screen</span>
-                  <p className="text-slate-400 mt-0.5">
+                  <span className="font-bold text-emerald-500">Launch from Home Screen</span>
+                  <p className="mt-0.5 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
                     Open ResolvePay directly from your phone home screen with bottom-tab navigation and fullscreen workspace.
                   </p>
                 </div>
@@ -2134,10 +2163,14 @@ export default function DashboardPage() {
 
             <button
               onClick={() => setShowInstallGuide(false)}
-              className="w-full min-h-[44px] py-2.5 rounded-xl font-bold text-xs text-black transition active:scale-98 shadow-sm"
-              style={{ backgroundColor: 'var(--accent-primary)' }}
+              className="w-full min-h-[44px] py-2.5 rounded-xl font-bold text-xs transition active:scale-98 shadow-sm flex items-center justify-center gap-2"
+              style={{ 
+                backgroundColor: '#F5A524', 
+                color: '#000000' 
+              }}
             >
-              Done, Got It
+              <Check className="w-4 h-4 text-black" />
+              <span>Done, Got It</span>
             </button>
           </div>
         </div>
