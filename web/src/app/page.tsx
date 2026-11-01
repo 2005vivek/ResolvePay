@@ -1,65 +1,48 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Dispute, EarlyWarningRisk, MerchantStore } from '../lib/types';
 import { 
   fetchDisputes, syncDisputesFromPayPal, testPayPalAuth, 
-  simulatePayPalDispute, submitDisputeResponse, 
-  simulateIdempotencyAttack, setActiveMerchantId 
+  simulatePayPalDispute, simulateIdempotencyAttack,
+  submitDisputeResponse
 } from '../lib/api';
+import { Dispute, MerchantStore, EarlyWarningRisk } from '../lib/types';
+import { 
+  calculateDeadlineUrgency, formatCurrency, 
+  humanizeReason, humanizeStatus 
+} from '../lib/utils';
+import { useToast } from '../components/Toast';
 import DisputeDrawer from '../components/DisputeDrawer';
 import ConnectPayPalModal from '../components/ConnectPayPalModal';
-import { useToast } from '../components/Toast';
-import { calculateDeadlineUrgency, formatCurrency, calculateTacticalRecommendation } from '../lib/utils';
 import { 
-  ShieldAlert, RefreshCw, Clock, DollarSign, CheckCircle2, 
-  AlertCircle, ArrowUpRight, Search, Activity, Layers, Sparkles,
-  Zap, FileStack, Settings, History, Shield, Check,
-  ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight,
-  Database, Server, Cpu, FileCheck, Lock, ExternalLink,
-  Menu, X, Sun, Moon, Smartphone, MessageSquare, Truck,
-  AlertTriangle, Send, Scale, User, Filter, SlidersHorizontal, ChevronDown, Store
+  Search, RefreshCw, Zap, ShieldAlert, AlertCircle, CheckCircle2, 
+  Clock, DollarSign, Sparkles, Filter, ChevronDown, ChevronRight, 
+  Layers, MessageSquare, Truck, AlertTriangle, Settings, Store, 
+  Lock, Check, Send, X, ArrowUpRight, ArrowUpDown, Menu, MoreVertical,
+  Smartphone, Database, Inbox, Shield, Sun, Moon, Eye, RotateCcw
 } from 'lucide-react';
 
-type NavTab = 'DISPUTES' | 'WHATSAPP_AUTOPILOT' | 'CARRIER_RADAR' | 'EARLY_WARNING' | 'SETTINGS';
+type Tab = 'DISPUTES' | 'WHATSAPP_AUTOPILOT' | 'CARRIER_RADAR' | 'EARLY_WARNING' | 'SETTINGS';
 type SortField = 'id' | 'reason' | 'amount' | 'status' | 'deadline';
 type SortOrder = 'asc' | 'desc';
 
 export default function DashboardPage() {
   const { showToast } = useToast();
-  
-  // Theme Toggle: 'dark' (Luxe Obsidian) or 'light' (Crisp Slate)
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-  
-  // Mobile Navigation Drawer
+
+  // Navigation State
+  const [currentTab, setCurrentTab] = useState<Tab>('DISPUTES');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
 
-  // App Navigation Tabs
-  const [currentTab, setCurrentTab] = useState<NavTab>('DISPUTES');
-  
-  // Dispute Data State
-  const [disputes, setDisputes] = useState<Dispute[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const [syncing, setSyncing] = useState(false);
-  const [simulating, setSimulating] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('ALL');
-  const [selectedDispute, setSelectedDispute] = useState<Dispute | null>(null);
-  const [lastSyncTimestamp, setLastSyncTimestamp] = useState<string>('Live');
+  // Theme State
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
-  // Interactive WhatsApp Simulator Modal
-  const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
-  const [whatsAppSubmitted, setWhatsAppSubmitted] = useState(false);
-
-  // Multi-Store / Multi-Tenant State
+  // Multi-Tenant Store States
   const [stores, setStores] = useState<MerchantStore[]>([
     {
       id: 'merchant_resolvepay_01',
       name: 'Nexus Retail Hub',
-      businessEmail: 'ops@nexusretail.com',
+      businessEmail: 'finance@nexusretail.com',
       paypalPayerId: 'PP-PAYER-884920',
       isVerified: true,
       connectedAt: 'Oct 28, 2026',
@@ -67,106 +50,73 @@ export default function DashboardPage() {
       appId: 'APP-22A05303NP776440S'
     },
     {
-      id: 'merchant_urban_feet',
-      name: 'Urban Feet Footwear',
-      businessEmail: 'finance@urbanfeet.com',
-      paypalPayerId: 'PP-PAYER-339104',
+      id: 'merchant_stride_wear',
+      name: 'Stride Activewear UK',
+      businessEmail: 'ops@stridewear.co.uk',
+      paypalPayerId: 'PP-PAYER-440192',
       isVerified: true,
       connectedAt: 'Oct 29, 2026',
-      currency: 'USD',
-      appId: 'APP-22A05303NP776440S'
+      currency: 'GBP',
+      appId: 'APP-88401929UK012'
     }
   ]);
-  const [activeStoreId, setActiveStoreIdState] = useState<string>('merchant_resolvepay_01');
-  const [connectModalOpen, setConnectModalOpen] = useState(false);
+  const [activeStoreId, setActiveStoreId] = useState<string>('merchant_resolvepay_01');
   const [storeDropdownOpen, setStoreDropdownOpen] = useState(false);
+  const [connectModalOpen, setConnectModalOpen] = useState(false);
+
+  // Core Data States
+  const [disputes, setDisputes] = useState<Dispute[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [simulating, setSimulating] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [selectedDispute, setSelectedDispute] = useState<Dispute | null>(null);
+
+  // Filters & Pagination State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTION_REQUIRED' | 'UNDER_REVIEW' | 'RESOLVED'>('ALL');
+  const [sortField, setSortField] = useState<SortField>('deadline');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 8;
+
+  // Real-time Telemetry
+  const [lastSyncTimestamp, setLastSyncTimestamp] = useState<string>('');
+  const [payPalHealth, setPayPalHealth] = useState<{ connected: boolean; timestamp: string } | null>(null);
+  const [checkingPayPal, setCheckingPayPal] = useState(false);
+
+  // Idempotency Simulation Log
+  const [idempotencyLoading, setIdempotencyLoading] = useState(false);
+  const [idempotencyLog, setIdempotencyLog] = useState<any>(null);
+
+  // Interactive WhatsApp Bot Preview
+  const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
+  const [whatsAppSubmitted, setWhatsAppSubmitted] = useState(false);
+
+  const isFetchingRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const moreMenuRef = useRef<HTMLDivElement | null>(null);
+  const storeDropdownRef = useRef<HTMLDivElement | null>(null);
 
   const activeStore = useMemo(() => {
     return stores.find(s => s.id === activeStoreId) || stores[0];
   }, [stores, activeStoreId]);
 
-  // Idempotency Live Test Terminal State
-  const [idempotencyLoading, setIdempotencyLoading] = useState(false);
-  const [idempotencyLog, setIdempotencyLog] = useState<{
-    eventId?: string;
-    attempt1Status?: string;
-    attempt2Status?: string;
-    verdict?: string;
-    timestamp?: string;
-  } | null>(null);
-
-  async function runIdempotencyTest() {
-    setIdempotencyLoading(true);
-    const randomEventId = `WH-EVT-${Math.floor(100000 + Math.random() * 900000)}-CHG`;
-    const disputeId = `PP-D-${Math.floor(100000 + Math.random() * 900000)}`;
-
-    try {
-      const result = await simulateIdempotencyAttack(randomEventId, disputeId, '249.99', activeStoreId);
-      setIdempotencyLog({
-        eventId: randomEventId,
-        attempt1Status: result.attempt1.status,
-        attempt2Status: result.attempt2.status,
-        verdict: result.idempotencyEnforced 
-          ? 'PASSED: Duplicate event blocked by WebhookInbox Unique Index. Zero double-deduction risk.' 
-          : 'FAILED: Duplication detected',
-        timestamp: new Date().toLocaleTimeString()
-      });
-      showToast('Idempotency dual-dispatch test passed!', 'success', 'Idempotency Verified');
-    } catch (err: any) {
-      showToast(err.message || 'Idempotency test failed', 'error', 'Simulation Error');
-    } finally {
-      setIdempotencyLoading(false);
+  // Click outside to close menus
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setMoreMenuOpen(false);
+      }
+      if (storeDropdownRef.current && !storeDropdownRef.current.contains(e.target as Node)) {
+        setStoreDropdownOpen(false);
+      }
     }
-  }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
-  function handleSwitchStore(storeId: string) {
-    setActiveStoreIdState(storeId);
-    setActiveMerchantId(storeId);
-    setStoreDropdownOpen(false);
-    loadDisputes(storeId);
-    const target = stores.find(s => s.id === storeId);
-    showToast(`Switched active store to ${target?.name || storeId} (Partition: ${storeId})`, 'info', 'Tenant Switched');
-  }
-
-  function handleStoreConnected(newStore: MerchantStore) {
-    setStores(prev => [newStore, ...prev.filter(s => s.id !== newStore.id)]);
-    setActiveStoreIdState(newStore.id);
-    setActiveMerchantId(newStore.id);
-    loadDisputes(newStore.id);
-    showToast(`Store ${newStore.name} successfully connected and verified with PayPal!`, 'success', 'Store Linked');
-  }
-
-  // Live PayPal Sandbox Connection Health State
-  const [payPalHealth, setPayPalHealth] = useState<{ connected: boolean; provider: string; timestamp?: string } | null>(null);
-  const [checkingPayPal, setCheckingPayPal] = useState(false);
-
-  async function checkPayPalConnection() {
-    setCheckingPayPal(true);
-    try {
-      const res = await testPayPalAuth();
-      setPayPalHealth({
-        connected: res.authenticated && res.status === 'CONNECTED',
-        provider: res.provider,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-      });
-    } catch (e) {
-      setPayPalHealth({ connected: false, provider: 'PAYPAL_SANDBOX' });
-    } finally {
-      setCheckingPayPal(false);
-    }
-  }
-
-  // Sorting and Pagination State
-  const [sortField, setSortField] = useState<SortField>('deadline');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-
-  // Polling Concurrency and In-Flight Request Guards
-  const isFetchingRef = useRef(false);
-  const abortControllerRef = useRef<AbortController | null>(null);
-
-  // Initialize theme from system or localStorage
+  // Theme Initializer
   useEffect(() => {
     const savedTheme = localStorage.getItem('resolvepay_theme') as 'dark' | 'light' | null;
     if (savedTheme) {
@@ -182,7 +132,7 @@ export default function DashboardPage() {
     setTheme(nextTheme);
     localStorage.setItem('resolvepay_theme', nextTheme);
     document.documentElement.classList.toggle('light', nextTheme === 'light');
-    showToast(`Switched to ${nextTheme === 'dark' ? 'Dark Luxe FinTech' : 'Executive Light'} theme`, 'info', 'Theme Updated');
+    showToast(`Switched to ${nextTheme === 'dark' ? 'Graphite & Amber' : 'Executive Light'} theme`, 'info', 'Theme Updated');
   }
 
   // Background Polling with Page Visibility API
@@ -194,7 +144,7 @@ export default function DashboardPage() {
 
     const startPolling = () => {
       if (!interval) {
-        interval = setInterval(loadDisputes, 4000);
+        interval = setInterval(loadDisputes, 5000);
       }
     };
 
@@ -246,7 +196,6 @@ export default function DashboardPage() {
       setLastSyncTimestamp(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
     } catch (e: any) {
       if (e.name === 'AbortError') return;
-      console.error('Failed to load disputes', e);
       const errMsg = e.message || 'Failed to connect to ResolvePay backend API';
       setFetchError(errMsg);
     } finally {
@@ -258,6 +207,7 @@ export default function DashboardPage() {
 
   async function handleSync() {
     setSyncing(true);
+    setMoreMenuOpen(false);
     try {
       await syncDisputesFromPayPal(activeStoreId);
       await loadDisputes(activeStoreId);
@@ -269,8 +219,9 @@ export default function DashboardPage() {
     }
   }
 
-  async function handleSimulateWebhook(reason: string = 'MERCHANDISE_OR_SERVICE_NOT_RECEIVED', amount: string = '289.50') {
+  async function handleSimulateWebhook(reason: string = 'MERCHANDISE_OR_SERVICE_NOT_RECEIVED', amount: string = '249.99') {
     setSimulating(true);
+    setMoreMenuOpen(false);
     const randomId = Math.floor(100000 + Math.random() * 900000);
     const disputeId = `PP-D-${randomId}`;
     const deadlineIso = new Date(Date.now() + 48 * 3600 * 1000).toISOString();
@@ -331,19 +282,35 @@ export default function DashboardPage() {
     return disputes.filter(d => d.status === 'RESOLVED').length;
   }, [disputes]);
 
-  const defenseRatio = useMemo(() => {
-    if (disputes.length === 0) return '100%';
+  // CLARIFIED AI WIN RATIO (Displays "No data yet" instead of "0%" when no resolved cases exist)
+  const winRatioState = useMemo(() => {
     const defended = underReviewCount + resolvedCount;
-    return `${Math.round((defended / disputes.length) * 100)}%`;
+    if (defended === 0) {
+      return {
+        display: 'No data yet',
+        isCalculated: false,
+        subtitle: 'Pending initial dispute outcomes'
+      };
+    }
+    const pct = Math.round((defended / Math.max(disputes.length, 1)) * 100);
+    return {
+      display: `${pct}%`,
+      isCalculated: true,
+      subtitle: 'Multi-Carrier Proof Grounded'
+    };
   }, [disputes.length, underReviewCount, resolvedCount]);
 
   // Filtering & Sorting
   const processedDisputes = useMemo(() => {
     let result = disputes.filter(d => {
-      const q = searchQuery.toLowerCase();
+      const q = searchQuery.toLowerCase().trim();
+      const humanReason = humanizeReason(d.reason).toLowerCase();
+      const rawReason = d.reason.toLowerCase();
       const matchesSearch = 
+        !q ||
         d.paypalDisputeId.toLowerCase().includes(q) ||
-        d.reason.toLowerCase().includes(q) ||
+        humanReason.includes(q) ||
+        rawReason.includes(q) ||
         String(d.amount).includes(q);
 
       if (statusFilter === 'ALL') return matchesSearch;
@@ -360,7 +327,7 @@ export default function DashboardPage() {
           comparison = a.paypalDisputeId.localeCompare(b.paypalDisputeId);
           break;
         case 'reason':
-          comparison = a.reason.localeCompare(b.reason);
+          comparison = humanizeReason(a.reason).localeCompare(humanizeReason(b.reason));
           break;
         case 'amount':
           comparison = (Number(a.amount) || 0) - (Number(b.amount) || 0);
@@ -439,6 +406,64 @@ export default function DashboardPage() {
     }
   ];
 
+  async function checkPayPalConnection() {
+    setCheckingPayPal(true);
+    try {
+      const res = await testPayPalAuth(activeStoreId);
+      setPayPalHealth({
+        connected: res.authenticated,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+    } catch (e) {
+      setPayPalHealth({
+        connected: false,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+    } finally {
+      setCheckingPayPal(false);
+    }
+  }
+
+  async function runIdempotencyTest() {
+    setIdempotencyLoading(true);
+    const randomEventId = `WH-EVT-${Math.floor(100000 + Math.random() * 900000)}-CHG`;
+    const disputeId = `PP-D-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    try {
+      const result = await simulateIdempotencyAttack(randomEventId, disputeId, '249.99', activeStoreId);
+      setIdempotencyLog({
+        eventId: randomEventId,
+        attempt1Status: result.attempt1?.status || 'SUCCESS',
+        attempt2Status: result.attempt2?.status || 'DUPLICATE_ACCEPTED',
+        verdict: result.idempotencyEnforced 
+          ? 'PASSED: Duplicate event safely deduplicated by idempotency key cache'
+          : 'FAILED: Duplicate event processed without idempotency barrier',
+        timestamp: new Date().toLocaleTimeString()
+      });
+      showToast('Live Webhook Idempotency verified: Replay attack safely deduplicated', 'success', 'Idempotency Verified');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to verify idempotency', 'error', 'Simulation Error');
+    } finally {
+      setIdempotencyLoading(false);
+    }
+  }
+
+  function handleSwitchStore(id: string) {
+    setActiveStoreId(id);
+    setStoreDropdownOpen(false);
+    setLoading(true);
+    loadDisputes(id);
+    const store = stores.find(s => s.id === id);
+    showToast(`Switched active store partition to ${store?.name}`, 'info', 'Store Partition Switched');
+  }
+
+  function handleStoreConnected(newStore: MerchantStore) {
+    setStores(prev => [newStore, ...prev]);
+    setActiveStoreId(newStore.id);
+    showToast(`Connected PayPal account for ${newStore.name}`, 'success', 'Store Linked');
+    loadDisputes(newStore.id);
+  }
+
   return (
     <div 
       className="min-h-screen md:h-screen flex flex-col md:flex-row md:overflow-hidden transition-colors duration-200"
@@ -469,27 +494,15 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Theme Toggle Button */}
-          <button 
-            onClick={toggleTheme}
-            className="p-2 rounded-lg border transition hover:opacity-80"
-            style={{ 
-              borderColor: 'var(--border-color)',
-              backgroundColor: 'var(--surface-hover)' 
-            }}
-            title="Toggle Light/Dark Theme"
-          >
-            {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-400" />}
-          </button>
-
-          {/* Hamburger Menu Toggle */}
+          {/* Hamburger Menu Toggle (44px tap target) */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 rounded-lg border transition hover:opacity-80"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl border transition hover:opacity-80 focus-visible:ring-2 focus-visible:ring-amber-500/70"
             style={{ 
               borderColor: 'var(--border-color)',
               backgroundColor: 'var(--surface-hover)' 
             }}
+            aria-label="Toggle navigation menu"
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -506,11 +519,11 @@ export default function DashboardPage() {
       )}
 
       {/* ======================================================== */}
-      {/* 2. SIDEBAR (Desktop & Mobile Drawer)                     */}
+      {/* 2. SIDEBAR (Static on Desktop, Drawer on Mobile)          */}
       {/* ======================================================== */}
       <aside 
         className={`
-          fixed md:sticky top-0 inset-y-0 left-0 z-50 w-72 h-screen flex flex-col justify-between p-5 border-r transition-transform duration-300 md:translate-x-0 shrink-0 overflow-y-auto no-scrollbar
+          fixed md:sticky top-0 inset-y-0 left-0 z-50 w-72 h-screen flex flex-col justify-between p-5 border-r transition-transform duration-200 md:translate-x-0 shrink-0 overflow-y-auto no-scrollbar
           ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}
         style={{
@@ -527,7 +540,7 @@ export default function DashboardPage() {
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="text-base font-black tracking-tight">Resolve<span className="text-[var(--accent-primary)]">Pay</span></span>
-                <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-[var(--accent-pill)]/20 text-[var(--accent-primary)] border border-sky-500/30">
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-[var(--accent-pill)]/20 text-[var(--accent-primary)] border border-amber-500/30">
                   AI PRO
                 </span>
               </div>
@@ -535,11 +548,11 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Navigation Items */}
-          <nav className="space-y-1.5">
+          {/* Navigation Items (44px tap targets) */}
+          <nav className="space-y-1.5" aria-label="Main Navigation">
             <button 
               onClick={() => { setCurrentTab('DISPUTES'); setMobileMenuOpen(false); }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
+              className={`w-full min-h-[44px] flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition focus-visible:ring-2 focus-visible:ring-amber-500/70 ${
                 currentTab === 'DISPUTES'
                   ? 'shadow-xs'
                   : 'hover:bg-white/5 text-slate-400 hover:text-white'
@@ -550,16 +563,16 @@ export default function DashboardPage() {
                 border: '1px solid var(--nav-active-border)'
               } : undefined}
             >
-              <Layers className="w-4 h-4" />
+              <Layers className="w-4 h-4 shrink-0" />
               <span>Disputes Queue</span>
-              <span className="ml-auto px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-black/30">
+              <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-mono bg-black/30 text-slate-300">
                 {disputes.length}
               </span>
             </button>
 
             <button 
               onClick={() => { setCurrentTab('WHATSAPP_AUTOPILOT'); setMobileMenuOpen(false); }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
+              className={`w-full min-h-[44px] flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition focus-visible:ring-2 focus-visible:ring-amber-500/70 ${
                 currentTab === 'WHATSAPP_AUTOPILOT'
                   ? 'shadow-xs'
                   : 'hover:bg-white/5 text-slate-400 hover:text-white'
@@ -570,16 +583,16 @@ export default function DashboardPage() {
                 border: '1px solid var(--nav-active-border)'
               } : undefined}
             >
-              <Smartphone className="w-4 h-4 text-emerald-400" />
+              <Smartphone className="w-4 h-4 shrink-0" />
               <span>WhatsApp 1-Tap</span>
-              <span className="ml-auto px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+              <span className="ml-auto px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
                 LIVE
               </span>
             </button>
 
             <button 
               onClick={() => { setCurrentTab('CARRIER_RADAR'); setMobileMenuOpen(false); }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
+              className={`w-full min-h-[44px] flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition focus-visible:ring-2 focus-visible:ring-amber-500/70 ${
                 currentTab === 'CARRIER_RADAR'
                   ? 'shadow-xs'
                   : 'hover:bg-white/5 text-slate-400 hover:text-white'
@@ -590,13 +603,13 @@ export default function DashboardPage() {
                 border: '1px solid var(--nav-active-border)'
               } : undefined}
             >
-              <Truck className="w-4 h-4" />
+              <Truck className="w-4 h-4 shrink-0" />
               <span>Carrier Telemetry</span>
             </button>
 
             <button 
               onClick={() => { setCurrentTab('EARLY_WARNING'); setMobileMenuOpen(false); }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
+              className={`w-full min-h-[44px] flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition focus-visible:ring-2 focus-visible:ring-amber-500/70 ${
                 currentTab === 'EARLY_WARNING'
                   ? 'shadow-xs'
                   : 'hover:bg-white/5 text-slate-400 hover:text-white'
@@ -607,16 +620,16 @@ export default function DashboardPage() {
                 border: '1px solid var(--nav-active-border)'
               } : undefined}
             >
-              <AlertTriangle className="w-4 h-4 text-amber-400" />
+              <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" />
               <span>Early Threat Radar</span>
-              <span className="ml-auto px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-amber-500/20 text-amber-400">
+              <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-mono bg-amber-500/20 text-amber-400 font-bold">
                 2
               </span>
             </button>
 
             <button 
               onClick={() => { setCurrentTab('SETTINGS'); setMobileMenuOpen(false); }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
+              className={`w-full min-h-[44px] flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition focus-visible:ring-2 focus-visible:ring-amber-500/70 ${
                 currentTab === 'SETTINGS'
                   ? 'shadow-xs'
                   : 'hover:bg-white/5 text-slate-400 hover:text-white'
@@ -627,14 +640,14 @@ export default function DashboardPage() {
                 border: '1px solid var(--nav-active-border)'
               } : undefined}
             >
-              <Settings className="w-4 h-4" />
+              <Settings className="w-4 h-4 shrink-0" />
               <span>Merchant Security</span>
             </button>
           </nav>
         </div>
 
-        {/* Sidebar Footer Info Card */}
-        <div className="space-y-3">
+        {/* Sidebar Desktop Footer (Hidden on mobile to keep drawer uncluttered) */}
+        <div className="hidden md:block space-y-3 pt-4 border-t" style={{ borderColor: 'var(--border-color)' }}>
           {/* Quick WhatsApp Action Launcher */}
           <div 
             onClick={() => setWhatsAppModalOpen(true)}
@@ -652,7 +665,7 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          {/* Merchant Status */}
+          {/* Environment Status Card */}
           <div 
             className="p-3.5 rounded-2xl border space-y-2 text-xs"
             style={{ 
@@ -666,7 +679,7 @@ export default function DashboardPage() {
                 Sandbox Live
               </span>
             </div>
-            <div className="font-mono text-[11px] truncate" style={{ color: 'var(--text-secondary)' }}>
+            <div className="font-mono text-[11px] truncate text-slate-300">
               Spring Boot :8085
             </div>
             <div className="flex items-center justify-between pt-1 border-t text-[10px]" style={{ borderColor: 'var(--border-color)', color: 'var(--text-muted)' }}>
@@ -681,11 +694,11 @@ export default function DashboardPage() {
       </aside>
 
       {/* ======================================================== */}
-      {/* 3. MAIN CONTENT WORKSPACE                                */}
+      {/* 3. MAIN WORKSPACE WITH DECLUTTERED TOP BAR               */}
       {/* ======================================================== */}
-      <div className="flex-1 flex flex-col min-w-0 md:h-screen md:overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 md:h-screen md:overflow-hidden pb-16 md:pb-0">
         
-        {/* Top Navbar */}
+        {/* DECLUTTERED TOP NAVBAR (Search & Store Switcher visible; rest moved to '⋯' More menu) */}
         <header 
           className="px-3 sm:px-8 py-3.5 border-b sticky top-[53px] md:top-0 z-30 backdrop-blur-md flex items-center justify-between gap-2.5 sm:gap-4 shrink-0"
           style={{
@@ -693,10 +706,10 @@ export default function DashboardPage() {
             borderColor: 'var(--border-color)'
           }}
         >
-          {/* Search Bar */}
+          {/* 1. Search Bar (44px tap target) */}
           <div className="flex items-center gap-3 flex-1 min-w-0 max-w-md">
             <div className="relative w-full">
-              <Search className="w-4 h-4 absolute left-3.5 top-2.5 text-slate-400" />
+              <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
               <input
                 type="text"
                 placeholder="Search disputes, reason, or amount..."
@@ -705,7 +718,7 @@ export default function DashboardPage() {
                   setSearchQuery(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="w-full pl-10 pr-4 py-2 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-sky-500 transition border"
+                className="w-full pl-9 pr-4 py-2.5 min-h-[44px] rounded-xl text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/70 transition border"
                 style={{
                   backgroundColor: 'var(--surface-hover)',
                   borderColor: 'var(--border-color)',
@@ -715,29 +728,30 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Action Center */}
-          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-            {/* Store / Tenant Switcher Dropdown */}
-            <div className="relative">
+          {/* 2. Store Switcher & Decluttered '⋯' More Menu */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Store / Tenant Switcher Dropdown (44px tap target) */}
+            <div className="relative" ref={storeDropdownRef}>
               <button
                 onClick={() => setStoreDropdownOpen(!storeDropdownOpen)}
-                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border text-xs font-bold transition hover:opacity-90 shadow-xs shrink-0"
+                className="flex items-center gap-2 px-3 py-2 min-h-[44px] rounded-xl border text-xs font-bold transition hover:opacity-90 shadow-xs shrink-0 focus-visible:ring-2 focus-visible:ring-amber-500/70"
                 style={{
                   backgroundColor: 'var(--surface-hover)',
                   borderColor: 'var(--border-color)',
                   color: 'var(--foreground)'
                 }}
                 title="Switch active merchant store partition"
+                aria-label="Switch merchant store"
               >
-                <Store className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
-                <span className="hidden md:inline font-sans font-semibold max-w-[130px] truncate">{activeStore.name}</span>
-                <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                <Store className="w-4 h-4 text-[var(--accent-primary)] shrink-0" />
+                <span className="hidden sm:inline font-sans font-semibold max-w-[130px] truncate">{activeStore.name}</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
               </button>
 
               {storeDropdownOpen && (
                 <div 
-                  className="absolute right-0 mt-2 w-72 rounded-2xl border shadow-xl p-2 z-50 space-y-1 animate-in fade-in zoom-in-95 duration-150"
+                  className="absolute right-0 mt-2 w-72 rounded-2xl border shadow-2xl p-2 z-50 space-y-1 animate-slide-up"
                   style={{
                     backgroundColor: 'var(--surface)',
                     borderColor: 'var(--border-color)'
@@ -752,9 +766,9 @@ export default function DashboardPage() {
                     <div
                       key={s.id}
                       onClick={() => handleSwitchStore(s.id)}
-                      className={`p-2 rounded-xl cursor-pointer transition flex items-center justify-between text-xs ${
+                      className={`p-2.5 rounded-xl cursor-pointer transition flex items-center justify-between text-xs min-h-[44px] ${
                         s.id === activeStoreId 
-                          ? 'bg-[var(--accent-pill)]/15 border border-sky-500/30 text-[var(--accent-primary)]' 
+                          ? 'bg-[var(--accent-pill)]/15 border border-amber-500/30 text-[var(--accent-primary)] font-bold' 
                           : 'hover:bg-white/5 text-slate-300'
                       }`}
                     >
@@ -777,80 +791,126 @@ export default function DashboardPage() {
                         setStoreDropdownOpen(false);
                         setConnectModalOpen(true);
                       }}
-                      className="w-full py-2 px-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:opacity-90 text-white font-bold text-xs flex items-center justify-center gap-2 transition"
+                      style={{ backgroundColor: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)' }}
+                      className="w-full py-2.5 px-3 min-h-[40px] rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition hover:brightness-105 active:scale-98"
                     >
                       <Zap className="w-3.5 h-3.5" />
-                      <span>+ Connect New PayPal Store</span>
+                      <span>+ Connect New Store</span>
                     </button>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Live PayPal Status Badge */}
-            <div 
-              onClick={checkPayPalConnection}
-              className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full border text-[11px] cursor-pointer transition hover:opacity-90 shadow-2xs font-sans-body"
-              style={{
-                borderColor: 'var(--border-color)',
-                backgroundColor: 'var(--surface-hover)',
-                color: 'var(--text-secondary)'
-              }}
-              title="Click to re-verify live PayPal Sandbox handshake"
-            >
-              <div className={`w-2 h-2 rounded-full ${payPalHealth?.connected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
-              <span className="font-bold">
-                {checkingPayPal ? 'Verifying PayPal...' : payPalHealth?.connected ? 'PayPal Sandbox: Connected' : 'PayPal: Disconnected'}
-              </span>
+            {/* 3. Single Decluttered '⋯' More Options Menu (Holds Theme, Refresh, Sandbox Ping, & Dev Tools) */}
+            <div className="relative" ref={moreMenuRef}>
+              <button
+                onClick={() => setMoreMenuOpen(!moreMenuOpen)}
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl border transition hover:opacity-90 shadow-xs focus-visible:ring-2 focus-visible:ring-amber-500/70"
+                style={{
+                  backgroundColor: 'var(--surface-hover)',
+                  borderColor: 'var(--border-color)',
+                  color: 'var(--foreground)'
+                }}
+                title="More actions & Developer tools"
+                aria-label="More options"
+              >
+                <MoreVertical className="w-4 h-4" />
+              </button>
+
+              {moreMenuOpen && (
+                <div 
+                  className="absolute right-0 mt-2 w-64 rounded-2xl border shadow-2xl p-2 z-50 space-y-1 animate-slide-up text-xs font-sans-body"
+                  style={{
+                    backgroundColor: 'var(--surface)',
+                    borderColor: 'var(--border-color)',
+                    color: 'var(--foreground)'
+                  }}
+                >
+                  <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Preferences & Actions
+                  </div>
+
+                  {/* Theme Toggle */}
+                  <button
+                    onClick={() => { toggleTheme(); setMoreMenuOpen(false); }}
+                    className="w-full min-h-[40px] px-3 py-2 rounded-xl flex items-center justify-between hover:bg-white/5 transition"
+                  >
+                    <span className="flex items-center gap-2">
+                      {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-400" />}
+                      <span>Theme</span>
+                    </span>
+                    <span className="font-bold text-[11px] text-[var(--accent-primary)] font-mono">
+                      {theme === 'dark' ? 'Graphite' : 'Light'}
+                    </span>
+                  </button>
+
+                  {/* Sync Dispute Records */}
+                  <button
+                    onClick={handleSync}
+                    disabled={syncing}
+                    className="w-full min-h-[40px] px-3 py-2 rounded-xl flex items-center justify-between hover:bg-white/5 transition disabled:opacity-50"
+                  >
+                    <span className="flex items-center gap-2">
+                      <RefreshCw className={`w-4 h-4 text-slate-400 ${syncing ? 'animate-spin text-[var(--accent-primary)]' : ''}`} />
+                      <span>Sync Disputes</span>
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-400">{lastSyncTimestamp || 'Live'}</span>
+                  </button>
+
+                  {/* PayPal Sandbox Status */}
+                  <button
+                    onClick={() => { checkPayPalConnection(); setMoreMenuOpen(false); }}
+                    disabled={checkingPayPal}
+                    className="w-full min-h-[40px] px-3 py-2 rounded-xl flex items-center justify-between hover:bg-white/5 transition"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full ${payPalHealth?.connected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
+                      <span>PayPal Sandbox</span>
+                    </span>
+                    <span className="text-[10px] font-mono font-bold text-emerald-400">
+                      {checkingPayPal ? 'Pinging...' : payPalHealth?.connected ? 'Connected' : 'Ping'}
+                    </span>
+                  </button>
+
+                  {/* Connect PayPal Account */}
+                  <button
+                    onClick={() => { setConnectModalOpen(true); setMoreMenuOpen(false); }}
+                    className="w-full min-h-[40px] px-3 py-2 rounded-xl flex items-center gap-2 hover:bg-white/5 transition"
+                  >
+                    <Zap className="w-4 h-4 text-[var(--accent-primary)]" />
+                    <span>Connect PayPal Account</span>
+                  </button>
+
+                  {/* DEVELOPER ONLY MENU SECTION */}
+                  <div className="pt-2 mt-1 border-t" style={{ borderColor: 'var(--border-color)' }}>
+                    <div className="px-3 py-1 text-[9px] font-mono font-bold uppercase tracking-wider text-amber-500 flex items-center gap-1">
+                      <span>Developer Simulation</span>
+                    </div>
+
+                    <button
+                      onClick={() => handleSimulateWebhook('MERCHANDISE_OR_SERVICE_NOT_RECEIVED', '249.99')}
+                      disabled={simulating}
+                      className="w-full min-h-[40px] px-3 py-2 rounded-xl flex items-center justify-between hover:bg-amber-500/10 text-amber-400 transition"
+                    >
+                      <span className="flex items-center gap-2 font-semibold">
+                        <Zap className="w-4 h-4" />
+                        <span>Simulate Dispute</span>
+                      </span>
+                      <span className="text-[10px] font-mono">{simulating ? 'Simulating...' : '+$249.99'}</span>
+                    </button>
+
+                    <button
+                      onClick={() => { setCurrentTab('SETTINGS'); setMoreMenuOpen(false); }}
+                      className="w-full min-h-[40px] px-3 py-2 rounded-xl flex items-center gap-2 hover:bg-white/5 text-slate-300 transition"
+                    >
+                      <Shield className="w-4 h-4 text-slate-400" />
+                      <span>Idempotency Tests</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-
-            {/* Connect Store Quick Button */}
-            <button
-              onClick={() => setConnectModalOpen(true)}
-              style={{ backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }} className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs shadow-xs transition hover:brightness-105 active:scale-98"
-              title="1-Click Connect PayPal Account"
-            >
-              <Zap className="w-3.5 h-3.5" />
-              <span>Connect PayPal</span>
-            </button>
-
-            {/* Theme Toggle on Desktop */}
-            <button
-              onClick={toggleTheme}
-              className="hidden md:flex p-2 rounded-xl border transition hover:opacity-80"
-              style={{ 
-                borderColor: 'var(--border-color)',
-                backgroundColor: 'var(--surface-hover)' 
-              }}
-              title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} theme`}
-            >
-              {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-400" />}
-            </button>
-
-            {/* Quick Demo Simulator */}
-            <button
-              onClick={() => handleSimulateWebhook('MERCHANDISE_OR_SERVICE_NOT_RECEIVED', '249.99')}
-              disabled={simulating}
-              className="p-2 sm:px-3 sm:py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition disabled:opacity-50 shrink-0"
-              title="Simulates incoming PayPal dispute"
-            >
-              <Zap className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{simulating ? 'Simulating...' : '+ Simulate Dispute'}</span>
-            </button>
-
-            {/* Sync Button */}
-            <button
-              onClick={handleSync}
-              disabled={syncing}
-              className="p-2 rounded-xl border transition disabled:opacity-50 shrink-0"
-              style={{ 
-                borderColor: 'var(--border-color)',
-                backgroundColor: 'var(--surface-hover)' 
-              }}
-              title="Sync from PayPal Sandbox"
-            >
-              <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin text-[var(--accent-primary)]' : ''}`} />
-            </button>
           </div>
         </header>
 
@@ -860,12 +920,15 @@ export default function DashboardPage() {
           {/* TAB 1: DISPUTES QUEUE (PRIMARY HUB) */}
           {currentTab === 'DISPUTES' && (
             <>
-              {/* Executive Metrics Overview */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Executive Metrics Overview using CSS GRID auto-fit & clamp() font sizing */}
+              <div 
+                className="grid gap-4"
+                style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))' }}
+              >
                 
                 {/* Metric 1: Value at Risk */}
                 <div 
-                  className="p-5 rounded-2xl border shadow-sm transition hover:border-sky-500/50 space-y-2"
+                  className="p-5 rounded-2xl border shadow-sm transition hover:border-amber-500/50 space-y-2"
                   style={{ 
                     backgroundColor: 'var(--surface)', 
                     borderColor: 'var(--border-color)' 
@@ -875,14 +938,21 @@ export default function DashboardPage() {
                     <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                       Total Value at Risk
                     </span>
-                    <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                    <div className="p-2 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/30">
                       <DollarSign className="w-4 h-4" />
                     </div>
                   </div>
-                  <div className="text-2xl sm:text-3xl font-bold font-serif-heading">
-                    {formatCurrency(totalAmountAtRisk)}
+                  <div 
+                    className="font-bold font-serif-heading"
+                    style={{ fontSize: 'clamp(1.4rem, 2.2vw, 2rem)' }}
+                  >
+                    {loading ? (
+                      <div className="h-8 w-28 rounded-lg skeleton-shimmer my-1" />
+                    ) : (
+                      formatCurrency(totalAmountAtRisk)
+                    )}
                   </div>
-                  <div className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1">
+                  <div className="text-[11px] text-amber-400 font-semibold flex items-center gap-1">
                     <span>{disputes.length} Total Disputes</span>
                     <span className="opacity-60">• Automated Defense</span>
                   </div>
@@ -904,8 +974,15 @@ export default function DashboardPage() {
                       <AlertCircle className="w-4 h-4" />
                     </div>
                   </div>
-                  <div className="text-2xl sm:text-3xl font-bold font-serif-heading text-rose-400">
-                    {pendingActionCount} <span className="text-xs font-normal" style={{ color: 'var(--text-muted)' }}>cases</span>
+                  <div 
+                    className="font-bold font-serif-heading text-rose-400"
+                    style={{ fontSize: 'clamp(1.4rem, 2.2vw, 2rem)' }}
+                  >
+                    {loading ? (
+                      <div className="h-8 w-20 rounded-lg skeleton-shimmer my-1" />
+                    ) : (
+                      <span>{pendingActionCount} <span className="text-xs font-normal" style={{ color: 'var(--text-muted)' }}>cases</span></span>
+                    )}
                   </div>
                   <div className="text-[11px] text-rose-400 font-semibold">
                     Urgent SLA Deadlines Active
@@ -913,30 +990,6 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Metric 3: Defended / Under Review */}
-                <div 
-                  className="p-5 rounded-2xl border shadow-sm transition hover:border-sky-500/50 space-y-2"
-                  style={{ 
-                    backgroundColor: 'var(--surface)', 
-                    borderColor: 'var(--border-color)' 
-                  }}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                      Defended & In Review
-                    </span>
-                    <div className="p-2 rounded-xl bg-[var(--accent-pill)]/15 text-[var(--accent-primary)] border border-sky-500/30">
-                      <Clock className="w-4 h-4" />
-                    </div>
-                  </div>
-                  <div className="text-2xl sm:text-3xl font-bold font-serif-heading text-[var(--accent-primary)]">
-                    {underReviewCount} <span className="text-xs font-normal" style={{ color: 'var(--text-muted)' }}>defended</span>
-                  </div>
-                  <div className="text-[11px] text-[var(--accent-primary)] font-semibold">
-                    Submitted via Outbox Pipeline
-                  </div>
-                </div>
-
-                {/* Metric 4: Defense Ratio / Win Rate */}
                 <div 
                   className="p-5 rounded-2xl border shadow-sm transition hover:border-emerald-500/50 space-y-2"
                   style={{ 
@@ -946,30 +999,68 @@ export default function DashboardPage() {
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                      AI Defense Win Ratio
+                      Defended & In Review
                     </span>
                     <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                      <Clock className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <div 
+                    className="font-bold font-serif-heading text-emerald-400"
+                    style={{ fontSize: 'clamp(1.4rem, 2.2vw, 2rem)' }}
+                  >
+                    {loading ? (
+                      <div className="h-8 w-20 rounded-lg skeleton-shimmer my-1" />
+                    ) : (
+                      <span>{underReviewCount} <span className="text-xs font-normal" style={{ color: 'var(--text-muted)' }}>defended</span></span>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-emerald-400 font-semibold">
+                    Submitted via Outbox Pipeline
+                  </div>
+                </div>
+
+                {/* Metric 4: Defense Ratio / Win Rate (Clarified 0% as "No data yet") */}
+                <div 
+                  className="p-5 rounded-2xl border shadow-sm transition hover:border-amber-500/50 space-y-2"
+                  style={{ 
+                    backgroundColor: 'var(--surface)', 
+                    borderColor: 'var(--border-color)' 
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                      AI Defense Win Ratio
+                    </span>
+                    <div className="p-2 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/30">
                       <Sparkles className="w-4 h-4" />
                     </div>
                   </div>
-                  <div className="text-2xl sm:text-3xl font-bold font-serif-heading text-emerald-400">
-                    {defenseRatio}
+                  <div 
+                    className="font-bold font-serif-heading text-[var(--accent-primary)]"
+                    style={{ fontSize: 'clamp(1.4rem, 2.2vw, 2rem)' }}
+                  >
+                    {loading ? (
+                      <div className="h-8 w-28 rounded-lg skeleton-shimmer my-1" />
+                    ) : (
+                      winRatioState.display
+                    )}
                   </div>
-                  <div className="text-[11px] text-emerald-400 font-semibold">
-                    Multi-Carrier Proof Grounded
+                  <div className="text-[11px] text-slate-300 font-semibold">
+                    {winRatioState.subtitle}
                   </div>
                 </div>
 
               </div>
 
-              {/* Table / List Controls */}
+              {/* Table / List Filter Controls (44px tap targets) */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
                 <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
                   {(['ALL', 'ACTION_REQUIRED', 'UNDER_REVIEW', 'RESOLVED'] as const).map((filter) => (
                     <button
                       key={filter}
                       onClick={() => { setStatusFilter(filter); setCurrentPage(1); }}
-                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+                      className={`min-h-[44px] px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap focus-visible:ring-2 focus-visible:ring-amber-500/70 ${
                         statusFilter === filter
                           ? 'shadow-xs'
                           : 'border text-slate-400 hover:text-white'
@@ -990,33 +1081,57 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Empty state for search / status filter */}
-              {paginatedDisputes.length === 0 && (
+              {/* SKELETON LOADER STATE DURING INITIAL FETCH OR REFRESH */}
+              {loading && disputes.length === 0 && (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((n) => (
+                    <div 
+                      key={n} 
+                      className="p-5 rounded-2xl border skeleton-shimmer h-24"
+                      style={{ borderColor: 'var(--border-color)' }}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* REAL EMPTY STATE WITH ACTIONABLE NEXT STEP */}
+              {!loading && processedDisputes.length === 0 && (
                 <div 
                   className="p-8 sm:p-12 rounded-2xl border text-center space-y-3"
                   style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-color)' }}
                 >
-                  <div className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center text-slate-400" style={{ backgroundColor: 'var(--surface-hover)' }}>
-                    <Search className="w-6 h-6" />
+                  <div className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center text-[var(--accent-primary)]" style={{ backgroundColor: 'var(--surface-hover)' }}>
+                    <Inbox className="w-6 h-6" />
                   </div>
-                  <h4 className="font-bold text-sm">No Disputes Found</h4>
+                  <h4 className="font-bold text-sm font-serif-heading">No Disputes Found in this Queue</h4>
                   <p className="text-xs max-w-sm mx-auto" style={{ color: 'var(--text-muted)' }}>
                     {searchQuery 
-                      ? `No disputes matching "${searchQuery}". Try searching by another ID or keyword.`
-                      : `There are currently no disputes in the "${statusFilter.replace('_', ' ')}" queue.`}
+                      ? `No disputes matched your search criteria for "${searchQuery}". Try another keyword or reset filters.`
+                      : `There are currently no dispute records in the "${statusFilter.replace('_', ' ')}" queue for ${activeStore.name}.`}
                   </p>
-                  {(searchQuery || statusFilter !== 'ALL') && (
-                    <button
-                      onClick={() => { setSearchQuery(''); setStatusFilter('ALL'); }}
-                      className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-sky-400 border border-sky-500/30 hover:bg-sky-500/10 transition"
-                    >
-                      Reset Filters
-                    </button>
-                  )}
+                  <div className="pt-2 flex items-center justify-center gap-3">
+                    {(searchQuery || statusFilter !== 'ALL') ? (
+                      <button
+                        onClick={() => { setSearchQuery(''); setStatusFilter('ALL'); }}
+                        className="min-h-[44px] px-4 py-2 rounded-xl text-xs font-bold border border-amber-500/40 text-[var(--accent-primary)] hover:bg-amber-500/10 transition"
+                      >
+                        Reset All Filters
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleSimulateWebhook()}
+                        style={{ backgroundColor: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)' }}
+                        className="min-h-[44px] px-4 py-2 rounded-xl text-xs font-bold transition hover:brightness-105 active:scale-98 shadow-sm flex items-center gap-1.5"
+                      >
+                        <Zap className="w-4 h-4" />
+                        <span>Simulate Test Dispute</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 
-              {/* MOBILE DISPUTE CARDS (Visible on mobile screens < md) */}
+              {/* MOBILE DISPUTE CARDS (< 768px / md:hidden) */}
               <div className="grid grid-cols-1 gap-4 md:hidden py-1">
                 {paginatedDisputes.map((dispute) => {
                   const deadlineInfo = calculateDeadlineUrgency(dispute.deadline);
@@ -1031,6 +1146,7 @@ export default function DashboardPage() {
                         borderColor: 'var(--border-color)'
                       }}
                     >
+                      {/* Top Row: ID & Amount */}
                       <div className="flex items-center justify-between">
                         <span className="font-mono font-bold text-xs text-[var(--accent-primary)]">
                           {dispute.paypalDisputeId}
@@ -1040,32 +1156,55 @@ export default function DashboardPage() {
                         </span>
                       </div>
 
-                      <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                        {dispute.reason}
+                      {/* Second Row: Humanized Reason */}
+                      <div className="text-xs font-medium" style={{ color: 'var(--foreground)' }}>
+                        {humanizeReason(dispute.reason)}
                       </div>
 
+                      {/* Third Row: Status Badge & SLA countdown */}
                       <div className="flex items-center justify-between pt-2 border-t text-[11px]" style={{ borderColor: 'var(--border-color)' }}>
-                        <span className={`px-2 py-0.5 rounded-full font-bold ${
-                          isPending ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                        <span className={`px-2.5 py-1 rounded-full font-bold inline-flex items-center gap-1.5 ${
+                          isPending 
+                            ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' 
+                            : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
                         }`}>
-                          {isPending ? 'Action Required' : 'Defended'}
+                          {isPending ? <AlertCircle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                          <span>{isPending ? 'Action Required' : 'Defended'}</span>
                         </span>
 
                         {dispute.deadline && (
                           <span className={`font-mono font-bold flex items-center gap-1 ${
                             deadlineInfo.urgency === 'CRITICAL' ? 'text-rose-400 animate-pulse' : 'text-slate-400'
                           }`}>
-                            <Clock className="w-3 h-3" />
-                            {deadlineInfo.label}
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>{deadlineInfo.label}</span>
                           </span>
                         )}
+                      </div>
+
+                      {/* Fourth Row: One primary action button with 44px tap target */}
+                      <div className="pt-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedDispute(dispute);
+                          }}
+                          style={{
+                            backgroundColor: 'var(--btn-primary-bg)',
+                            color: 'var(--btn-primary-text)'
+                          }}
+                          className="w-full min-h-[44px] px-4 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition hover:brightness-105 active:scale-98"
+                        >
+                          <span>Review defense</span>
+                          <ArrowUpRight className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
                   );
                 })}
               </div>
 
-              {/* DESKTOP & TABLET DISPUTE TABLE (Visible on >= md screens) */}
+              {/* DESKTOP & TABLET DISPUTE TABLE (>= 768px / md:block) */}
               <div 
                 className="hidden md:block rounded-2xl border overflow-hidden shadow-sm"
                 style={{
@@ -1127,25 +1266,25 @@ export default function DashboardPage() {
                           <td className="py-4 px-5 font-mono font-bold">
                             {formatCurrency(dispute.amount, dispute.currency)}
                           </td>
-                          <td className="py-4 px-5 max-w-xs truncate" style={{ color: 'var(--text-secondary)' }}>
-                            {dispute.reason}
+                          <td className="py-4 px-5 max-w-xs truncate" style={{ color: 'var(--foreground)' }}>
+                            {humanizeReason(dispute.reason)}
                           </td>
                           <td className="py-4 px-5 font-mono">
                             {dispute.deadline ? (
-                              <span className={`px-2 py-0.5 rounded-full font-bold inline-flex items-center gap-1 ${
+                              <span className={`px-2.5 py-1 rounded-full font-bold inline-flex items-center gap-1.5 ${
                                 deadlineInfo.urgency === 'CRITICAL' 
                                   ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30 animate-pulse'
                                   : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
                               }`}>
-                                <Clock className="w-3 h-3" />
-                                {deadlineInfo.label}
+                                <Clock className="w-3.5 h-3.5" />
+                                <span>{deadlineInfo.label}</span>
                               </span>
                             ) : (
                               <span className="text-slate-500">—</span>
                             )}
                           </td>
                           <td className="py-4 px-5">
-                            <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] inline-flex items-center gap-1 ${
+                            <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] inline-flex items-center gap-1.5 ${
                               isPending
                                 ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
                                 : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
@@ -1164,7 +1303,7 @@ export default function DashboardPage() {
                                 backgroundColor: 'var(--btn-primary-bg)',
                                 color: 'var(--btn-primary-text)'
                               }}
-                              className="px-3.5 py-1.5 rounded-xl font-bold text-xs inline-flex items-center gap-1.5 transition shadow-xs hover:brightness-105 active:scale-98"
+                              className="px-3.5 py-1.5 min-h-[36px] rounded-xl font-bold text-xs inline-flex items-center gap-1.5 transition shadow-xs hover:brightness-105 active:scale-98"
                             >
                               <span>Review defense</span>
                               <ArrowUpRight className="w-3.5 h-3.5" />
@@ -1177,13 +1316,13 @@ export default function DashboardPage() {
                 </table>
               </div>
 
-              {/* Pagination Bar */}
+              {/* Pagination Bar (44px tap targets) */}
               {totalPages > 1 && (
                 <div className="flex items-center justify-between text-xs pt-2">
                   <button
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
-                    className="px-3 py-1.5 rounded-lg border text-slate-300 disabled:opacity-40 transition"
+                    className="min-h-[44px] px-4 py-2 rounded-xl border text-slate-300 disabled:opacity-40 transition"
                     style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--surface-hover)' }}
                   >
                     Previous
@@ -1194,7 +1333,7 @@ export default function DashboardPage() {
                   <button
                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
-                    className="px-3 py-1.5 rounded-lg border text-slate-300 disabled:opacity-40 transition"
+                    className="min-h-[44px] px-4 py-2 rounded-xl border text-slate-300 disabled:opacity-40 transition"
                     style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--surface-hover)' }}
                   >
                     Next
@@ -1220,7 +1359,7 @@ export default function DashboardPage() {
                       <Smartphone className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="text-base font-black">WhatsApp 1-Tap Dispute Resolution Engine</h3>
+                      <h3 className="text-base font-black font-serif-heading">WhatsApp 1-Tap Dispute Resolution Engine</h3>
                       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                         Enable merchants to resolve chargebacks right from WhatsApp without logging into any dashboard.
                       </p>
@@ -1256,19 +1395,19 @@ export default function DashboardPage() {
                     </div>
                     <div className="text-slate-300 space-y-1 font-mono text-[11px]">
                       <div>Amount at Risk: <span className="font-bold text-white">{formatCurrency(targetDisputeForWhatsApp?.amount || 249.99)}</span></div>
-                      <div>Reason: <span className="text-white">{targetDisputeForWhatsApp?.reason || 'MERCHANDISE_NOT_RECEIVED'}</span></div>
+                      <div>Reason: <span className="text-white">{humanizeReason(targetDisputeForWhatsApp?.reason || 'Item not received')}</span></div>
                       <div className="text-emerald-400 pt-1">
                         ⚡ AI Action: FedEx tracking #784920 proves delivered with recipient signature yesterday.
                       </div>
                     </div>
                   </div>
 
-                  {/* Interactive Button in WhatsApp */}
+                  {/* Interactive Buttons (44px tap targets) */}
                   <div className="space-y-2 pt-2">
                     <button
                       onClick={handleWhatsAppApprove}
                       disabled={isTargetDefended}
-                      className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition disabled:opacity-50"
+                      className="w-full min-h-[44px] py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition disabled:opacity-50"
                     >
                       {isTargetDefended ? (
                         <>
@@ -1285,7 +1424,7 @@ export default function DashboardPage() {
 
                     <button
                       onClick={() => targetDisputeForWhatsApp && setSelectedDispute(targetDisputeForWhatsApp)}
-                      className="w-full py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition"
+                      className="w-full min-h-[44px] py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition"
                     >
                       2. Inspect POD & Evidence
                     </button>
@@ -1307,7 +1446,7 @@ export default function DashboardPage() {
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-base font-black flex items-center gap-2">
+                    <h3 className="text-base font-black font-serif-heading flex items-center gap-2">
                       <Truck className="w-5 h-5 text-[var(--accent-primary)]" />
                       <span>Live Logistics EDI & Carrier Proof Integrations</span>
                     </h3>
@@ -1326,7 +1465,7 @@ export default function DashboardPage() {
                   ].map((c) => (
                     <div 
                       key={c.carrier}
-                      className="p-4 rounded-xl border flex items-center justify-between text-xs"
+                      className="p-4 rounded-xl border flex items-center justify-between text-xs min-h-[64px]"
                       style={{ 
                         backgroundColor: 'var(--surface-hover)', 
                         borderColor: 'var(--border-color)' 
@@ -1358,7 +1497,7 @@ export default function DashboardPage() {
                 }}
               >
                 <div>
-                  <h3 className="text-base font-black flex items-center gap-2 text-amber-400">
+                  <h3 className="text-base font-black font-serif-heading flex items-center gap-2 text-amber-400">
                     <AlertTriangle className="w-5 h-5" />
                     <span>Pre-Dispute Threat & Sentiment Scanner</span>
                   </h3>
@@ -1390,7 +1529,8 @@ export default function DashboardPage() {
                         <span className="text-[var(--accent-primary)] font-semibold leading-snug">{risk.recommendedAction}</span>
                         <button 
                           onClick={() => showToast(`Sent 1-click preemptive resolution for ${risk.orderNumber}`, 'success', 'Interception Sent')}
-                          style={{ backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }} className="px-3.5 py-1.5 rounded-xl font-bold text-[11px] self-start sm:self-auto shrink-0 transition hover:brightness-105 active:scale-98 shadow-xs"
+                          style={{ backgroundColor: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)' }}
+                          className="min-h-[44px] px-4 py-2 rounded-xl font-bold text-xs self-start sm:self-auto shrink-0 transition hover:brightness-105 active:scale-98 shadow-xs"
                         >
                           Intercept Now
                         </button>
@@ -1402,13 +1542,13 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* TAB 5: SETTINGS */}
+          {/* TAB 5: SETTINGS (Includes WhatsApp & Environment cards relocated from mobile sidebar) */}
           {currentTab === 'SETTINGS' && (
             <div className="space-y-6 max-w-4xl">
               {/* Header */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
                 <div>
-                  <h2 className="text-xl font-black">Merchant Security & Live PayPal Integration</h2>
+                  <h2 className="text-xl font-black font-serif-heading">Merchant Security & Live PayPal Integration</h2>
                   <p className="text-xs text-slate-400 mt-1">
                     Multi-tenant data isolation, zero-trust token auth, and real-time PayPal Sandbox telemetry.
                   </p>
@@ -1416,11 +1556,34 @@ export default function DashboardPage() {
                 <button
                   onClick={checkPayPalConnection}
                   disabled={checkingPayPal}
-                  style={{ backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }} className="px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition disabled:opacity-50 self-start sm:self-auto hover:brightness-105 active:scale-98"
+                  style={{ backgroundColor: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)' }}
+                  className="min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition disabled:opacity-50 self-start sm:self-auto hover:brightness-105 active:scale-98"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${checkingPayPal ? 'animate-spin' : ''}`} />
                   <span>{checkingPayPal ? 'Pinging PayPal...' : 'Test PayPal Connection Ping'}</span>
                 </button>
+              </div>
+
+              {/* Mobile relocated card: WhatsApp 1-Tap Quick Bot Access */}
+              <div 
+                className="p-5 rounded-2xl border space-y-3"
+                style={{ backgroundColor: 'rgba(52, 211, 153, 0.08)', borderColor: 'rgba(52, 211, 153, 0.3)' }}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <MessageSquare className="w-5 h-5 text-emerald-400" />
+                    <div>
+                      <h4 className="text-sm font-bold text-emerald-400">WhatsApp 1-Tap Autopilot Dispatch</h4>
+                      <p className="text-[11px] text-slate-300">Resolves incoming dispute alerts right from merchant phone without login</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setWhatsAppModalOpen(true)}
+                    className="min-h-[40px] px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs transition shadow-sm"
+                  >
+                    Open Bot Preview
+                  </button>
+                </div>
               </div>
 
               {/* 1. Live PayPal Connection Telemetry Card */}
@@ -1430,16 +1593,16 @@ export default function DashboardPage() {
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-xl bg-[var(--accent-pill)]/10 text-[var(--accent-primary)] border border-sky-500/20 shrink-0">
+                    <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
                       <Zap className="w-4 h-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold">PayPal Sandbox REST API Connection</h3>
+                      <h3 className="text-sm font-bold font-serif-heading">PayPal Sandbox REST API Connection</h3>
                       <p className="text-[11px] text-slate-400">Direct OAuth2 & Disputes Engine Handshake</p>
                     </div>
                   </div>
                   <div 
-                    className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold font-mono self-start sm:self-auto shrink-0"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold font-mono self-start sm:self-auto shrink-0"
                     style={{
                       backgroundColor: payPalHealth?.connected ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
                       color: payPalHealth?.connected ? '#10b981' : '#ef4444',
@@ -1458,7 +1621,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="p-3 rounded-xl border space-y-1 transition-colors" style={{ backgroundColor: 'var(--surface-hover)', borderColor: 'var(--border-color)' }}>
                     <div className="text-[10px] uppercase font-bold" style={{ color: 'var(--text-muted)' }}>Sandbox App ID</div>
-                    <div className="font-bold truncate text-emerald-600 dark:text-emerald-400">APP-22A05303NP776440S</div>
+                    <div className="font-bold truncate text-emerald-400">APP-22A05303NP776440S</div>
                   </div>
                   <div className="p-3 rounded-xl border space-y-1 transition-colors" style={{ backgroundColor: 'var(--surface-hover)', borderColor: 'var(--border-color)' }}>
                     <div className="text-[10px] uppercase font-bold" style={{ color: 'var(--text-muted)' }}>Last Verified Handshake</div>
@@ -1474,17 +1637,18 @@ export default function DashboardPage() {
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shrink-0">
+                    <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
                       <Lock className="w-4 h-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold">Active Store & Tenant Isolation</h3>
+                      <h3 className="text-sm font-bold font-serif-heading">Active Store & Tenant Isolation</h3>
                       <p className="text-[11px] text-slate-400">Multi-tenant database partition for {activeStore.name}</p>
                     </div>
                   </div>
                   <button
                     onClick={() => setConnectModalOpen(true)}
-                    style={{ backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }} className="px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition shadow-xs self-start sm:self-auto shrink-0 hover:brightness-105 active:scale-98"
+                    style={{ backgroundColor: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)' }}
+                    className="min-h-[44px] px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 transition shadow-xs self-start sm:self-auto shrink-0 hover:brightness-105 active:scale-98"
                   >
                     <Zap className="w-3.5 h-3.5" />
                     <span>+ Connect Another Store</span>
@@ -1497,7 +1661,7 @@ export default function DashboardPage() {
                       <span style={{ color: 'var(--text-muted)' }}>Active Business Store: </span>
                       <span className="font-bold font-sans" style={{ color: 'var(--foreground)' }}>{activeStore.name}</span>
                     </div>
-                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 self-start sm:self-auto font-sans font-bold flex items-center gap-1">
+                    <span className="text-[10px] px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 self-start sm:self-auto font-sans font-bold flex items-center gap-1">
                       <Check className="w-3 h-3" />
                       <span>PayPal Verified Account</span>
                     </span>
@@ -1508,7 +1672,7 @@ export default function DashboardPage() {
                       <span style={{ color: 'var(--text-muted)' }}>Merchant Tenant ID: </span>
                       <span className="font-bold" style={{ color: 'var(--foreground)' }}>{activeStore.id}</span>
                     </div>
-                    <span className="text-[10px] px-2 py-0.5 rounded-md border self-start sm:self-auto font-bold" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-strong)', color: 'var(--accent-primary)' }}>
+                    <span className="text-[10px] px-2.5 py-1 rounded-md border self-start sm:self-auto font-bold" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-strong)', color: 'var(--accent-primary)' }}>
                       ThreadLocal Scoped
                     </span>
                   </div>
@@ -1516,7 +1680,7 @@ export default function DashboardPage() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border font-mono gap-2 transition-colors" style={{ backgroundColor: 'var(--surface-hover)', borderColor: 'var(--border-color)' }}>
                     <div>
                       <span style={{ color: 'var(--text-muted)' }}>PayPal Payer ID: </span>
-                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">{activeStore.paypalPayerId}</span>
+                      <span className="text-emerald-400 font-bold">{activeStore.paypalPayerId}</span>
                     </div>
                     <div className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>Linked: {activeStore.connectedAt}</div>
                   </div>
@@ -1524,14 +1688,14 @@ export default function DashboardPage() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border font-mono gap-2 transition-colors" style={{ backgroundColor: 'var(--surface-hover)', borderColor: 'var(--border-color)' }}>
                     <div className="truncate">
                       <span style={{ color: 'var(--text-muted)' }}>Internal Auth Token: </span>
-                      <span className="text-amber-600 dark:text-amber-400 font-bold">rzp_live_sec_789f2a4b8c1d</span>
+                      <span className="text-amber-400 font-bold font-mono">rzp_live_sec_789f2a4b8c1d</span>
                     </div>
                     <button
                       onClick={() => {
                         navigator.clipboard?.writeText('rzp_live_sec_789f2a4b8c1d');
                         showToast('Bearer token copied to clipboard', 'info', 'Copied');
                       }}
-                      className="text-[11px] px-2.5 py-1 rounded-lg border transition font-sans font-bold flex items-center gap-1 self-start sm:self-auto shadow-2xs hover:opacity-90"
+                      className="min-h-[36px] text-[11px] px-3 py-1 rounded-lg border transition font-sans font-bold flex items-center gap-1 self-start sm:self-auto shadow-2xs hover:opacity-90"
                       style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-strong)', color: 'var(--foreground)' }}
                     >
                       <span>Copy Token</span>
@@ -1551,14 +1715,15 @@ export default function DashboardPage() {
                       <Shield className="w-4 h-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold">Live Webhook Idempotency Engine Test</h3>
+                      <h3 className="text-sm font-bold font-serif-heading">Live Webhook Idempotency Engine Test</h3>
                       <p className="text-[11px] text-slate-400">Simulate network re-transmissions and duplicate dispute attacks</p>
                     </div>
                   </div>
                   <button
                     onClick={runIdempotencyTest}
                     disabled={idempotencyLoading}
-                    style={{ backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }} className="px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition disabled:opacity-50 self-start sm:self-auto shadow-sm hover:brightness-105 active:scale-98"
+                    style={{ backgroundColor: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)' }}
+                    className="min-h-[44px] px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition disabled:opacity-50 self-start sm:self-auto shadow-sm hover:brightness-105 active:scale-98"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${idempotencyLoading ? 'animate-spin' : ''}`} />
                     <span>{idempotencyLoading ? 'Testing Idempotency...' : 'Simulate Duplicate Webhook'}</span>
@@ -1589,71 +1754,85 @@ export default function DashboardPage() {
                   )}
                 </div>
               </div>
-
-              {/* 3. Real-World Merchant Onboarding & Login Flow */}
-              <div 
-                className="p-6 rounded-2xl border space-y-4"
-                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-color)' }}
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                    <CheckCircle2 className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold">Real-World Merchant Login & PayPal Onboarding Flow</h3>
-                    <p className="text-[11px] text-slate-400">How merchants register and connect in real life</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div className="p-3.5 rounded-xl border border-white/5 bg-white/[0.02] space-y-1.5">
-                    <div className="font-bold text-[var(--accent-primary)] flex items-center gap-1.5">
-                      <span className="w-5 h-5 rounded-full bg-[var(--accent-pill)]/20 text-[var(--accent-primary)] flex items-center justify-center text-[10px]">1</span>
-                      <span>Merchant Registration</span>
-                    </div>
-                    <p className="text-[11px] text-slate-400 leading-relaxed">
-                      Merchant registers with their business email. A dedicated <code className="text-slate-300">merchantId</code> is assigned, creating an isolated workspace partition in PostgreSQL.
-                    </p>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl border border-white/5 bg-white/[0.02] space-y-1.5">
-                    <div className="font-bold text-emerald-400 flex items-center gap-1.5">
-                      <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[10px]">2</span>
-                      <span>1-Click PayPal OAuth Connect</span>
-                    </div>
-                    <p className="text-[11px] text-slate-400 leading-relaxed">
-                      Instead of manual keys, merchant clicks "Connect PayPal". PayPal OAuth 2.0 PKCE modal grants dispute resolution and webhook permissions securely.
-                    </p>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl border border-white/5 bg-white/[0.02] space-y-1.5">
-                    <div className="font-bold text-amber-400 flex items-center gap-1.5">
-                      <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-[10px]">3</span>
-                      <span>Auto Webhook Subscription</span>
-                    </div>
-                    <p className="text-[11px] text-slate-400 leading-relaxed">
-                      ResolvePay auto-provisions a webhook with PayPal. New dispute events (<code className="text-slate-300">CUSTOMER.DISPUTE.CREATED</code>) push immediately into the merchant's queue.
-                    </p>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl border border-white/5 bg-white/[0.02] space-y-1.5">
-                    <div className="font-bold text-purple-400 flex items-center gap-1.5">
-                      <span className="w-5 h-5 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center text-[10px]">4</span>
-                      <span>AI Autopilot & WhatsApp 1-Tap</span>
-                    </div>
-                    <p className="text-[11px] text-slate-400 leading-relaxed">
-                      Carrier tracking PODs are linked. Gemini AI auto-generates rebuttal drafts, allowing the merchant to defend disputes on WhatsApp with 1 tap.
-                    </p>
-                  </div>
-                </div>
-              </div>
             </div>
           )}
 
         </main>
       </div>
 
-      {/* Slide-over Dispute Workspace Drawer */}
+      {/* ======================================================== */}
+      {/* 4. MOBILE BOTTOM TAB NAVIGATION BAR (< md screens)       */}
+      {/* ======================================================== */}
+      <nav 
+        aria-label="Mobile Navigation"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around px-2 py-1.5 border-t backdrop-blur-md shadow-2xl"
+        style={{
+          backgroundColor: 'var(--surface)',
+          borderColor: 'var(--border-color)'
+        }}
+      >
+        <button
+          onClick={() => setCurrentTab('DISPUTES')}
+          className="min-h-[44px] min-w-[54px] flex flex-col items-center justify-center gap-1 text-[10px] font-bold transition focus-visible:ring-2 focus-visible:ring-amber-500"
+          style={{ color: currentTab === 'DISPUTES' ? 'var(--accent-primary)' : 'var(--text-muted)' }}
+        >
+          <div className="relative">
+            <Layers className="w-5 h-5" />
+            {disputes.length > 0 && (
+              <span className="absolute -top-1.5 -right-2 px-1 py-0.2 rounded-full text-[8px] bg-amber-500 text-black font-bold">
+                {disputes.length}
+              </span>
+            )}
+          </div>
+          <span>Disputes</span>
+        </button>
+
+        <button
+          onClick={() => setCurrentTab('WHATSAPP_AUTOPILOT')}
+          className="min-h-[44px] min-w-[54px] flex flex-col items-center justify-center gap-1 text-[10px] font-bold transition focus-visible:ring-2 focus-visible:ring-amber-500"
+          style={{ color: currentTab === 'WHATSAPP_AUTOPILOT' ? 'var(--accent-primary)' : 'var(--text-muted)' }}
+        >
+          <div className="relative">
+            <Smartphone className="w-5 h-5" />
+            <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400" />
+          </div>
+          <span>WhatsApp</span>
+        </button>
+
+        <button
+          onClick={() => setCurrentTab('CARRIER_RADAR')}
+          className="min-h-[44px] min-w-[54px] flex flex-col items-center justify-center gap-1 text-[10px] font-bold transition focus-visible:ring-2 focus-visible:ring-amber-500"
+          style={{ color: currentTab === 'CARRIER_RADAR' ? 'var(--accent-primary)' : 'var(--text-muted)' }}
+        >
+          <Truck className="w-5 h-5" />
+          <span>Carrier</span>
+        </button>
+
+        <button
+          onClick={() => setCurrentTab('EARLY_WARNING')}
+          className="min-h-[44px] min-w-[54px] flex flex-col items-center justify-center gap-1 text-[10px] font-bold transition focus-visible:ring-2 focus-visible:ring-amber-500"
+          style={{ color: currentTab === 'EARLY_WARNING' ? 'var(--accent-primary)' : 'var(--text-muted)' }}
+        >
+          <div className="relative">
+            <AlertTriangle className="w-5 h-5" />
+            <span className="absolute -top-1.5 -right-2 px-1 py-0.2 rounded-full text-[8px] bg-rose-500 text-white font-bold">
+              2
+            </span>
+          </div>
+          <span>Radar</span>
+        </button>
+
+        <button
+          onClick={() => setCurrentTab('SETTINGS')}
+          className="min-h-[44px] min-w-[54px] flex flex-col items-center justify-center gap-1 text-[10px] font-bold transition focus-visible:ring-2 focus-visible:ring-amber-500"
+          style={{ color: currentTab === 'SETTINGS' ? 'var(--accent-primary)' : 'var(--text-muted)' }}
+        >
+          <Settings className="w-5 h-5" />
+          <span>Security</span>
+        </button>
+      </nav>
+
+      {/* Slide-over Fullscreen Dispute Workspace Drawer */}
       {selectedDispute && (
         <DisputeDrawer
           dispute={selectedDispute}
@@ -1664,29 +1843,33 @@ export default function DashboardPage() {
 
       {/* WhatsApp Modal Trigger from Sidebar */}
       {whatsAppModalOpen && (
-        <div className="fixed inset-0 z-60 bg-black/70 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-60 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
           <div 
-            className="p-6 rounded-3xl max-w-md w-full border space-y-4 shadow-2xl"
+            className="p-6 rounded-3xl max-w-md w-full border space-y-4 shadow-2xl animate-slide-up"
             style={{ 
               backgroundColor: 'var(--surface)', 
               borderColor: 'var(--border-color)' 
             }}
           >
-            <div className="flex items-center justify-between border-b pb-3 border-slate-700">
-              <span className="font-bold text-sm">WhatsApp Autopilot Live Preview</span>
-              <button onClick={() => setWhatsAppModalOpen(false)} className="text-slate-400 hover:text-white">
+            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: 'var(--border-color)' }}>
+              <span className="font-bold text-sm font-serif-heading">WhatsApp Autopilot Live Preview</span>
+              <button 
+                onClick={() => setWhatsAppModalOpen(false)} 
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-white"
+                aria-label="Close modal"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
             <p className="text-xs text-slate-300 leading-relaxed">
-              When a dispute arrives, your WhatsApp receives an immediate 1-tap card. You can test it in the WhatsApp Autopilot tab on the left sidebar!
+              When a dispute arrives, your WhatsApp receives an immediate 1-tap card. You can test it in the WhatsApp Autopilot tab!
             </p>
             <button
               onClick={() => {
                 setWhatsAppModalOpen(false);
                 setCurrentTab('WHATSAPP_AUTOPILOT');
               }}
-              className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs transition"
+              className="w-full min-h-[44px] py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs transition shadow-sm"
             >
               Open WhatsApp Simulator
             </button>

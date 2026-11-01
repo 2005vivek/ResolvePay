@@ -164,3 +164,72 @@ html.light .spotlight-active {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Smooth & Consistent 150-200ms Transitions */
+.transition-smooth {
+  transition: transform 0.18s ease-out, opacity 0.18s ease-out, background-color 0.18s ease-out, border-color 0.18s ease-out;
+}
+
+/* Slide Up In Animation */
+@keyframes slideUpIn {
+  0% {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slideUpIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Skeleton Loading Shimmer */
+@keyframes shimmerPulse {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.03) 25%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.03) 75%);
+  background-size: 200% 100%;
+  animation: shimmerPulse 1.6s infinite linear;
+}
+
+html.light .skeleton-shimmer {
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.04) 25%, rgba(0, 0, 0, 0.09) 50%, rgba(0, 0, 0, 0.04) 75%);
+  background-size: 200% 100%;
+  animation: shimmerPulse 1.6s infinite linear;
+}
+
+/* Streaming AI typing cursor */
+@keyframes blinkCursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.typing-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  background-color: var(--accent-primary);
+  vertical-align: middle;
+  margin-left: 2px;
+  animation: blinkCursor 0.8s infinite;
+}
+
+/* Accessible prefers-reduced-motion standard */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

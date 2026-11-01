@@ -49,11 +49,11 @@ export function calculateDeadlineUrgency(deadlineIso?: string | null): DeadlineU
 
   let label = '';
   if (days > 0) {
-    label = `${days}d ${remainingHours}h left`;
+    label = `Due in ${days}d ${remainingHours}h`;
   } else if (totalHours > 0) {
-    label = `${totalHours}h ${remainingMinutes}m left`;
+    label = `Due in ${totalHours}h ${remainingMinutes}m`;
   } else {
-    label = `${remainingMinutes}m left`;
+    label = `Due in ${remainingMinutes}m`;
   }
 
   let urgency: 'CRITICAL' | 'ELEVATED' | 'ROUTINE';
@@ -277,4 +277,52 @@ export function generateMultilingualRebuttal(
         `Merchant Terms & Conditions Section 4.1 expressly stipulates that carrier-verified delivery constitutes completed fulfillment. Under PayPal Seller Protection Policy, the merchant requests immediate closure in the seller's favor and release of escrow funds.\n\n` +
         `Respectfully submitted,\nMerchant Operations & Compliance Officer`;
   }
+}
+
+/**
+ * Humanizes raw PayPal dispute reason codes into executive readable labels.
+ */
+export function humanizeReason(reason?: string | null): string {
+  if (!reason || reason.trim() === '') return 'Dispute claim';
+  const r = reason.trim().toUpperCase();
+  if (r.includes('NOT_RECEIVED') || r === 'MERCHANDISE_OR_SERVICE_NOT_RECEIVED') {
+    return 'Item not received';
+  }
+  if (r.includes('NOT_AS_DESCRIBED') || r === 'MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED') {
+    return 'Significantly not as described';
+  }
+  if (r.includes('UNAUTHORISED') || r.includes('UNAUTHORIZED') || r === 'UNAUTHORISED_TRANSACTION') {
+    return 'Unauthorized transaction';
+  }
+  if (r.includes('CREDIT_NOT_PROCESSED')) {
+    return 'Credit / refund not processed';
+  }
+  if (r.includes('DUPLICATE_PROCESSING') || r.includes('DUPLICATE')) {
+    return 'Duplicate billing charge';
+  }
+  if (r.includes('INCORRECT_AMOUNT')) {
+    return 'Incorrect transaction amount';
+  }
+  if (r.includes('CANCELED_RECURRING') || r.includes('CANCELLED')) {
+    return 'Canceled recurring subscription';
+  }
+  return reason
+    .toLowerCase()
+    .split('_')
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
+/**
+ * Humanizes dispute status codes
+ */
+export function humanizeStatus(status?: string | null): { label: string; isPending: boolean } {
+  const s = (status || '').toUpperCase();
+  if (s === 'UNDER_REVIEW') {
+    return { label: 'Defended', isPending: false };
+  }
+  if (s === 'RESOLVED') {
+    return { label: 'Resolved', isPending: false };
+  }
+  return { label: 'Action required', isPending: true };
 }

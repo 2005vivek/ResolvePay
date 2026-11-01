@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Dispute, EvidenceItem, CarrierProof, SupportedLanguage } from '../lib/types';
 import { fetchEvidenceItems, uploadEvidenceFile, generateAiDraft, submitDisputeResponse } from '../lib/api';
 import { 
@@ -8,14 +8,16 @@ import {
   formatCurrency, 
   calculateTacticalRecommendation, 
   getPolicyMatch, 
-  generateMultilingualRebuttal 
+  generateMultilingualRebuttal,
+  humanizeReason
 } from '../lib/utils';
 import { useToast } from './Toast';
 import { 
   X, Sparkles, Upload, FileText, CheckCircle2, AlertTriangle, 
   ShieldCheck, ArrowRight, Loader2, Copy, Check, ExternalLink,
   Truck, Clock, ChevronRight, FileCheck, Eye, ShieldAlert,
-  AlertCircle, Undo2, Globe, Scale, Send, Shield, RefreshCw
+  AlertCircle, Undo2, Globe, Scale, Send, Shield, RefreshCw,
+  RotateCcw
 } from 'lucide-react';
 
 interface Props {
@@ -31,14 +33,16 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
   const [loadingEvidence, setLoadingEvidence] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [generatingDraft, setGeneratingDraft] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const [draftText, setDraftText] = useState('');
   const [initialDraftText, setInitialDraftText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [submittedStatus, setSubmittedStatus] = useState(dispute.status === 'UNDER_REVIEW');
+  const [submittedStatus, setSubmittedStatus] = useState(dispute.status === 'UNDER_REVIEW' || dispute.status === 'RESOLVED');
   const [activeTab, setActiveTab] = useState<'ai' | 'carrier' | 'evidence' | 'policy'>('ai');
   const [previewItem, setPreviewItem] = useState<EvidenceItem | null>(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
 
   // Smart Features States
   const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>('en');
@@ -46,18 +50,50 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
   const [fetchingCarrier, setFetchingCarrier] = useState(false);
   const [selectedCarrier, setSelectedCarrier] = useState<'FEDEX' | 'DHL' | 'USPS' | 'SHIPROCKET'>('FEDEX');
 
+  const streamingTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   // Check if draft has unsaved user edits
   const isDirty = draftText.trim() !== '' && draftText !== initialDraftText && !submittedStatus;
 
-  // Real-time SLA urgency calculation
+  // Real-time SLA urgency calculation (Due in Xd Yh format)
   const deadlineInfo = calculateDeadlineUrgency(dispute.deadline);
 
   // Tactical AI Evaluation
   const tactical = calculateTacticalRecommendation(dispute, evidenceList.length, carrierProof);
   const policyMatch = getPolicyMatch(dispute.reason);
 
+  // Auto-close on Escape key
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        if (previewItem) {
+          setPreviewItem(null);
+        } else if (showSubmitConfirm) {
+          setShowSubmitConfirm(false);
+        } else if (showExitConfirm) {
+          setShowExitConfirm(false);
+        } else {
+          handleAttemptClose();
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isDirty, previewItem, showSubmitConfirm, showExitConfirm]);
+
+  // Load evidence on dispute change
   useEffect(() => {
     loadEvidence();
+  }, [dispute.id]);
+
+  // AUTO-GENERATE AI REBUTTAL ON OPEN WITH STREAMING EFFECT (Eliminating manual prompt)
+  useEffect(() => {
+    if (!submittedStatus && !draftText) {
+      triggerStreamingDraft();
+    }
+    return () => {
+      if (streamingTimerRef.current) clearInterval(streamingTimerRef.current);
+    };
   }, [dispute.id]);
 
   async function loadEvidence() {
@@ -80,7 +116,42 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
     }
   }
 
-  // Smart Feature: 1-Click Auto-Carrier Proof Fetcher
+  // Streaming AI draft generator
+  function triggerStreamingDraft(customCarrier?: CarrierProof | null) {
+    if (streamingTimerRef.current) clearInterval(streamingTimerRef.current);
+    setGeneratingDraft(true);
+    setIsStreaming(true);
+    setDraftText('');
+
+    // Pre-calculate facts
+    const activeCarrier = customCarrier !== undefined ? customCarrier : carrierProof;
+    const fullText = generateMultilingualRebuttal(
+      selectedLanguage,
+      dispute.paypalDisputeId,
+      dispute.amount,
+      dispute.buyerName || 'Buyer',
+      activeCarrier
+    );
+
+    let charIndex = 0;
+    const chunkSize = 8; // Characters per tick for smooth natural streaming
+    const intervalTime = 20;
+
+    streamingTimerRef.current = setInterval(() => {
+      charIndex += chunkSize;
+      if (charIndex >= fullText.length) {
+        setDraftText(fullText);
+        setInitialDraftText(fullText);
+        setIsStreaming(false);
+        setGeneratingDraft(false);
+        if (streamingTimerRef.current) clearInterval(streamingTimerRef.current);
+      } else {
+        setDraftText(fullText.slice(0, charIndex));
+      }
+    }, intervalTime);
+  }
+
+  // 1-Click Auto-Carrier Proof Fetcher
   async function handleAutoFetchCarrier() {
     setFetchingCarrier(true);
     try {
@@ -101,7 +172,6 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
 
       setCarrierProof(newProof);
 
-      // Auto-upload as verified proof file
       const syntheticPODContent = 
         `=======================================================\n` +
         `OFFICIAL ${selectedCarrier} DIGITAL PROOF OF DELIVERY (POD)\n` +
@@ -127,10 +197,8 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
         'Carrier Proof Synced'
       );
 
-      // Automatically update the AI draft with the new carrier facts
-      const freshRebuttal = generateMultilingualRebuttal(selectedLanguage, dispute.paypalDisputeId, dispute.amount, dispute.buyerName || 'Buyer', newProof);
-      setDraftText(freshRebuttal);
-      setInitialDraftText(freshRebuttal);
+      // Re-stream draft with newly ground facts
+      triggerStreamingDraft(newProof);
 
     } catch (err: any) {
       showToast(err.message || 'Carrier API lookup timed out', 'error', 'Carrier Fetch Failed');
@@ -139,11 +207,12 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
     }
   }
 
-  // Smart Feature: Change Language & Auto-Translate Rebuttal
+  // Change Language & Auto-Translate Rebuttal
   function handleLanguageChange(lang: SupportedLanguage) {
     setSelectedLanguage(lang);
     const updated = generateMultilingualRebuttal(lang, dispute.paypalDisputeId, dispute.amount, dispute.buyerName || 'Buyer', carrierProof);
     setDraftText(updated);
+    setInitialDraftText(updated);
     showToast(`Rebuttal adapted for ${lang.toUpperCase()} dispute review jurisdiction`, 'info', 'Language Switched');
   }
 
@@ -168,61 +237,59 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
     }
   }
 
-  async function handleGenerateDraft() {
-    setGeneratingDraft(true);
-    try {
-      if (evidenceList.length > 0 || carrierProof) {
-        // Use multilingual grounded draft with carrier facts
-        const generated = generateMultilingualRebuttal(
-          selectedLanguage, 
-          dispute.paypalDisputeId, 
-          dispute.amount, 
-          dispute.buyerName || 'Buyer', 
-          carrierProof
-        );
-        setDraftText(generated);
-        setInitialDraftText(generated);
-        showToast('Generated evidence-grounded AI rebuttal defense', 'success', 'Draft Generated');
-      } else {
-        const text = await generateAiDraft(dispute.id);
-        setDraftText(text);
-        setInitialDraftText(text);
-        showToast('Generated baseline AI defense statement', 'success', 'Draft Generated');
-      }
-    } catch (err: any) {
-      showToast(err.message || 'AI generation failed', 'error', 'Drafting Error');
-    } finally {
-      setGeneratingDraft(false);
-    }
-  }
-
-  async function handleSubmitResponse() {
+  // OPTIMISTIC SUBMIT WITH CONFIRMATION & UNDO
+  function handleRequestSubmit() {
     if (!draftText.trim()) {
-      showToast('Defense rebuttal statement cannot be empty', 'warning', 'Validation');
+      showToast('Defense rebuttal statement cannot be empty', 'warning', 'Validation Error');
       return;
     }
+    setShowSubmitConfirm(true);
+  }
+
+  async function handleConfirmSubmit() {
+    setShowSubmitConfirm(false);
+    const previousStatus = submittedStatus;
+
+    // 1. Optimistic UI update: immediate visual feedback
+    setSubmittedStatus(true);
+    onDisputeUpdated();
+
+    showToast(
+      `Dispute ${dispute.paypalDisputeId} rebuttal submitted to PayPal Dispute Center`, 
+      'success', 
+      'Defense Transmitted', 
+      false,
+      () => {
+        // Undo callback
+        setSubmittedStatus(previousStatus);
+        onDisputeUpdated();
+        showToast(`Rolled back submission for ${dispute.paypalDisputeId}`, 'info', 'Submission Undone');
+      },
+      'Undo'
+    );
 
     setSubmitting(true);
     try {
       await submitDisputeResponse(dispute.id, draftText);
-      setSubmittedStatus(true);
-      showToast(
-        `Dispute ${dispute.paypalDisputeId} successfully defended via Transactional Outbox`, 
-        'success', 
-        'Dispute Defended', true
-      );
-      onDisputeUpdated();
     } catch (err: any) {
-      showToast(err.message || 'Failed to submit response', 'error', 'Submission Failed');
+      // Rollback on actual failure
+      setSubmittedStatus(previousStatus);
+      onDisputeUpdated();
+      showToast(err.message || 'Submission failed on PayPal API', 'error', 'API Error (Rolled Back)');
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-sm flex justify-end transition-all">
+    <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-xs flex justify-end transition-smooth">
+      
+      {/* DRAWER CONTAINER: FULL-SCREEN ON MOBILE, 3XL ON DESKTOP */}
       <div 
-        className="w-full max-w-3xl h-full shadow-2xl flex flex-col border-l transition-transform duration-300"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="dispute-title"
+        className="w-full sm:max-w-3xl h-full shadow-2xl flex flex-col border-l transition-smooth"
         style={{
           backgroundColor: 'var(--surface)',
           borderColor: 'var(--border-color)',
@@ -235,50 +302,59 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
           className="p-4 sm:p-6 border-b flex items-start justify-between shrink-0"
           style={{ borderColor: 'var(--border-color)' }}
         >
-          <div>
+          <div className="min-w-0 pr-2">
             <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="text-lg sm:text-xl font-bold font-serif-heading tracking-tight">
+              <span id="dispute-title" className="text-lg sm:text-xl font-bold font-serif-heading tracking-tight text-[var(--accent-primary)]">
                 {dispute.paypalDisputeId}
               </span>
               
-              {/* Status Pill */}
-              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+              {/* Status Pill with Icon & Label */}
+              <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1.5 ${
                 submittedStatus 
-                  ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30' 
+                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' 
                   : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
               }`}>
-                {submittedStatus ? 'DEFENDED • UNDER REVIEW' : 'ACTION REQUIRED'}
+                {submittedStatus ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
+                <span>{submittedStatus ? 'Defended' : 'Action Required'}</span>
               </span>
 
-              {/* SLA Timer */}
+              {/* SLA Timer (Red when under 24 hours) */}
               {dispute.deadline && (
-                <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold flex items-center gap-1 ${
+                <span className={`px-2.5 py-1 rounded-full text-[11px] font-mono font-bold inline-flex items-center gap-1.5 ${
                   deadlineInfo.urgency === 'CRITICAL'
                     ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30 animate-pulse'
                     : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
                 }`}>
-                  <Clock className="w-3 h-3" />
-                  {deadlineInfo.label}
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>{deadlineInfo.label}</span>
                 </span>
               )}
             </div>
 
-            <div className="text-xs mt-1.5 flex items-center gap-2" style={{ color: 'var(--text-muted)' }}>
-              <span className="font-semibold" style={{ color: 'var(--foreground)' }}>
+            <div className="text-xs mt-1.5 flex items-center gap-2 flex-wrap" style={{ color: 'var(--text-muted)' }}>
+              <span className="font-semibold text-sm font-mono" style={{ color: 'var(--foreground)' }}>
                 {formatCurrency(dispute.amount, dispute.currency)}
               </span>
               <span>•</span>
-              <span className="truncate">{dispute.reason}</span>
+              <span className="font-medium text-slate-300">{humanizeReason(dispute.reason)}</span>
+              {dispute.buyerName && (
+                <>
+                  <span>•</span>
+                  <span>Buyer: {dispute.buyerName}</span>
+                </>
+              )}
             </div>
           </div>
 
+          {/* Close Button with 44px minimum tap target */}
           <button 
             onClick={handleAttemptClose}
-            className="p-2 rounded-xl transition hover:opacity-80"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl transition hover:opacity-80 focus-visible:ring-2 focus-visible:ring-amber-500/70"
             style={{ 
               backgroundColor: 'var(--surface-hover)',
               color: 'var(--text-muted)' 
             }}
+            aria-label="Close dispute workspace drawer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -286,17 +362,17 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
 
         {/* Tactical Recommendation Bar */}
         <div 
-          className="px-4 sm:px-6 py-3 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+          className="px-4 sm:px-6 py-3 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs shrink-0"
           style={{ 
             borderColor: 'var(--border-color)',
-            backgroundColor: tactical.action === 'FIGHT_DISPUTE' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(245, 158, 11, 0.08)'
+            backgroundColor: tactical.action === 'FIGHT_DISPUTE' ? 'rgba(245, 165, 36, 0.08)' : 'rgba(239, 68, 68, 0.08)'
           }}
         >
           <div className="flex items-center gap-2.5">
-            <Scale className="w-4 h-4 text-emerald-400 shrink-0" />
+            <Scale className="w-4 h-4 text-[var(--accent-primary)] shrink-0" />
             <div>
               <span className="font-bold">AI Win Probability: </span>
-              <span className={`font-mono font-black ${tactical.winProbability >= 70 ? 'text-emerald-400' : 'text-amber-400'}`}>
+              <span className="font-mono font-black text-[var(--accent-primary)]">
                 {tactical.winProbability}%
               </span>
               <span className="ml-2 font-medium" style={{ color: 'var(--text-muted)' }}>
@@ -305,94 +381,77 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+            <span className="px-2.5 py-1 rounded-md text-[10px] font-mono font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
               Protects {formatCurrency(dispute.amount)}
             </span>
           </div>
         </div>
 
-        {/* PayPal Official SLA & Failure-to-Respond Policy Alert Banner */}
-        {!submittedStatus && (
-          <div 
-            className="px-4 sm:px-6 py-2.5 border-b text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition"
-            style={{
-              borderColor: 'var(--sla-border)',
-              backgroundColor: 'var(--sla-bg)',
-              color: 'var(--sla-text)'
-            }}
-          >
-            <div className="flex items-start sm:items-center gap-2.5 text-slate-300">
-              <AlertTriangle className={`w-4 h-4 shrink-0 mt-0.5 sm:mt-0 ${deadlineInfo.urgency === 'CRITICAL' ? 'text-rose-400 animate-pulse' : 'text-amber-400'}`} />
-              <div>
-                <span className="font-bold text-white">PayPal SLA Policy (10-Day Response Window): </span>
-                <span className="text-[11px] text-slate-300 leading-snug">
-                  If merchant fails to submit evidence before deadline, PayPal invokes <strong className="text-rose-400">Automatic Default Loss</strong> (Auto-Forfeit), clawing back {formatCurrency(dispute.amount)} plus a non-refundable <strong>$15.00 Dispute Fee</strong>.
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 font-mono text-[11px]">
-              <span className="px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-400 font-bold">
-                Penalty: +$15.00 Fee
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* Navigation Tabs */}
+        {/* Navigation Tabs (At least 44px tap target height) */}
         <div 
+          role="tablist"
           className="flex border-b px-4 sm:px-6 shrink-0 gap-2 overflow-x-auto no-scrollbar text-xs font-semibold"
           style={{ borderColor: 'var(--border-color)' }}
         >
           <button 
+            role="tab"
+            aria-selected={activeTab === 'ai'}
             onClick={() => setActiveTab('ai')}
-            className={`py-3 px-3 border-b-2 flex items-center gap-1.5 transition shrink-0 ${
+            className={`min-h-[44px] py-2.5 px-3 border-b-2 flex items-center gap-1.5 transition shrink-0 focus-visible:ring-2 focus-visible:ring-amber-500/50 ${
               activeTab === 'ai'
                 ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] font-bold'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>AI Rebuttal Workspace</span>
+            <Sparkles className="w-4 h-4" />
+            <span>AI Rebuttal</span>
+            {isStreaming && <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />}
           </button>
 
           <button 
+            role="tab"
+            aria-selected={activeTab === 'carrier'}
             onClick={() => setActiveTab('carrier')}
-            className={`py-3 px-3 border-b-2 flex items-center gap-1.5 transition shrink-0 ${
+            className={`min-h-[44px] py-2.5 px-3 border-b-2 flex items-center gap-1.5 transition shrink-0 focus-visible:ring-2 focus-visible:ring-amber-500/50 ${
               activeTab === 'carrier'
                 ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] font-bold'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Truck className="w-3.5 h-3.5" />
-            <span>Auto-Carrier Proofs</span>
+            <Truck className="w-4 h-4" />
+            <span>Carrier POD</span>
             {carrierProof && (
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
             )}
           </button>
 
           <button 
+            role="tab"
+            aria-selected={activeTab === 'evidence'}
             onClick={() => setActiveTab('evidence')}
-            className={`py-3 px-3 border-b-2 flex items-center gap-1.5 transition shrink-0 ${
+            className={`min-h-[44px] py-2.5 px-3 border-b-2 flex items-center gap-1.5 transition shrink-0 focus-visible:ring-2 focus-visible:ring-amber-500/50 ${
               activeTab === 'evidence'
                 ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] font-bold'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
-            <FileText className="w-3.5 h-3.5" />
+            <FileText className="w-4 h-4" />
             <span>Evidence Vault ({evidenceList.length})</span>
           </button>
 
           <button 
+            role="tab"
+            aria-selected={activeTab === 'policy'}
             onClick={() => setActiveTab('policy')}
-            className={`py-3 px-3 border-b-2 flex items-center gap-1.5 transition shrink-0 ${
+            className={`min-h-[44px] py-2.5 px-3 border-b-2 flex items-center gap-1.5 transition shrink-0 focus-visible:ring-2 focus-visible:ring-amber-500/50 ${
               activeTab === 'policy'
                 ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] font-bold'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Store Policy Match</span>
+            <ShieldCheck className="w-4 h-4" />
+            <span>Policy Match</span>
           </button>
         </div>
 
@@ -403,7 +462,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
           {activeTab === 'ai' && (
             <div className="space-y-4">
               
-              {/* Language Selector Bar */}
+              {/* Language Selector Bar (44px tap targets) */}
               <div 
                 className="p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
                 style={{ 
@@ -412,7 +471,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
                 }}
               >
                 <div className="flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-sky-400" />
+                  <Globe className="w-4 h-4 text-[var(--accent-primary)]" />
                   <span className="font-semibold">Reviewer Language:</span>
                 </div>
                 <div className="flex items-center gap-1.5 flex-wrap">
@@ -420,9 +479,9 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
                     <button
                       key={lang}
                       onClick={() => handleLanguageChange(lang)}
-                      className={`px-2.5 py-1 rounded-lg font-mono text-[11px] font-bold uppercase transition ${
+                      className={`min-h-[40px] px-3.5 py-1.5 rounded-lg font-mono text-xs font-bold uppercase transition focus-visible:ring-2 focus-visible:ring-amber-500/50 ${
                         selectedLanguage === lang
-                          ? 'bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] font-bold shadow-xs'
+                          ? 'bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] shadow-xs'
                           : 'bg-black/20 text-slate-400 hover:text-white'
                       }`}
                     >
@@ -434,25 +493,31 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
 
               {/* Text Area Rebuttal */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <label className="text-xs font-bold uppercase tracking-wider flex items-center gap-2" style={{ color: 'var(--text-muted)' }}>
                     <span>Legal Defense Statement</span>
-                    {draftText && (
+                    {isStreaming ? (
+                      <span className="text-[11px] text-amber-400 font-mono flex items-center gap-1">
+                        <Sparkles className="w-3 h-3 animate-spin" />
+                        <span>Streaming AI Rebuttal...</span>
+                      </span>
+                    ) : draftText ? (
                       <span className="text-[10px] text-emerald-400 font-mono font-normal">
                         • Verified Grounded Facts
                       </span>
-                    )}
+                    ) : null}
                   </label>
 
                   <div className="flex items-center gap-2">
                     {draftText && (
                       <button
                         onClick={() => {
-                          navigator.clipboard.writeText(draftText);
+                          navigator.clipboard?.writeText(draftText);
                           setCopied(true);
                           setTimeout(() => setCopied(false), 2000);
                         }}
-                        className="text-xs flex items-center gap-1 text-slate-400 hover:text-white transition"
+                        className="min-h-[38px] px-3 py-1.5 rounded-lg border text-xs flex items-center gap-1.5 text-slate-300 hover:text-white transition"
+                        style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--surface-hover)' }}
                       >
                         {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                         <span>{copied ? 'Copied' : 'Copy'}</span>
@@ -460,28 +525,42 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
                     )}
 
                     <button
-                      onClick={handleGenerateDraft}
+                      onClick={() => triggerStreamingDraft()}
                       disabled={generatingDraft}
-                      className="px-3 py-1.5 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-400 border border-sky-500/40 text-xs font-bold flex items-center gap-1.5 transition disabled:opacity-50"
+                      className="min-h-[38px] px-3.5 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition disabled:opacity-50 hover:brightness-105"
+                      style={{ 
+                        backgroundColor: 'var(--surface-hover)', 
+                        borderColor: 'var(--accent-primary)',
+                        color: 'var(--accent-primary)'
+                      }}
+                      title="Regenerate defense statement with latest grounded carrier facts"
                     >
                       {generatingDraft ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                      <span>Regenerate with AI</span>
+                      <span>Regenerate Rebuttal</span>
                     </button>
                   </div>
                 </div>
 
-                <textarea
-                  value={draftText}
-                  onChange={(e) => setDraftText(e.target.value)}
-                  placeholder="Click 'Regenerate with AI' or fetch carrier proofs to auto-generate a comprehensive legal defense rebuttal..."
-                  rows={14}
-                  className="w-full p-4 rounded-xl border text-xs font-mono leading-relaxed focus:outline-none focus:ring-1 focus:ring-sky-500 transition resize-y"
-                  style={{
-                    backgroundColor: 'var(--surface-hover)',
-                    borderColor: 'var(--border-color)',
-                    color: 'var(--foreground)'
-                  }}
-                />
+                <div className="relative">
+                  <textarea
+                    value={draftText}
+                    onChange={(e) => setDraftText(e.target.value)}
+                    rows={12}
+                    className="w-full p-4 rounded-xl border text-xs font-mono leading-relaxed focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 transition resize-y"
+                    style={{
+                      backgroundColor: 'var(--surface-hover)',
+                      borderColor: 'var(--border-color)',
+                      color: 'var(--foreground)'
+                    }}
+                    placeholder="Auto-generating Gemini AI legal defense rebuttal..."
+                  />
+                  {isStreaming && (
+                    <div className="absolute bottom-3 right-3 px-2 py-1 rounded bg-amber-500/20 text-amber-400 text-[10px] font-mono flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                      <span>Generating with Gemini</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Carrier Fact Summary Banner if attached */}
@@ -489,8 +568,8 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
                 <div 
                   className="p-3.5 rounded-xl border flex items-center gap-3 text-xs"
                   style={{ 
-                    backgroundColor: 'rgba(16, 185, 129, 0.08)',
-                    borderColor: 'rgba(16, 185, 129, 0.25)'
+                    backgroundColor: 'rgba(52, 211, 153, 0.08)',
+                    borderColor: 'rgba(52, 211, 153, 0.25)'
                   }}
                 >
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -515,25 +594,23 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
                   borderColor: 'var(--border-color)' 
                 }}
               >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-black flex items-center gap-2">
-                      <Truck className="w-4 h-4 text-sky-400" />
-                      <span>Logistics & Courier Telemetry Integration</span>
-                    </h4>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                      Auto-queries shipping carrier APIs to retrieve certified Proof of Delivery (POD) & digital signature.
-                    </p>
-                  </div>
+                <div>
+                  <h4 className="text-sm font-black flex items-center gap-2">
+                    <Truck className="w-4 h-4 text-[var(--accent-primary)]" />
+                    <span>Logistics & Courier Telemetry Integration</span>
+                  </h4>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                    Auto-queries shipping carrier APIs to retrieve certified Proof of Delivery (POD) & digital signature.
+                  </p>
                 </div>
 
-                {/* Carrier Selector */}
+                {/* Carrier Selector (44px tap targets) */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   {(['FEDEX', 'DHL', 'USPS', 'SHIPROCKET'] as const).map((carrier) => (
                     <button
                       key={carrier}
                       onClick={() => setSelectedCarrier(carrier)}
-                      className={`p-3 rounded-xl border text-xs font-bold flex flex-col items-center gap-1.5 transition ${
+                      className={`min-h-[44px] p-3 rounded-xl border text-xs font-bold flex flex-col items-center justify-center gap-1.5 transition ${
                         selectedCarrier === carrier
                           ? 'bg-[var(--accent-primary)]/15 border-[var(--accent-primary)] text-[var(--accent-primary)] shadow-xs'
                           : 'bg-black/10 border-slate-700/60 text-slate-400 hover:text-white'
@@ -549,7 +626,8 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
                 <button
                   onClick={handleAutoFetchCarrier}
                   disabled={fetchingCarrier}
-                  style={{ backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }} className="w-full py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md transition disabled:opacity-50 hover:brightness-105 active:scale-98"
+                  style={{ backgroundColor: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)' }}
+                  className="w-full min-h-[44px] py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md transition disabled:opacity-50 hover:brightness-105 active:scale-98"
                 >
                   {fetchingCarrier ? (
                     <>
@@ -570,8 +648,8 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
                 <div 
                   className="p-5 rounded-2xl border space-y-3"
                   style={{ 
-                    backgroundColor: 'rgba(16, 185, 129, 0.06)',
-                    borderColor: 'rgba(16, 185, 129, 0.3)'
+                    backgroundColor: 'rgba(52, 211, 153, 0.06)',
+                    borderColor: 'rgba(52, 211, 153, 0.3)'
                   }}
                 >
                   <div className="flex items-center justify-between">
@@ -579,7 +657,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
                       <CheckCircle2 className="w-4 h-4" />
                       <span>CERTIFIED PROOF OF DELIVERY ATTACHED</span>
                     </span>
-                    <span className="text-[11px] font-mono text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded">
+                    <span className="text-[11px] font-mono text-emerald-400 bg-emerald-500/20 px-2.5 py-0.5 rounded font-bold">
                       {carrierProof.status}
                     </span>
                   </div>
@@ -611,7 +689,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
                     color: 'var(--text-muted)' 
                   }}
                 >
-                  <Truck className="w-8 h-8 mx-auto opacity-40 text-sky-400" />
+                  <Truck className="w-8 h-8 mx-auto opacity-40 text-[var(--accent-primary)]" />
                   <p>No carrier proof attached yet. Click the button above to auto-fetch.</p>
                 </div>
               )}
@@ -623,7 +701,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
             <div className="space-y-4">
               {/* Upload Card */}
               <div 
-                className="p-4 rounded-xl border border-dashed text-center cursor-pointer transition hover:border-sky-500"
+                className="p-4 rounded-xl border border-dashed text-center cursor-pointer transition hover:border-[var(--accent-primary)]"
                 style={{ 
                   backgroundColor: 'var(--surface-hover)', 
                   borderColor: 'var(--border-color)' 
@@ -636,8 +714,8 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
                   onChange={handleFileUpload} 
                   disabled={uploading}
                 />
-                <label htmlFor="evidence-file-input" className="cursor-pointer block space-y-2">
-                  <Upload className="w-6 h-6 mx-auto text-sky-400" />
+                <label htmlFor="evidence-file-input" className="cursor-pointer block space-y-2 p-2">
+                  <Upload className="w-6 h-6 mx-auto text-[var(--accent-primary)]" />
                   <div className="text-xs font-bold">
                     {uploading ? 'Ingesting Evidence...' : 'Click to Upload Additional Invoices, Receipts, or Photos'}
                   </div>
@@ -670,9 +748,9 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
 
                     <button
                       onClick={() => setPreviewItem(item)}
-                      className="px-2.5 py-1 rounded bg-black/20 hover:bg-black/40 text-sky-400 text-[11px] font-bold flex items-center gap-1 shrink-0 transition"
+                      className="min-h-[36px] px-3 py-1 rounded-lg bg-black/20 hover:bg-black/40 text-[var(--accent-primary)] text-xs font-bold flex items-center gap-1 shrink-0 transition"
                     >
-                      <Eye className="w-3 h-3" />
+                      <Eye className="w-3.5 h-3.5" />
                       <span>View</span>
                     </button>
                   </div>
@@ -714,34 +792,41 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
 
         </div>
 
-        {/* Footer Actions Bar */}
+        {/* STICKY FOOTER ACTIONS BAR: AT LEAST 44PX TAP TARGETS & PINNED TO BOTTOM */}
         <div 
-          className="p-4 sm:p-6 border-t flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0"
+          className="sticky bottom-0 z-20 p-4 sm:p-6 border-t flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0 shadow-lg"
           style={{ 
             borderColor: 'var(--border-color)',
             backgroundColor: 'var(--surface)'
           }}
         >
           <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            Status: <span className="font-bold text-slate-300">{submittedStatus ? 'Defended' : 'Draft Prepared'}</span>
+            Status: <span className="font-bold" style={{ color: submittedStatus ? '#34D399' : '#F5A524' }}>
+              {submittedStatus ? 'Defended • In Review' : 'Draft Prepared'}
+            </span>
           </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <button
               onClick={handleAttemptClose}
-              className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border text-xs font-semibold transition"
+              className="flex-1 sm:flex-none min-h-[44px] px-4 py-2.5 rounded-xl border text-xs font-semibold transition hover:opacity-80 focus-visible:ring-2 focus-visible:ring-amber-500/50"
               style={{ 
                 borderColor: 'var(--border-color)',
-                backgroundColor: 'var(--surface-hover)' 
+                backgroundColor: 'var(--surface-hover)',
+                color: 'var(--foreground)'
               }}
             >
               Close
             </button>
 
             <button
-              onClick={handleSubmitResponse}
+              onClick={handleRequestSubmit}
               disabled={submitting || submittedStatus || !draftText.trim()}
-              style={{ backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }} className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl hover:brightness-105 transition text-xs font-bold flex items-center justify-center gap-2 shadow-lg transition disabled:opacity-50 active:scale-98"
+              style={{ 
+                backgroundColor: submittedStatus ? 'rgba(52, 211, 153, 0.2)' : 'var(--btn-primary-bg)', 
+                color: submittedStatus ? '#34D399' : 'var(--btn-primary-text)' 
+              }}
+              className="flex-1 sm:flex-none min-h-[44px] px-6 py-2.5 rounded-xl transition text-xs font-bold flex items-center justify-center gap-2 shadow-lg transition disabled:opacity-50 hover:brightness-105 active:scale-98 focus-visible:ring-2 focus-visible:ring-amber-500/70"
             >
               {submitting ? (
                 <>
@@ -765,19 +850,60 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
 
       </div>
 
-      {/* Unsaved Changes Confirmation Modal */}
-      {showExitConfirm && (
-        <div className="fixed inset-0 z-60 bg-black/70 flex items-center justify-center p-4">
+      {/* CONFIRMATION MODAL FOR RISKY ACTION (SUBMITTING TO PAYPAL) */}
+      {showSubmitConfirm && (
+        <div className="fixed inset-0 z-60 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
           <div 
-            className="p-6 rounded-2xl max-w-md w-full border space-y-4 shadow-2xl"
+            className="p-6 rounded-2xl max-w-md w-full border space-y-4 shadow-2xl animate-slide-up"
+            style={{ 
+              backgroundColor: 'var(--surface)', 
+              borderColor: 'var(--border-color)' 
+            }}
+          >
+            <div className="flex items-center gap-3 text-[var(--accent-primary)]">
+              <ShieldAlert className="w-6 h-6 shrink-0" />
+              <h3 className="font-bold text-base font-serif-heading">Submit Official Rebuttal to PayPal?</h3>
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              You are about to transmit this legal rebuttal and evidence to the PayPal Dispute Engine for case <strong className="text-white font-mono">{dispute.paypalDisputeId}</strong> ({formatCurrency(dispute.amount)}). 
+            </p>
+            <p className="text-[11px] text-amber-400/90 leading-snug">
+              This action waives automatic concessions and initiates official arbitration review with PayPal.
+            </p>
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                onClick={() => setShowSubmitConfirm(false)}
+                className="min-h-[44px] px-4 py-2 rounded-xl text-xs font-semibold border text-slate-300 hover:text-white"
+                style={{ borderColor: 'var(--border-color)' }}
+              >
+                Review Statement
+              </button>
+              <button
+                onClick={handleConfirmSubmit}
+                style={{ backgroundColor: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)' }}
+                className="min-h-[44px] px-5 py-2 rounded-xl text-xs font-bold transition hover:brightness-105 active:scale-98 shadow-md flex items-center gap-1.5"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>Confirm & Transmit</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* UNSAVED CHANGES MODAL */}
+      {showExitConfirm && (
+        <div className="fixed inset-0 z-60 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div 
+            className="p-6 rounded-2xl max-w-md w-full border space-y-4 shadow-2xl animate-slide-up"
             style={{ 
               backgroundColor: 'var(--surface)', 
               borderColor: 'var(--border-color)' 
             }}
           >
             <div className="flex items-center gap-3 text-amber-400">
-              <AlertTriangle className="w-6 h-6" />
-              <h3 className="font-bold text-base">Discard Unsubmitted Rebuttal?</h3>
+              <AlertTriangle className="w-6 h-6 shrink-0" />
+              <h3 className="font-bold text-base font-serif-heading">Discard Unsubmitted Rebuttal?</h3>
             </div>
             <p className="text-xs text-slate-300 leading-relaxed">
               You have drafted an AI rebuttal that has not been submitted to PayPal yet. If you close now, changes will be lost.
@@ -785,7 +911,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 onClick={() => setShowExitConfirm(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-white"
+                className="min-h-[44px] px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-white"
               >
                 Continue Editing
               </button>
@@ -794,7 +920,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
                   setShowExitConfirm(false);
                   onClose();
                 }}
-                className="px-4 py-2 rounded-xl text-xs font-semibold bg-rose-600 text-white"
+                className="min-h-[44px] px-4 py-2 rounded-xl text-xs font-semibold bg-rose-600 text-white"
               >
                 Discard & Close
               </button>
@@ -803,19 +929,23 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
         </div>
       )}
 
-      {/* Inline Evidence Preview Modal */}
+      {/* INLINE EVIDENCE PREVIEW MODAL */}
       {previewItem && (
-        <div className="fixed inset-0 z-60 bg-black/70 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-60 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
           <div 
-            className="p-6 rounded-2xl max-w-2xl w-full border space-y-4 shadow-2xl"
+            className="p-6 rounded-2xl max-w-2xl w-full border space-y-4 shadow-2xl animate-slide-up"
             style={{ 
               backgroundColor: 'var(--surface)', 
               borderColor: 'var(--border-color)' 
             }}
           >
-            <div className="flex items-center justify-between border-b pb-3 border-slate-700">
+            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: 'var(--border-color)' }}>
               <h3 className="font-bold text-sm truncate">{previewItem.filename}</h3>
-              <button onClick={() => setPreviewItem(null)} className="text-slate-400 hover:text-white">
+              <button 
+                onClick={() => setPreviewItem(null)} 
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-white"
+                aria-label="Close preview"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>

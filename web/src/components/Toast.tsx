@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { CheckCircle2, AlertTriangle, AlertCircle, Info, X, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, AlertCircle, Info, X, ShieldCheck, RotateCcw } from 'lucide-react';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -11,10 +11,19 @@ export interface ToastMessage {
   title?: string;
   message: string;
   spotlight?: boolean;
+  onUndo?: () => void;
+  undoLabel?: string;
 }
 
 interface ToastContextType {
-  showToast: (message: string, type?: ToastType, title?: string, spotlight?: boolean) => void;
+  showToast: (
+    message: string, 
+    type?: ToastType, 
+    title?: string, 
+    spotlight?: boolean,
+    onUndo?: () => void,
+    undoLabel?: string
+  ) => void;
   dismissToast: (id: string) => void;
 }
 
@@ -23,19 +32,26 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
-  const showToast = useCallback((message: string, type: ToastType = 'info', title?: string, spotlight?: boolean) => {
+  const showToast = useCallback((
+    message: string, 
+    type: ToastType = 'info', 
+    title?: string, 
+    spotlight?: boolean,
+    onUndo?: () => void,
+    undoLabel: string = 'Undo'
+  ) => {
     const id = Math.random().toString(36).substring(2, 9);
-    // Auto-trigger spotlight for critical warnings or defended actions
     const shouldSpotlight = spotlight !== undefined 
       ? spotlight 
-      : (type === 'warning' || title?.toLowerCase().includes('defended') || title?.toLowerCase().includes('sla'));
+      : (type === 'warning' && (title?.toLowerCase().includes('strict') || title?.toLowerCase().includes('sla')));
 
-    setToasts((prev) => [...prev, { id, type, title, message, spotlight: shouldSpotlight }]);
+    setToasts((prev) => [...prev, { id, type, title, message, spotlight: shouldSpotlight, onUndo, undoLabel }]);
 
-    // Auto-dismiss after 5 seconds
+    // Auto-dismiss after 6 seconds (or longer if undo is active)
+    const timeout = onUndo ? 7000 : 5000;
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 5000);
+    }, timeout);
   }, []);
 
   const dismissToast = useCallback((id: string) => {
@@ -48,15 +64,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={{ showToast, dismissToast }}>
       {children}
 
-      {/* SPOTLIGHT BACKDROP OVERLAY FOR HIGH-PRIORITY WARNINGS / DEFENDED ACTIONS */}
+      {/* SPOTLIGHT BACKDROP OVERLAY FOR HIGH-PRIORITY WARNINGS */}
       {activeSpotlightToast && (
         <div 
           onClick={() => dismissToast(activeSpotlightToast.id)}
-          className="fixed inset-0 z-50 transition-opacity duration-300 spotlight-active flex flex-col items-center justify-start pt-8 sm:pt-12 px-4 overflow-y-auto cursor-pointer"
+          className="fixed inset-0 z-50 transition-opacity duration-200 spotlight-active flex flex-col items-center justify-start pt-8 sm:pt-12 px-4 overflow-y-auto cursor-pointer"
         >
           <div 
             onClick={(e) => e.stopPropagation()} 
-            className="w-full max-w-xl rounded-xl border-2 p-5 sm:p-6 shadow-2xl transition-all animate-top-slide cursor-default"
+            className="w-full max-w-xl rounded-2xl border p-5 sm:p-6 shadow-2xl transition-all animate-top-slide cursor-default"
             style={{ 
               backgroundColor: 'var(--surface)', 
               borderColor: activeSpotlightToast.type === 'warning' ? 'var(--sla-border)' : 'var(--status-emerald)' 
@@ -65,7 +81,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <div className="flex items-start justify-between gap-3.5">
               <div className="flex items-start gap-3.5">
                 <div 
-                  className="w-10 h-10 rounded-lg flex items-center justify-center text-xl shrink-0 shadow-inner"
+                  className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 shadow-inner"
                   style={{
                     backgroundColor: activeSpotlightToast.type === 'warning' ? 'var(--sla-badge-bg)' : 'var(--status-emerald-bg)',
                     color: activeSpotlightToast.type === 'warning' ? 'var(--sla-badge-text)' : 'var(--status-emerald)'
@@ -97,27 +113,28 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 </div>
               </div>
 
-              <button
+              <button 
                 onClick={() => dismissToast(activeSpotlightToast.id)}
-                className="p-1 rounded-md hover:opacity-80 text-base font-bold shrink-0 transition"
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:opacity-80 transition"
                 style={{ color: 'var(--foreground)' }}
+                aria-label="Dismiss spotlight"
               >
-                ✕
+                <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="mt-4 pt-3.5 border-t flex items-center justify-end gap-2.5" style={{ borderColor: 'var(--border-color)' }}>
               <button 
                 onClick={() => dismissToast(activeSpotlightToast.id)} 
-                className="px-3.5 py-1.5 text-xs font-semibold rounded border transition hover:opacity-80"
+                className="min-h-[44px] px-4 py-2 text-xs font-semibold rounded-xl border transition hover:opacity-80 focus-visible:ring-2 focus-visible:ring-amber-500/50"
                 style={{ borderColor: 'var(--border-strong)', color: 'var(--text-secondary)' }}
               >
                 Dismiss
               </button>
               <button 
                 onClick={() => dismissToast(activeSpotlightToast.id)} 
-                className="px-4 py-1.5 text-xs font-bold rounded shadow-sm text-white transition hover:brightness-105"
-                style={{ backgroundColor: activeSpotlightToast.type === 'warning' ? '#D97706' : '#059669' }}
+                className="min-h-[44px] px-5 py-2 text-xs font-bold rounded-xl shadow-sm text-black transition hover:brightness-105 focus-visible:ring-2 focus-visible:ring-amber-500/50"
+                style={{ backgroundColor: 'var(--accent-primary)' }}
               >
                 Acknowledge & Protect
               </button>
@@ -126,16 +143,16 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         </div>
       )}
       
-      {/* STANDARD TOP SLIDING TOASTS (Constrained strictly to top and responsive) */}
+      {/* TOAST CONTAINER: BOTTOM-RIGHT ON DESKTOP, BOTTOM-CENTER ON MOBILE (Never overlaps header) */}
       <div 
         aria-live="polite" 
-        className="fixed top-4 right-4 sm:right-6 z-40 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none"
+        className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 z-50 flex flex-col-reverse gap-2.5 max-w-md sm:max-w-sm mx-auto sm:mx-0 pointer-events-none"
       >
         {toasts.filter(t => !t.spotlight).map((toast) => (
           <div
             key={toast.id}
             role="alert"
-            className="pointer-events-auto p-3.5 rounded-xl border shadow-xl flex items-start gap-3 transition-all duration-300 animate-top-slide"
+            className="pointer-events-auto p-3.5 rounded-2xl border shadow-2xl flex items-start gap-3 transition-all duration-200 animate-slide-up"
             style={{
               backgroundColor: 'var(--surface)',
               borderColor: 'var(--border-color)',
@@ -149,18 +166,33 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               {toast.type === 'info' && <Info className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />}
             </div>
 
-            <div className="flex-1 text-xs leading-relaxed font-sans-body">
+            <div className="flex-1 text-xs leading-relaxed font-sans-body min-w-0">
               {toast.title && (
-                <div className="font-bold mb-0.5 font-serif-heading" style={{ color: 'var(--foreground)' }}>
+                <div className="font-bold mb-0.5 font-serif-heading truncate" style={{ color: 'var(--foreground)' }}>
                   {toast.title}
                 </div>
               )}
-              <div style={{ color: 'var(--text-secondary)' }}>{toast.message}</div>
+              <div className="break-words" style={{ color: 'var(--text-secondary)' }}>{toast.message}</div>
+
+              {toast.onUndo && (
+                <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-end">
+                  <button
+                    onClick={() => {
+                      toast.onUndo?.();
+                      dismissToast(toast.id);
+                    }}
+                    className="min-h-[36px] px-3 py-1 rounded-lg text-xs font-bold bg-[var(--accent-primary)] text-black flex items-center gap-1.5 hover:brightness-105 transition"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>{toast.undoLabel || 'Undo Action'}</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             <button
               onClick={() => dismissToast(toast.id)}
-              className="text-slate-400 hover:text-slate-200 p-0.5 rounded transition focus:outline-none"
+              className="text-slate-400 hover:text-slate-200 min-h-[44px] min-w-[44px] -mr-2 -mt-1 flex items-center justify-center rounded-lg transition focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
               aria-label="Close notification"
             >
               <X className="w-4 h-4" />

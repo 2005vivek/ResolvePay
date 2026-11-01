@@ -13,8 +13,27 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="antialiased min-h-screen bg-[#F4F7FB] text-[#172033] selection:bg-[#087E8B]/15 selection:text-[#087E8B]">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Avoid Theme Flash before First Paint */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var theme = localStorage.getItem('resolvepay_theme');
+                  if (theme === 'light') {
+                    document.documentElement.classList.add('light');
+                  } else {
+                    document.documentElement.classList.remove('light');
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
+      <body className="antialiased min-h-screen selection:bg-[var(--accent-primary)]/20 selection:text-[var(--accent-primary)]" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
         <ToastProvider>
           {children}
         </ToastProvider>
