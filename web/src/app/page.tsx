@@ -473,42 +473,6 @@ export default function DashboardPage() {
       }}
     >
       
-      {/* ======================================================== */}
-      {/* 1. MOBILE RESPONSIVE TOP BAR (Visible on < md screens)   */}
-      {/* ======================================================== */}
-      <div 
-        className="md:hidden flex items-center justify-between px-4 py-3 border-b sticky top-0 z-40 backdrop-blur-md"
-        style={{
-          backgroundColor: 'var(--surface)',
-          borderColor: 'var(--border-color)'
-        }}
-      >
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg shadow-md flex items-center justify-center shrink-0" style={{ backgroundColor: "var(--accent-pill)", color: "var(--accent-pill-text)" }}>
-            <ShieldAlert className="w-4 h-4" />
-          </div>
-          <div>
-            <span className="text-sm font-black tracking-tight">Resolve<span className="text-[var(--accent-primary)]">Pay</span></span>
-            <span className="ml-1.5 px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-[var(--accent-pill)]/20 text-[var(--accent-primary)]">AI</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* Hamburger Menu Toggle (44px tap target) */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl border transition hover:opacity-80 focus-visible:ring-2 focus-visible:ring-amber-500/70"
-            style={{ 
-              borderColor: 'var(--border-color)',
-              backgroundColor: 'var(--surface-hover)' 
-            }}
-            aria-label="Toggle navigation menu"
-          >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
-        </div>
-      </div>
-
       {/* Mobile Drawer Backdrop */}
       {mobileMenuOpen && (
         <div 
@@ -669,14 +633,45 @@ export default function DashboardPage() {
       {/* ======================================================== */}
       <div className="flex-1 flex flex-col min-w-0 md:h-screen md:overflow-hidden pb-16 md:pb-0">
         
-        {/* DECLUTTERED TOP NAVBAR (Search & Store Switcher visible; rest moved to '⋯' More menu) */}
+        {/* DECLUTTERED TOP NAVBAR (Static/Sticky at top=0 on both mobile and desktop; no jitter or partial scroll) */}
         <header 
-          className="px-3 sm:px-8 py-3.5 border-b sticky top-[53px] md:top-0 z-30 backdrop-blur-md flex items-center justify-between gap-2.5 sm:gap-4 shrink-0"
+          className="border-b sticky top-0 z-30 backdrop-blur-md shrink-0 transition-smooth"
           style={{
             backgroundColor: 'var(--surface)',
             borderColor: 'var(--border-color)'
           }}
         >
+          {/* Mobile Top Brand Row (Visible only on < md screens) */}
+          <div 
+            className="md:hidden flex items-center justify-between px-4 py-2.5 border-b"
+            style={{ borderColor: 'var(--border-color)' }}
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg shadow-sm flex items-center justify-center shrink-0" style={{ backgroundColor: "var(--accent-pill)", color: "var(--accent-pill-text)" }}>
+                <ShieldAlert className="w-4 h-4" />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm font-black tracking-tight">Resolve<span className="text-[var(--accent-primary)]">Pay</span></span>
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-[var(--accent-pill)]/20 text-[var(--accent-primary)] border border-amber-500/30">AI</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl border transition hover:opacity-80 focus-visible:ring-2 focus-visible:ring-amber-500/70"
+              style={{ 
+                borderColor: 'var(--border-color)',
+                backgroundColor: 'var(--surface-hover)',
+                color: 'var(--foreground)'
+              }}
+              aria-label="Toggle navigation menu"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
+
+          {/* Search, Store Switcher, and More Menu Row */}
+          <div className="px-3 sm:px-8 py-2.5 sm:py-3.5 flex items-center justify-between gap-2.5 sm:gap-4 shrink-0">
           {/* 1. Search Bar (44px tap target) */}
           <div className="flex items-center gap-3 flex-1 min-w-0 max-w-md">
             <div className="relative w-full">
@@ -883,7 +878,8 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
-        </header>
+        </div>
+      </header>
 
         {/* Dynamic Main Body */}
         <main className="p-4 sm:p-8 space-y-6 flex-1 overflow-y-auto max-w-[1700px] w-full mx-auto">
