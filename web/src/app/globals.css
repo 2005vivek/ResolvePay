@@ -224,6 +224,34 @@ html.light .skeleton-shimmer {
   animation: blinkCursor 0.8s infinite;
 }
 
+/* Sidebar Nav Button & Dropdown Items (Ensures readable contrast in both Dark and Bright Light themes) */
+.sidebar-nav-btn {
+  color: var(--text-muted);
+  background-color: transparent;
+  transition: background-color 0.18s ease-out, color 0.18s ease-out;
+}
+
+.sidebar-nav-btn:not(.active):hover {
+  background-color: var(--surface-hover) !important;
+  color: var(--foreground) !important;
+}
+
+.sidebar-nav-btn.active {
+  background-color: var(--nav-active-bg) !important;
+  color: var(--nav-active-text) !important;
+  border: 1px solid var(--nav-active-border) !important;
+}
+
+.dropdown-menu-item {
+  color: var(--text-secondary);
+  transition: background-color 0.15s ease-out, color 0.15s ease-out;
+}
+
+.dropdown-menu-item:hover {
+  background-color: var(--surface-hover) !important;
+  color: var(--foreground) !important;
+}
+
 /* Accessible prefers-reduced-motion standard */
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {

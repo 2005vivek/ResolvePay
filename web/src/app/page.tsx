@@ -552,56 +552,41 @@ export default function DashboardPage() {
           <nav className="space-y-1.5" aria-label="Main Navigation">
             <button 
               onClick={() => { setCurrentTab('DISPUTES'); setMobileMenuOpen(false); }}
-              className={`w-full min-h-[44px] flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition focus-visible:ring-2 focus-visible:ring-amber-500/70 ${
-                currentTab === 'DISPUTES'
-                  ? 'shadow-xs'
-                  : 'hover:bg-white/5 text-slate-400 hover:text-white'
+              className={`sidebar-nav-btn w-full min-h-[44px] flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition focus-visible:ring-2 focus-visible:ring-amber-500/70 ${
+                currentTab === 'DISPUTES' ? 'active shadow-xs' : ''
               }`}
-              style={currentTab === 'DISPUTES' ? {
-                backgroundColor: 'var(--nav-active-bg)',
-                color: 'var(--nav-active-text)',
-                border: '1px solid var(--nav-active-border)'
-              } : undefined}
             >
               <Layers className="w-4 h-4 shrink-0" />
               <span>Disputes Queue</span>
-              <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-mono bg-black/30 text-slate-300">
+              <span 
+                className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-mono transition"
+                style={{
+                  backgroundColor: currentTab === 'DISPUTES' ? 'rgba(0, 0, 0, 0.25)' : 'var(--surface-active)',
+                  color: currentTab === 'DISPUTES' ? 'inherit' : 'var(--text-secondary)'
+                }}
+              >
                 {disputes.length}
               </span>
             </button>
 
             <button 
               onClick={() => { setCurrentTab('WHATSAPP_AUTOPILOT'); setMobileMenuOpen(false); }}
-              className={`w-full min-h-[44px] flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition focus-visible:ring-2 focus-visible:ring-amber-500/70 ${
-                currentTab === 'WHATSAPP_AUTOPILOT'
-                  ? 'shadow-xs'
-                  : 'hover:bg-white/5 text-slate-400 hover:text-white'
+              className={`sidebar-nav-btn w-full min-h-[44px] flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition focus-visible:ring-2 focus-visible:ring-amber-500/70 ${
+                currentTab === 'WHATSAPP_AUTOPILOT' ? 'active shadow-xs' : ''
               }`}
-              style={currentTab === 'WHATSAPP_AUTOPILOT' ? {
-                backgroundColor: 'var(--nav-active-bg)',
-                color: 'var(--nav-active-text)',
-                border: '1px solid var(--nav-active-border)'
-              } : undefined}
             >
               <Smartphone className="w-4 h-4 shrink-0" />
               <span>WhatsApp 1-Tap</span>
-              <span className="ml-auto px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+              <span className="ml-auto px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-500 dark:text-emerald-400 border border-emerald-500/40">
                 LIVE
               </span>
             </button>
 
             <button 
               onClick={() => { setCurrentTab('CARRIER_RADAR'); setMobileMenuOpen(false); }}
-              className={`w-full min-h-[44px] flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition focus-visible:ring-2 focus-visible:ring-amber-500/70 ${
-                currentTab === 'CARRIER_RADAR'
-                  ? 'shadow-xs'
-                  : 'hover:bg-white/5 text-slate-400 hover:text-white'
+              className={`sidebar-nav-btn w-full min-h-[44px] flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition focus-visible:ring-2 focus-visible:ring-amber-500/70 ${
+                currentTab === 'CARRIER_RADAR' ? 'active shadow-xs' : ''
               }`}
-              style={currentTab === 'CARRIER_RADAR' ? {
-                backgroundColor: 'var(--nav-active-bg)',
-                color: 'var(--nav-active-text)',
-                border: '1px solid var(--nav-active-border)'
-              } : undefined}
             >
               <Truck className="w-4 h-4 shrink-0" />
               <span>Carrier Telemetry</span>
@@ -609,36 +594,22 @@ export default function DashboardPage() {
 
             <button 
               onClick={() => { setCurrentTab('EARLY_WARNING'); setMobileMenuOpen(false); }}
-              className={`w-full min-h-[44px] flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition focus-visible:ring-2 focus-visible:ring-amber-500/70 ${
-                currentTab === 'EARLY_WARNING'
-                  ? 'shadow-xs'
-                  : 'hover:bg-white/5 text-slate-400 hover:text-white'
+              className={`sidebar-nav-btn w-full min-h-[44px] flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition focus-visible:ring-2 focus-visible:ring-amber-500/70 ${
+                currentTab === 'EARLY_WARNING' ? 'active shadow-xs' : ''
               }`}
-              style={currentTab === 'EARLY_WARNING' ? {
-                backgroundColor: 'var(--nav-active-bg)',
-                color: 'var(--nav-active-text)',
-                border: '1px solid var(--nav-active-border)'
-              } : undefined}
             >
-              <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" />
+              <AlertTriangle className={`w-4 h-4 shrink-0 ${currentTab === 'EARLY_WARNING' ? '' : 'text-amber-500'}`} />
               <span>Early Threat Radar</span>
-              <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-mono bg-amber-500/20 text-amber-400 font-bold">
+              <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-mono bg-amber-500/20 text-amber-500 font-bold">
                 2
               </span>
             </button>
 
             <button 
               onClick={() => { setCurrentTab('SETTINGS'); setMobileMenuOpen(false); }}
-              className={`w-full min-h-[44px] flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition focus-visible:ring-2 focus-visible:ring-amber-500/70 ${
-                currentTab === 'SETTINGS'
-                  ? 'shadow-xs'
-                  : 'hover:bg-white/5 text-slate-400 hover:text-white'
+              className={`sidebar-nav-btn w-full min-h-[44px] flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition focus-visible:ring-2 focus-visible:ring-amber-500/70 ${
+                currentTab === 'SETTINGS' ? 'active shadow-xs' : ''
               }`}
-              style={currentTab === 'SETTINGS' ? {
-                backgroundColor: 'var(--nav-active-bg)',
-                color: 'var(--nav-active-text)',
-                border: '1px solid var(--nav-active-border)'
-              } : undefined}
             >
               <Settings className="w-4 h-4 shrink-0" />
               <span>Merchant Security</span>
@@ -654,13 +625,13 @@ export default function DashboardPage() {
             className="p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 cursor-pointer hover:bg-emerald-500/15 transition space-y-1.5 group"
           >
             <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-emerald-400 flex items-center gap-1.5">
+              <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
                 <MessageSquare className="w-3.5 h-3.5" />
                 <span>WhatsApp Bot</span>
               </span>
-              <span className="text-[10px] text-emerald-300 font-mono">1-Tap</span>
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-300 font-mono">1-Tap</span>
             </div>
-            <p className="text-[11px] text-slate-300 leading-snug">
+            <p className="text-[11px] leading-snug" style={{ color: 'var(--text-secondary)' }}>
               Resolve disputes instantly from phone without dashboard login.
             </p>
           </div>
@@ -675,11 +646,11 @@ export default function DashboardPage() {
           >
             <div className="flex items-center justify-between">
               <span className="font-semibold text-[11px]" style={{ color: 'var(--text-muted)' }}>Environment</span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
                 Sandbox Live
               </span>
             </div>
-            <div className="font-mono text-[11px] truncate text-slate-300">
+            <div className="font-mono text-[11px] truncate" style={{ color: 'var(--text-secondary)' }}>
               Spring Boot :8085
             </div>
             <div className="flex items-center justify-between pt-1 border-t text-[10px]" style={{ borderColor: 'var(--border-color)', color: 'var(--text-muted)' }}>
@@ -687,7 +658,7 @@ export default function DashboardPage() {
                 <Lock className="w-3 h-3 text-[var(--accent-primary)]" />
                 <span>Isolated Merchant</span>
               </span>
-              <span>PostgreSQL</span>
+              <span style={{ color: 'var(--text-muted)' }}>PostgreSQL</span>
             </div>
           </div>
         </div>
@@ -769,7 +740,7 @@ export default function DashboardPage() {
                       className={`p-2.5 rounded-xl cursor-pointer transition flex items-center justify-between text-xs min-h-[44px] ${
                         s.id === activeStoreId 
                           ? 'bg-[var(--accent-pill)]/15 border border-amber-500/30 text-[var(--accent-primary)] font-bold' 
-                          : 'hover:bg-white/5 text-slate-300'
+                          : 'hover:bg-[var(--surface-hover)] text-[var(--text-secondary)] hover:text-[var(--foreground)]'
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -834,7 +805,7 @@ export default function DashboardPage() {
                   {/* Theme Toggle */}
                   <button
                     onClick={() => { toggleTheme(); setMoreMenuOpen(false); }}
-                    className="w-full min-h-[40px] px-3 py-2 rounded-xl flex items-center justify-between hover:bg-white/5 transition"
+                    className="dropdown-menu-item w-full min-h-[40px] px-3 py-2 rounded-xl flex items-center justify-between transition"
                   >
                     <span className="flex items-center gap-2">
                       {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-400" />}
@@ -849,7 +820,7 @@ export default function DashboardPage() {
                   <button
                     onClick={handleSync}
                     disabled={syncing}
-                    className="w-full min-h-[40px] px-3 py-2 rounded-xl flex items-center justify-between hover:bg-white/5 transition disabled:opacity-50"
+                    className="dropdown-menu-item w-full min-h-[40px] px-3 py-2 rounded-xl flex items-center justify-between transition disabled:opacity-50"
                   >
                     <span className="flex items-center gap-2">
                       <RefreshCw className={`w-4 h-4 text-slate-400 ${syncing ? 'animate-spin text-[var(--accent-primary)]' : ''}`} />
@@ -862,7 +833,7 @@ export default function DashboardPage() {
                   <button
                     onClick={() => { checkPayPalConnection(); setMoreMenuOpen(false); }}
                     disabled={checkingPayPal}
-                    className="w-full min-h-[40px] px-3 py-2 rounded-xl flex items-center justify-between hover:bg-white/5 transition"
+                    className="dropdown-menu-item w-full min-h-[40px] px-3 py-2 rounded-xl flex items-center justify-between transition"
                   >
                     <span className="flex items-center gap-2">
                       <span className={`w-2 h-2 rounded-full ${payPalHealth?.connected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
@@ -876,7 +847,7 @@ export default function DashboardPage() {
                   {/* Connect PayPal Account */}
                   <button
                     onClick={() => { setConnectModalOpen(true); setMoreMenuOpen(false); }}
-                    className="w-full min-h-[40px] px-3 py-2 rounded-xl flex items-center gap-2 hover:bg-white/5 transition"
+                    className="dropdown-menu-item w-full min-h-[40px] px-3 py-2 rounded-xl flex items-center gap-2 transition"
                   >
                     <Zap className="w-4 h-4 text-[var(--accent-primary)]" />
                     <span>Connect PayPal Account</span>
@@ -891,7 +862,7 @@ export default function DashboardPage() {
                     <button
                       onClick={() => handleSimulateWebhook('MERCHANDISE_OR_SERVICE_NOT_RECEIVED', '249.99')}
                       disabled={simulating}
-                      className="w-full min-h-[40px] px-3 py-2 rounded-xl flex items-center justify-between hover:bg-amber-500/10 text-amber-400 transition"
+                      className="w-full min-h-[40px] px-3 py-2 rounded-xl flex items-center justify-between hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 transition"
                     >
                       <span className="flex items-center gap-2 font-semibold">
                         <Zap className="w-4 h-4" />
@@ -902,7 +873,7 @@ export default function DashboardPage() {
 
                     <button
                       onClick={() => { setCurrentTab('SETTINGS'); setMoreMenuOpen(false); }}
-                      className="w-full min-h-[40px] px-3 py-2 rounded-xl flex items-center gap-2 hover:bg-white/5 text-slate-300 transition"
+                      className="dropdown-menu-item w-full min-h-[40px] px-3 py-2 rounded-xl flex items-center gap-2 transition"
                     >
                       <Shield className="w-4 h-4 text-slate-400" />
                       <span>Idempotency Tests</span>
@@ -1063,7 +1034,7 @@ export default function DashboardPage() {
                       className={`min-h-[44px] px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap focus-visible:ring-2 focus-visible:ring-amber-500/70 ${
                         statusFilter === filter
                           ? 'shadow-xs'
-                          : 'border text-slate-400 hover:text-white'
+                          : 'border text-[var(--text-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-active)]'
                       }`}
                       style={{
                         borderColor: statusFilter === filter ? 'transparent' : 'var(--border-color)',
@@ -1076,7 +1047,7 @@ export default function DashboardPage() {
                   ))}
                 </div>
 
-                <div className="text-xs text-slate-400 font-mono">
+                <div className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
                   Showing {paginatedDisputes.length} of {processedDisputes.length} disputes
                 </div>
               </div>
@@ -1258,7 +1229,7 @@ export default function DashboardPage() {
                         <tr 
                           key={dispute.id}
                           onClick={() => setSelectedDispute(dispute)}
-                          className="cursor-pointer transition hover:bg-white/5"
+                          className="cursor-pointer transition hover:bg-[var(--surface-hover)]"
                         >
                           <td className="py-4 px-5 font-mono font-bold text-[var(--accent-primary)]">
                             {dispute.paypalDisputeId}
@@ -1855,13 +1826,13 @@ export default function DashboardPage() {
               <span className="font-bold text-sm font-serif-heading">WhatsApp Autopilot Live Preview</span>
               <button 
                 onClick={() => setWhatsAppModalOpen(false)} 
-                className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-white"
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--foreground)] transition"
                 aria-label="Close modal"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <p className="text-xs text-slate-300 leading-relaxed">
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
               When a dispute arrives, your WhatsApp receives an immediate 1-tap card. You can test it in the WhatsApp Autopilot tab!
             </p>
             <button

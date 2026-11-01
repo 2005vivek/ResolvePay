@@ -482,8 +482,9 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
                       className={`min-h-[40px] px-3.5 py-1.5 rounded-lg font-mono text-xs font-bold uppercase transition focus-visible:ring-2 focus-visible:ring-amber-500/50 ${
                         selectedLanguage === lang
                           ? 'bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] shadow-xs'
-                          : 'bg-black/20 text-slate-400 hover:text-white'
+                          : 'border text-[var(--text-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)]'
                       }`}
+                      style={{ borderColor: selectedLanguage === lang ? 'transparent' : 'var(--border-color)' }}
                     >
                       {lang === 'en' ? '🇺🇸 EN' : lang === 'de' ? '🇩🇪 DE' : lang === 'fr' ? '🇫🇷 FR' : lang === 'es' ? '🇪🇸 ES' : '🇯🇵 JA'}
                     </button>
@@ -516,7 +517,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
                           setCopied(true);
                           setTimeout(() => setCopied(false), 2000);
                         }}
-                        className="min-h-[38px] px-3 py-1.5 rounded-lg border text-xs flex items-center gap-1.5 text-slate-300 hover:text-white transition"
+                        className="min-h-[38px] px-3 py-1.5 rounded-lg border text-xs flex items-center gap-1.5 text-[var(--text-secondary)] hover:text-[var(--foreground)] hover:bg-[var(--surface-active)] transition"
                         style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--surface-hover)' }}
                       >
                         {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
@@ -613,8 +614,9 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
                       className={`min-h-[44px] p-3 rounded-xl border text-xs font-bold flex flex-col items-center justify-center gap-1.5 transition ${
                         selectedCarrier === carrier
                           ? 'bg-[var(--accent-primary)]/15 border-[var(--accent-primary)] text-[var(--accent-primary)] shadow-xs'
-                          : 'bg-black/10 border-slate-700/60 text-slate-400 hover:text-white'
+                          : 'border text-[var(--text-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)]'
                       }`}
+                      style={{ borderColor: selectedCarrier === carrier ? undefined : 'var(--border-color)' }}
                     >
                       <Truck className="w-4 h-4" />
                       <span>{carrier}</span>
@@ -873,7 +875,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 onClick={() => setShowSubmitConfirm(false)}
-                className="min-h-[44px] px-4 py-2 rounded-xl text-xs font-semibold border text-slate-300 hover:text-white"
+                className="min-h-[44px] px-4 py-2 rounded-xl text-xs font-semibold border text-[var(--text-secondary)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)] transition"
                 style={{ borderColor: 'var(--border-color)' }}
               >
                 Review Statement
@@ -943,7 +945,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
               <h3 className="font-bold text-sm truncate">{previewItem.filename}</h3>
               <button 
                 onClick={() => setPreviewItem(null)} 
-                className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-white"
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--foreground)] transition"
                 aria-label="Close preview"
               >
                 <X className="w-5 h-5" />
