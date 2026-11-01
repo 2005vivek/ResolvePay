@@ -20,6 +20,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.ResourceAccessException;
@@ -44,6 +46,7 @@ public class DisputeService {
     private final OutboxEventRepository outboxEventRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    @Cacheable(value = "disputes", key = "T(com.resolvepay.api.security.MerchantContext).getCurrentMerchantId() ?: 'merchant_resolvepay_01'")
     public List<Dispute> getAllDisputes() {
         String merchantId = getEffectiveMerchantId();
         return disputeRepository.findByMerchantId(merchantId);
@@ -169,6 +172,7 @@ public class DisputeService {
         return dispute;
     }
 
+    @CacheEvict(value = "disputes", allEntries = true)
     public void syncDisputesFromPayPal() {
         String merchantId = getEffectiveMerchantId();
         JsonNode response = payPalClient.fetchDisputes();

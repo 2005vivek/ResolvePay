@@ -1,10 +1,28 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ToastProvider } from "../components/Toast";
 
 export const metadata: Metadata = {
   title: "ResolvePay — Real-Time AI Dispute Resolution Engine",
   description: "Enterprise PayPal Dispute Defense and Chargeback Automation powered by Gemini AI",
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/icon.svg",
+    apple: "/icon.svg",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "ResolvePay",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#101010",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({
@@ -15,6 +33,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+        <link rel="apple-touch-icon" href="/icon.svg" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="mobile-web-app-capable" content="yes" />
+
         {/* Avoid Theme Flash before First Paint */}
         <script
           dangerouslySetInnerHTML={{

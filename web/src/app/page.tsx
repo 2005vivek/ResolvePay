@@ -19,7 +19,7 @@ import {
   Clock, DollarSign, Sparkles, Filter, ChevronDown, ChevronRight, 
   Layers, MessageSquare, Truck, AlertTriangle, Settings, Store, 
   Lock, Check, Send, X, ArrowUpRight, ArrowUpDown, Menu, MoreVertical,
-  Smartphone, Database, Inbox, Shield, Sun, Moon, Eye, RotateCcw
+  Smartphone, Database, Inbox, Shield, Sun, Moon, Eye, RotateCcw, Download
 } from 'lucide-react';
 
 type Tab = 'DISPUTES' | 'WHATSAPP_AUTOPILOT' | 'CARRIER_RADAR' | 'EARLY_WARNING' | 'SETTINGS';
@@ -138,18 +138,74 @@ export default function DashboardPage() {
   // Mobile Display Mode: Standalone Installed App vs Standard Mobile Browser
   const [isStandalone, setIsStandalone] = useState(false);
 
+  // PWA Install Prompt State
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [canInstall, setCanInstall] = useState(false);
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
+  const [isIOSDevice, setIsIOSDevice] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    setIsIOSDevice(isIOS);
+
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setCanInstall(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  async function handleInstallApp() {
+    setMoreMenuOpen(false);
+    setMobileMenuOpen(false);
+
+    if (isStandalone) {
+      showToast('ResolvePay is already installed and running in App Mode!', 'info', 'Already Installed');
+      return;
+    }
+
+    if (deferredPrompt) {
+      try {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+          showToast('ResolvePay App installing to your home screen...', 'success', 'App Installed');
+          setDeferredPrompt(null);
+          setCanInstall(false);
+        }
+      } catch (err) {
+        console.error('PWA install error:', err);
+      }
+    } else {
+      setShowInstallGuide(true);
+    }
+  }
+
+  // Instant SWR Cache for Disputes from sessionStorage
+  useEffect(() => {
+    try {
+      const cached = sessionStorage.getItem(`resolvepay_disputes_${activeStoreId}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setDisputes(parsed);
+          setLoading(false);
+        }
+      }
+    } catch (_) {}
+  }, [activeStoreId]);
+
   useEffect(() => {
     const checkStandalone = () => {
       if (typeof window === 'undefined') return;
       const urlParam = new URLSearchParams(window.location.search).get('app') || new URLSearchParams(window.location.search).get('mode');
-      const storedPref = localStorage.getItem('resolvepay_app_mode');
 
-      if (storedPref === 'standalone' || urlParam === '1' || urlParam === 'standalone') {
+      if (urlParam === '1' || urlParam === 'standalone') {
         setIsStandalone(true);
-        return;
-      }
-      if (storedPref === 'browser') {
-        setIsStandalone(false);
         return;
       }
 
@@ -166,10 +222,7 @@ export default function DashboardPage() {
     try {
       const mql = window.matchMedia('(display-mode: standalone)');
       const handler = (e: MediaQueryListEvent) => {
-        const storedPref = localStorage.getItem('resolvepay_app_mode');
-        if (!storedPref) {
-          setIsStandalone(e.matches);
-        }
+        setIsStandalone(e.matches);
       };
       if (mql.addEventListener) {
         mql.addEventListener('change', handler);
@@ -177,19 +230,6 @@ export default function DashboardPage() {
       }
     } catch (err) {}
   }, []);
-
-  function toggleAppMode() {
-    const nextMode = !isStandalone;
-    setIsStandalone(nextMode);
-    localStorage.setItem('resolvepay_app_mode', nextMode ? 'standalone' : 'browser');
-    showToast(
-      nextMode 
-        ? 'Installed App Mode active: Bottom navigation enabled, top hamburger hidden' 
-        : 'Mobile Browser Mode active: Sidebar drawer enabled, bottom navigation hidden',
-      'info',
-      'Navigation Mode Updated'
-    );
-  }
 
   // Cross-Panel Global Dispute Search Handler
   function handleSearchChange(val: string) {
@@ -272,6 +312,9 @@ export default function DashboardPage() {
     try {
       const data = await fetchDisputes(controller.signal, targetMerchant);
       setDisputes(data);
+      try {
+        sessionStorage.setItem(`resolvepay_disputes_${targetMerchant}`, JSON.stringify(data));
+      } catch (_) {}
       setFetchError(null);
       setLastSyncTimestamp(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
     } catch (e: any) {
@@ -575,34 +618,22 @@ export default function DashboardPage() {
           borderColor: 'var(--border-color)'
         }}
       >
-        <div className="space-y-6">
-          {/* Brand Header with Mobile Close in Drawer */}
-          <div className="flex items-center justify-between px-2">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl shadow-md flex items-center justify-center shrink-0" style={{ backgroundColor: "var(--accent-pill)", color: "var(--accent-pill-text)" }}>
-                <ShieldAlert className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-base font-black tracking-tight">Resolve<span className="text-[var(--accent-primary)]">Pay</span></span>
-                  <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-[var(--accent-pill)]/20 text-[var(--accent-primary)] border border-amber-500/30">
-                    AI PRO
-                  </span>
-                </div>
-                <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>PayPal Dispute Autopilot</p>
-              </div>
-            </div>
-
+        <div className="space-y-4">
+          {/* Mobile Drawer Top Bar with dedicated uncrowded Close Button */}
+          <div className="md:hidden flex items-center justify-between pb-3 border-b" style={{ borderColor: 'var(--border-color)' }}>
+            <span className="text-[11px] font-mono uppercase tracking-wider font-bold text-slate-400">Navigation</span>
             <button
               onClick={() => setMobileMenuOpen(false)}
-              className="md:hidden min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg border text-slate-400 hover:text-[var(--foreground)]"
+              className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl border text-slate-400 hover:text-[var(--foreground)] hover:bg-slate-500/10 active:scale-95 transition"
               style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--surface-hover)' }}
               aria-label="Close navigation drawer"
             >
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5" />
             </button>
           </div>
-          <div className="hidden">
+
+          {/* Brand Header */}
+          <div className="flex items-center gap-3 px-1">
             <div className="w-10 h-10 rounded-xl shadow-md flex items-center justify-center shrink-0" style={{ backgroundColor: "var(--accent-pill)", color: "var(--accent-pill-text)" }}>
               <ShieldAlert className="w-5 h-5" />
             </div>
@@ -684,6 +715,29 @@ export default function DashboardPage() {
               <span>Merchant Security</span>
             </button>
           </nav>
+
+          {/* Mobile-only Drawer Footer: App Install Button */}
+          {!isStandalone && (
+            <div className="md:hidden pt-3 border-t" style={{ borderColor: 'var(--border-color)' }}>
+              <button
+                onClick={handleInstallApp}
+                className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border flex items-center justify-between text-xs font-bold transition active:scale-98 shadow-sm"
+                style={{
+                  backgroundColor: 'var(--accent-pill)',
+                  borderColor: 'rgba(245, 165, 36, 0.35)',
+                  color: 'var(--accent-primary)'
+                }}
+              >
+                <span className="flex items-center gap-2">
+                  <Download className="w-4 h-4" />
+                  <span>Install Mobile App</span>
+                </span>
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-amber-500/20 text-amber-500 border border-amber-500/30">
+                  PWA
+                </span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Sidebar Desktop Footer (Hidden on mobile to keep drawer uncluttered) */}
@@ -980,17 +1034,17 @@ export default function DashboardPage() {
                     <span>Connect PayPal Account</span>
                   </button>
 
-                  {/* Mobile Navigation Layout Switcher */}
+                  {/* Install Mobile App (PWA) */}
                   <button
-                    onClick={() => { toggleAppMode(); setMoreMenuOpen(false); }}
+                    onClick={handleInstallApp}
                     className="dropdown-menu-item w-full min-h-[40px] px-3 py-2 rounded-xl flex items-center justify-between transition"
                   >
                     <span className="flex items-center gap-2">
-                      <Smartphone className="w-4 h-4 text-emerald-400" />
-                      <span>Mobile Layout</span>
+                      <Download className="w-4 h-4 text-amber-500" />
+                      <span className="font-semibold text-amber-500 dark:text-amber-400">Install Mobile App</span>
                     </span>
-                    <span className="text-[10px] font-mono font-bold text-[var(--accent-primary)]">
-                      {isStandalone ? 'App (Bottom Bar)' : 'Browser (Sidebar)'}
+                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-500 border border-amber-500/30">
+                      PWA
                     </span>
                   </button>
 
@@ -1998,6 +2052,96 @@ export default function DashboardPage() {
         onClose={() => setConnectModalOpen(false)}
         onStoreConnected={handleStoreConnected}
       />
+
+      {/* PWA Mobile App Install Instructions Modal */}
+      {showInstallGuide && (
+        <div className="fixed inset-0 z-70 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div 
+            className="p-6 rounded-3xl max-w-md w-full border space-y-4 shadow-2xl"
+            style={{ 
+              backgroundColor: 'var(--surface)', 
+              borderColor: 'var(--border-color)' 
+            }}
+          >
+            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: 'var(--border-color)' }}>
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-amber-500/20 text-amber-500 border border-amber-500/30">
+                  <Download className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm">Install ResolvePay Mobile App</h3>
+                  <p className="text-[11px] text-slate-400">Add to your Home Screen</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowInstallGuide(false)} 
+                className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl text-slate-400 hover:text-[var(--foreground)] hover:bg-slate-500/10 transition"
+                aria-label="Close modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs leading-relaxed text-slate-400">
+              Install ResolvePay to your mobile home screen for a fullscreen native app experience with instant dispute resolution and fast biometric/touch access.
+            </p>
+
+            <div className="space-y-2.5 py-1">
+              <div className="p-3 rounded-2xl border border-dashed flex items-start gap-3" style={{ borderColor: 'var(--border-color)' }}>
+                <div className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
+                  1
+                </div>
+                <div className="text-xs">
+                  <span className="font-semibold text-amber-500">
+                    {isIOSDevice ? 'Tap the Share Button' : 'Open the Browser Menu'}
+                  </span>
+                  <p className="text-slate-400 mt-0.5">
+                    {isIOSDevice 
+                      ? 'In Safari, tap the Share icon (⎋) at the bottom navigation bar.' 
+                      : 'Tap the three-dot menu icon (⋮) in the top-right corner of Chrome or Edge.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-2xl border border-dashed flex items-start gap-3" style={{ borderColor: 'var(--border-color)' }}>
+                <div className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
+                  2
+                </div>
+                <div className="text-xs">
+                  <span className="font-semibold text-amber-500">
+                    {isIOSDevice ? 'Tap "Add to Home Screen"' : 'Tap "Install app" or "Add to Home screen"'}
+                  </span>
+                  <p className="text-slate-400 mt-0.5">
+                    {isIOSDevice 
+                      ? 'Scroll down the share sheet and tap ⊞ "Add to Home Screen", then tap "Add".' 
+                      : 'Select "Install app" or "Add to Home screen" from the menu options.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-2xl border border-dashed flex items-start gap-3" style={{ borderColor: 'var(--border-color)' }}>
+                <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
+                  ✓
+                </div>
+                <div className="text-xs">
+                  <span className="font-semibold text-emerald-500">Launch from Home Screen</span>
+                  <p className="text-slate-400 mt-0.5">
+                    Open ResolvePay directly from your phone home screen with bottom-tab navigation and fullscreen workspace.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowInstallGuide(false)}
+              className="w-full min-h-[44px] py-2.5 rounded-xl font-bold text-xs text-black transition active:scale-98 shadow-sm"
+              style={{ backgroundColor: 'var(--accent-primary)' }}
+            >
+              Done, Got It
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );
