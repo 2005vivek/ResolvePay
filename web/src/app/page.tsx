@@ -135,6 +135,86 @@ export default function DashboardPage() {
     showToast(`Switched to ${nextTheme === 'dark' ? 'Graphite & Amber' : 'Executive Light'} theme`, 'info', 'Theme Updated');
   }
 
+  // Mobile Display Mode: Standalone Installed App vs Standard Mobile Browser
+  const [isStandalone, setIsStandalone] = useState(false);
+
+  useEffect(() => {
+    const checkStandalone = () => {
+      if (typeof window === 'undefined') return;
+      const urlParam = new URLSearchParams(window.location.search).get('app') || new URLSearchParams(window.location.search).get('mode');
+      const storedPref = localStorage.getItem('resolvepay_app_mode');
+
+      if (storedPref === 'standalone' || urlParam === '1' || urlParam === 'standalone') {
+        setIsStandalone(true);
+        return;
+      }
+      if (storedPref === 'browser') {
+        setIsStandalone(false);
+        return;
+      }
+
+      const isPwa = 
+        window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as any).standalone === true ||
+        document.referrer.includes('android-app://');
+
+      setIsStandalone(!!isPwa);
+    };
+
+    checkStandalone();
+
+    try {
+      const mql = window.matchMedia('(display-mode: standalone)');
+      const handler = (e: MediaQueryListEvent) => {
+        const storedPref = localStorage.getItem('resolvepay_app_mode');
+        if (!storedPref) {
+          setIsStandalone(e.matches);
+        }
+      };
+      if (mql.addEventListener) {
+        mql.addEventListener('change', handler);
+        return () => mql.removeEventListener('change', handler);
+      }
+    } catch (err) {}
+  }, []);
+
+  function toggleAppMode() {
+    const nextMode = !isStandalone;
+    setIsStandalone(nextMode);
+    localStorage.setItem('resolvepay_app_mode', nextMode ? 'standalone' : 'browser');
+    showToast(
+      nextMode 
+        ? 'Installed App Mode active: Bottom navigation enabled, top hamburger hidden' 
+        : 'Mobile Browser Mode active: Sidebar drawer enabled, bottom navigation hidden',
+      'info',
+      'Navigation Mode Updated'
+    );
+  }
+
+  // Cross-Panel Global Dispute Search Handler
+  function handleSearchChange(val: string) {
+    setSearchQuery(val);
+    setCurrentPage(1);
+
+    const trimmed = val.trim();
+    if (trimmed.length > 0) {
+      if (currentTab !== 'DISPUTES') {
+        setCurrentTab('DISPUTES');
+        showToast(`Redirected to Disputes queue for query "${trimmed}"`, 'info', 'Search Navigation');
+      }
+
+      if (statusFilter !== 'ALL') {
+        const q = trimmed.toLowerCase();
+        const matchesInDifferentStatus = disputes.some(d => 
+          d.paypalDisputeId.toLowerCase().includes(q) || d.id.toLowerCase().includes(q)
+        );
+        if (matchesInDifferentStatus) {
+          setStatusFilter('ALL');
+        }
+      }
+    }
+  }
+
   // Background Polling with Page Visibility API
   useEffect(() => {
     loadDisputes();
@@ -473,8 +553,8 @@ export default function DashboardPage() {
       }}
     >
       
-      {/* Mobile Drawer Backdrop */}
-      {mobileMenuOpen && (
+      {/* Mobile Drawer Backdrop (Shown in mobile browser mode when sidebar is opened) */}
+      {mobileMenuOpen && !isStandalone && (
         <div 
           className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 md:hidden animate-in fade-in duration-200"
           onClick={() => setMobileMenuOpen(false)}
@@ -488,7 +568,7 @@ export default function DashboardPage() {
       <aside 
         className={`
           fixed md:sticky top-0 inset-y-0 left-0 z-50 w-72 h-screen flex flex-col justify-between p-5 border-r transition-transform duration-200 md:translate-x-0 shrink-0 overflow-y-auto no-scrollbar
-          ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+          ${!isStandalone && mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}
         style={{
           backgroundColor: 'var(--surface)',
@@ -496,8 +576,33 @@ export default function DashboardPage() {
         }}
       >
         <div className="space-y-6">
-          {/* Brand Header */}
-          <div className="hidden md:flex items-center gap-3 px-2">
+          {/* Brand Header with Mobile Close in Drawer */}
+          <div className="flex items-center justify-between px-2">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl shadow-md flex items-center justify-center shrink-0" style={{ backgroundColor: "var(--accent-pill)", color: "var(--accent-pill-text)" }}>
+                <ShieldAlert className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-base font-black tracking-tight">Resolve<span className="text-[var(--accent-primary)]">Pay</span></span>
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-[var(--accent-pill)]/20 text-[var(--accent-primary)] border border-amber-500/30">
+                    AI PRO
+                  </span>
+                </div>
+                <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>PayPal Dispute Autopilot</p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setMobileMenuOpen(false)}
+              className="md:hidden min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg border text-slate-400 hover:text-[var(--foreground)]"
+              style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--surface-hover)' }}
+              aria-label="Close navigation drawer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="hidden">
             <div className="w-10 h-10 rounded-xl shadow-md flex items-center justify-center shrink-0" style={{ backgroundColor: "var(--accent-pill)", color: "var(--accent-pill-text)" }}>
               <ShieldAlert className="w-5 h-5" />
             </div>
@@ -631,7 +736,7 @@ export default function DashboardPage() {
       {/* ======================================================== */}
       {/* 3. MAIN WORKSPACE WITH DECLUTTERED TOP BAR               */}
       {/* ======================================================== */}
-      <div className="flex-1 flex flex-col min-w-0 md:h-screen md:overflow-hidden pb-16 md:pb-0">
+      <div className={`flex-1 flex flex-col min-w-0 md:h-screen md:overflow-hidden ${isStandalone ? 'pb-16' : 'pb-4'} md:pb-0`}>
         
         {/* DECLUTTERED TOP NAVBAR (Static/Sticky at top=0 on both mobile and desktop; no jitter or partial scroll) */}
         <header 
@@ -656,18 +761,20 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl border transition hover:opacity-80 focus-visible:ring-2 focus-visible:ring-amber-500/70"
-              style={{ 
-                borderColor: 'var(--border-color)',
-                backgroundColor: 'var(--surface-hover)',
-                color: 'var(--foreground)'
-              }}
-              aria-label="Toggle navigation menu"
-            >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
+            {!isStandalone && (
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl border transition hover:opacity-80 focus-visible:ring-2 focus-visible:ring-amber-500/70"
+                style={{ 
+                  borderColor: 'var(--border-color)',
+                  backgroundColor: 'var(--surface-hover)',
+                  color: 'var(--foreground)'
+                }}
+                aria-label="Toggle navigation menu"
+              >
+                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </button>
+            )}
           </div>
 
           {/* Search, Store Switcher, and More Menu Row */}
@@ -678,19 +785,44 @@ export default function DashboardPage() {
               <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search disputes, reason, or amount..."
+                placeholder={currentTab === 'DISPUTES' ? "Search disputes, ID, reason, or amount..." : "Search dispute ID (redirects to Disputes queue)..."}
                 value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
+                onChange={(e) => handleSearchChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (currentTab !== 'DISPUTES') {
+                      setCurrentTab('DISPUTES');
+                    }
+                    const q = searchQuery.trim().toLowerCase();
+                    if (q) {
+                      const match = disputes.find(d => 
+                        d.paypalDisputeId.toLowerCase().includes(q) || d.id.toLowerCase().includes(q)
+                      );
+                      if (match) {
+                        setSelectedDispute(match);
+                        showToast(`Opened dispute ${match.paypalDisputeId}`, 'success', 'Dispute Located');
+                      }
+                    }
+                  }
                 }}
-                className="w-full pl-9 pr-4 py-2.5 min-h-[44px] rounded-xl text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/70 transition border"
+                className="w-full pl-9 pr-8 py-2.5 min-h-[44px] rounded-xl text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/70 transition border"
                 style={{
                   backgroundColor: 'var(--surface-hover)',
                   borderColor: 'var(--border-color)',
                   color: 'var(--foreground)'
                 }}
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => handleSearchChange('')}
+                  className="absolute right-2.5 top-2.5 p-1 text-slate-400 hover:text-[var(--foreground)] transition rounded-md"
+                  title="Clear search"
+                  aria-label="Clear search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           </div>
 
@@ -846,6 +978,20 @@ export default function DashboardPage() {
                   >
                     <Zap className="w-4 h-4 text-[var(--accent-primary)]" />
                     <span>Connect PayPal Account</span>
+                  </button>
+
+                  {/* Mobile Navigation Layout Switcher */}
+                  <button
+                    onClick={() => { toggleAppMode(); setMoreMenuOpen(false); }}
+                    className="dropdown-menu-item w-full min-h-[40px] px-3 py-2 rounded-xl flex items-center justify-between transition"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Smartphone className="w-4 h-4 text-emerald-400" />
+                      <span>Mobile Layout</span>
+                    </span>
+                    <span className="text-[10px] font-mono font-bold text-[var(--accent-primary)]">
+                      {isStandalone ? 'App (Bottom Bar)' : 'Browser (Sidebar)'}
+                    </span>
                   </button>
 
                   {/* DEVELOPER ONLY MENU SECTION */}
@@ -1728,11 +1874,12 @@ export default function DashboardPage() {
       </div>
 
       {/* ======================================================== */}
-      {/* 4. MOBILE BOTTOM TAB NAVIGATION BAR (< md screens)       */}
+      {/* 4. MOBILE BOTTOM TAB NAVIGATION BAR (Visible in Installed App mode; Hidden in Mobile Browser mode) */}
       {/* ======================================================== */}
-      <nav 
-        aria-label="Mobile Navigation"
-        className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around px-2 py-1.5 border-t backdrop-blur-md shadow-2xl"
+      {isStandalone && (
+        <nav 
+          aria-label="Mobile Navigation"
+          className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around px-2 py-1.5 border-t backdrop-blur-md shadow-2xl animate-slide-up"
         style={{
           backgroundColor: 'var(--surface)',
           borderColor: 'var(--border-color)'
@@ -1798,6 +1945,7 @@ export default function DashboardPage() {
           <span>Security</span>
         </button>
       </nav>
+      )}
 
       {/* Slide-over Fullscreen Dispute Workspace Drawer */}
       {selectedDispute && (
