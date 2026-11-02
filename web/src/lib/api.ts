@@ -1,6 +1,15 @@
 import { Dispute, EvidenceItem } from './types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8085/api';
+function getApiBaseUrl(): string {
+  let url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8085/api';
+  url = url.trim().replace(/\/+$/, '');
+  if (!url.endsWith('/api')) {
+    url = `${url}/api`;
+  }
+  return url;
+}
+
+const API_BASE_URL = getApiBaseUrl();
 const AUTH_TOKEN = process.env.NEXT_PUBLIC_RESOLVEPAY_AUTH_TOKEN || 'rzp_live_sec_789f2a4b8c1d';
 
 let currentMerchantId = 'merchant_resolvepay_01';
