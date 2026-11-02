@@ -74,6 +74,8 @@ export default function DashboardPage() {
 
   // Filters & Pagination State
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement | null>(null);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTION_REQUIRED' | 'UNDER_REVIEW' | 'RESOLVED'>('ALL');
   const [sortField, setSortField] = useState<SortField>('latest');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
@@ -110,6 +112,9 @@ export default function DashboardPage() {
       }
       if (storeDropdownRef.current && !storeDropdownRef.current.contains(e.target as Node)) {
         setStoreDropdownOpen(false);
+      }
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setSearchFocused(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -597,6 +602,20 @@ export default function DashboardPage() {
     return processedDisputes.slice(start, start + pageSize);
   }, [processedDisputes, currentPage, pageSize]);
 
+  // Instant Live Search Dropdown Results (Appears immediately under search bar)
+  const quickSearchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return [];
+    return disputes.filter(d => 
+      d.paypalDisputeId.toLowerCase().includes(q) ||
+      d.id.toLowerCase().includes(q) ||
+      humanizeReason(d.reason).toLowerCase().includes(q) ||
+      String(d.amount).includes(q) ||
+      (d.customerEmail && d.customerEmail.toLowerCase().includes(q)) ||
+      (d.buyerName && d.buyerName.toLowerCase().includes(q))
+    ).slice(0, 6);
+  }, [disputes, searchQuery]);
+
   // Active top target for WhatsApp simulator
   const targetDisputeForWhatsApp = useMemo(() => {
     return disputes.find(d => d.status !== 'UNDER_REVIEW' && d.status !== 'RESOLVED') || disputes[0] || null;
@@ -1004,17 +1023,22 @@ export default function DashboardPage() {
 
           {/* Search, Store Switcher, and More Menu Row */}
           <div className="px-3 sm:px-8 py-2.5 sm:py-3.5 flex items-center justify-between gap-2.5 sm:gap-4 shrink-0">
-          {/* 1. Search Bar (44px tap target) */}
-          <div className="flex items-center gap-3 flex-1 min-w-0 max-w-md">
+          {/* 1. Search Bar with Live Instant Autocomplete Dropdown (44px tap target) */}
+          <div className="flex items-center gap-3 flex-1 min-w-0 max-w-md" ref={searchContainerRef}>
             <div className="relative w-full">
               <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
               <input
                 type="text"
                 placeholder={currentTab === 'DISPUTES' ? "Search disputes, ID, reason, or amount..." : "Search dispute ID (redirects to Disputes queue)..."}
                 value={searchQuery}
-                onChange={(e) => handleSearchChange(e.target.value)}
+                onFocus={() => setSearchFocused(true)}
+                onChange={(e) => {
+                  handleSearchChange(e.target.value);
+                  setSearchFocused(true);
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
+                    setSearchFocused(false);
                     if (currentTab !== 'DISPUTES') {
                       setCurrentTab('DISPUTES');
                     }
@@ -1028,25 +1052,136 @@ export default function DashboardPage() {
                         showToast(`Opened dispute ${match.paypalDisputeId}`, 'success', 'Dispute Located');
                       }
                     }
+                  } else if (e.key === 'Escape') {
+                    setSearchFocused(false);
                   }
                 }}
                 className="w-full pl-9 pr-8 py-2.5 min-h-[44px] rounded-xl text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/70 transition border"
                 style={{
                   backgroundColor: 'var(--surface-hover)',
-                  borderColor: 'var(--border-color)',
+                  borderColor: searchFocused && searchQuery ? 'var(--accent-primary)' : 'var(--border-color)',
                   color: 'var(--foreground)'
                 }}
               />
               {searchQuery && (
                 <button
                   type="button"
-                  onClick={() => handleSearchChange('')}
+                  onClick={() => {
+                    handleSearchChange('');
+                    setSearchFocused(false);
+                  }}
                   className="absolute right-2.5 top-2.5 p-1 text-slate-400 hover:text-[var(--foreground)] transition rounded-md"
                   title="Clear search"
                   aria-label="Clear search"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
+              )}
+
+              {/* LIVE SEARCH AUTOCOMPLETE POPUP (Floats directly underneath search bar on mobile & web) */}
+              {searchFocused && searchQuery.trim().length > 0 && (
+                <div 
+                  className="absolute left-0 right-0 top-full mt-2 rounded-2xl border shadow-2xl p-2.5 z-[70] space-y-2 animate-top-slide max-h-[75vh] sm:max-h-[380px] overflow-y-auto"
+                  style={{
+                    backgroundColor: 'var(--surface)',
+                    borderColor: 'var(--border-strong)',
+                    boxShadow: '0 16px 40px -8px rgba(0,0,0,0.45)'
+                  }}
+                >
+                  <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between border-b" style={{ borderColor: 'var(--border-color)' }}>
+                    <span>Instant Results ({quickSearchResults.length})</span>
+                    <span className="font-mono text-[9px] text-[var(--accent-primary)] font-bold">Tap row to view</span>
+                  </div>
+
+                  {quickSearchResults.length > 0 ? (
+                    <div className="space-y-1 pt-0.5">
+                      {quickSearchResults.map((dispute) => {
+                        const isPending = dispute.status !== 'UNDER_REVIEW' && dispute.status !== 'RESOLVED';
+                        return (
+                          <div
+                            key={dispute.id}
+                            onClick={() => {
+                              setSelectedDispute(dispute);
+                              setSearchFocused(false);
+                              if (currentTab !== 'DISPUTES') setCurrentTab('DISPUTES');
+                            }}
+                            className="p-2.5 rounded-xl border cursor-pointer transition flex items-center justify-between gap-2.5 hover:bg-[var(--surface-hover)] active:scale-98 shadow-xs"
+                            style={{
+                              borderColor: 'var(--border-color)',
+                              backgroundColor: 'var(--surface-hover)'
+                            }}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div 
+                                className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border"
+                                style={{
+                                  backgroundColor: 'var(--surface)',
+                                  borderColor: 'var(--border-color)'
+                                }}
+                              >
+                                <ShieldAlert className="w-4 h-4 text-[var(--accent-primary)]" />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="font-mono font-bold text-xs text-[var(--accent-primary)] flex items-center gap-1.5">
+                                  <span>{dispute.paypalDisputeId}</span>
+                                  {isPending && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />}
+                                </div>
+                                <div className="text-[11px] truncate font-semibold" style={{ color: 'var(--foreground)' }}>
+                                  {humanizeReason(dispute.reason)}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="text-right shrink-0">
+                              <div className="font-mono font-bold text-xs" style={{ color: 'var(--foreground)' }}>
+                                {formatCurrency(dispute.amount, dispute.currency)}
+                              </div>
+                              <span className={`px-2 py-0.2 rounded-full font-bold text-[9px] inline-flex items-center gap-1 ${
+                                isPending 
+                                  ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400' 
+                                  : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                              }`}>
+                                {isPending ? 'Action Required' : 'Defended'}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="p-4 text-center space-y-2">
+                      <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        No disputes matching <span className="font-bold font-mono text-[var(--foreground)]">"{searchQuery}"</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleSearchChange('');
+                          setSearchFocused(false);
+                        }}
+                        className="text-[11px] font-bold text-[var(--accent-primary)] hover:underline"
+                      >
+                        Clear search filter
+                      </button>
+                    </div>
+                  )}
+
+                  {quickSearchResults.length > 0 && (
+                    <div className="pt-1.5 border-t text-center" style={{ borderColor: 'var(--border-color)' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchFocused(false);
+                          if (currentTab !== 'DISPUTES') setCurrentTab('DISPUTES');
+                        }}
+                        className="text-[11px] font-bold text-[var(--accent-primary)] hover:underline py-1 w-full flex items-center justify-center gap-1"
+                      >
+                        <span>View all matching in queue ({processedDisputes.length})</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>
