@@ -12,8 +12,10 @@ import {
   humanizeReason
 } from '../lib/utils';
 import { useToast } from './Toast';
+import { hapticLight, hapticMedium, hapticSuccess, hapticWarning } from '../lib/haptics';
+
 import { 
-  X, Sparkles, Upload, FileText, CheckCircle2, AlertTriangle, 
+  X, Sparkles, Share2, Upload, FileText, CheckCircle2, AlertTriangle, 
   ShieldCheck, ArrowRight, Loader2, Copy, Check, ExternalLink,
   Truck, Clock, ChevronRight, FileCheck, Eye, ShieldAlert,
   AlertCircle, Undo2, Globe, Scale, Send, Shield, RefreshCw,
@@ -43,6 +45,59 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
   const [previewItem, setPreviewItem] = useState<EvidenceItem | null>(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+
+  // Mobile Bottom Sheet Drag to Dismiss
+  const [dragOffsetY, setDragOffsetY] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const touchStartYRef = useRef(0);
+
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartYRef.current = e.touches[0].clientY;
+    setIsDragging(true);
+  }
+
+  function handleTouchMove(e: React.TouchEvent) {
+    const currentY = e.touches[0].clientY;
+    const delta = currentY - touchStartYRef.current;
+    if (delta > 0) {
+      setDragOffsetY(delta);
+    }
+  }
+
+  function handleTouchEnd() {
+    setIsDragging(false);
+    if (dragOffsetY > 90) {
+      hapticMedium();
+      handleAttemptClose();
+    }
+    setDragOffsetY(0);
+  }
+
+  // Native Web Share API
+  async function handleShare() {
+    hapticLight();
+    const shareData = {
+      title: 'ResolvePay Defense: ' + dispute.paypalDisputeId,
+      text: 'PayPal Dispute ' + dispute.paypalDisputeId + ' (' + formatCurrency(dispute.amount, dispute.currency) + ') - ' + humanizeReason(dispute.reason) + '. Win probability: ' + tactical.winProbability + '%.',
+      url: window.location.href,
+    };
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      try {
+        await navigator.share(shareData);
+        hapticSuccess();
+      } catch (err) {
+        // User cancelled or share dismissed
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(shareData.title + '\n' + shareData.text + '\n' + shareData.url);
+        hapticSuccess();
+        showToast('Dispute summary copied to clipboard', 'success', 'Link Copied');
+      } catch {
+        showToast('Failed to copy dispute summary', 'error');
+      }
+    }
+  }
 
   // Smart Features States
   const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>('en');
@@ -282,20 +337,31 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
   }
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-xs flex justify-end transition-smooth">
+    <div className="fixed inset-0 z-50 overflow-hidden bg-black/65 backdrop-blur-xs flex flex-col justify-end sm:flex-row sm:justify-end transition-smooth">
       
-      {/* DRAWER CONTAINER: FULL-SCREEN ON MOBILE, 3XL ON DESKTOP */}
+      {/* DRAWER / BOTTOM SHEET CONTAINER */}
       <div 
         role="dialog"
         aria-modal="true"
         aria-labelledby="dispute-title"
-        className="w-full sm:max-w-3xl h-full shadow-2xl flex flex-col border-l transition-smooth"
+        className="w-full sm:max-w-3xl h-[92vh] sm:h-full rounded-t-[28px] sm:rounded-none shadow-2xl flex flex-col border-t sm:border-t-0 sm:border-l transition-all animate-bottom-sheet sm:animate-none overflow-hidden"
         style={{
           backgroundColor: 'var(--surface)',
           borderColor: 'var(--border-color)',
-          color: 'var(--foreground)'
+          color: 'var(--foreground)',
+          transform: dragOffsetY > 0 ? `translateY(${dragOffsetY}px)` : undefined,
+          transition: isDragging ? 'none' : 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
         }}
       >
+        {/* Mobile Drag Handle */}
+        <div 
+          className="sm:hidden flex flex-col items-center justify-center pt-2.5 pb-1 cursor-grab active:cursor-grabbing select-none shrink-0"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          <div className="w-12 h-1.5 rounded-full bg-slate-500/40" />
+        </div>
         
         {/* Drawer Header */}
         <div 
@@ -346,18 +412,34 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
             </div>
           </div>
 
-          {/* Close Button with 44px minimum tap target */}
-          <button 
-            onClick={handleAttemptClose}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl transition hover:opacity-80 focus-visible:ring-2 focus-visible:ring-amber-500/70"
-            style={{ 
-              backgroundColor: 'var(--surface-hover)',
-              color: 'var(--text-muted)' 
-            }}
-            aria-label="Close dispute workspace drawer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Native Web Share API */}
+            <button 
+              onClick={handleShare}
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl transition hover:opacity-80 touch-spring focus-visible:ring-2 focus-visible:ring-amber-500/70"
+              style={{ 
+                backgroundColor: 'var(--surface-hover)',
+                color: 'var(--text-muted)' 
+              }}
+              title="Share Dispute Summary"
+              aria-label="Share dispute summary"
+            >
+              <Share2 className="w-4 h-4" />
+            </button>
+
+            {/* Close Button with 44px minimum tap target */}
+            <button 
+              onClick={() => { hapticLight(); handleAttemptClose(); }}
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl transition hover:opacity-80 touch-spring focus-visible:ring-2 focus-visible:ring-amber-500/70"
+              style={{ 
+                backgroundColor: 'var(--surface-hover)',
+                color: 'var(--text-muted)' 
+              }}
+              aria-label="Close dispute workspace drawer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Tactical Recommendation Bar */}
@@ -397,7 +479,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
           <button 
             role="tab"
             aria-selected={activeTab === 'ai'}
-            onClick={() => setActiveTab('ai')}
+            onClick={() => { hapticLight(); setActiveTab('ai'); }}
             className={`min-h-[44px] py-2.5 px-3 border-b-2 flex items-center gap-1.5 transition shrink-0 focus-visible:ring-2 focus-visible:ring-amber-500/50 ${
               activeTab === 'ai'
                 ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] font-bold'
@@ -412,7 +494,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
           <button 
             role="tab"
             aria-selected={activeTab === 'carrier'}
-            onClick={() => setActiveTab('carrier')}
+            onClick={() => { hapticLight(); setActiveTab('carrier'); }}
             className={`min-h-[44px] py-2.5 px-3 border-b-2 flex items-center gap-1.5 transition shrink-0 focus-visible:ring-2 focus-visible:ring-amber-500/50 ${
               activeTab === 'carrier'
                 ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] font-bold'
@@ -429,7 +511,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
           <button 
             role="tab"
             aria-selected={activeTab === 'evidence'}
-            onClick={() => setActiveTab('evidence')}
+            onClick={() => { hapticLight(); setActiveTab('evidence'); }}
             className={`min-h-[44px] py-2.5 px-3 border-b-2 flex items-center gap-1.5 transition shrink-0 focus-visible:ring-2 focus-visible:ring-amber-500/50 ${
               activeTab === 'evidence'
                 ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] font-bold'
@@ -443,7 +525,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
           <button 
             role="tab"
             aria-selected={activeTab === 'policy'}
-            onClick={() => setActiveTab('policy')}
+            onClick={() => { hapticLight(); setActiveTab('policy'); }}
             className={`min-h-[44px] py-2.5 px-3 border-b-2 flex items-center gap-1.5 transition shrink-0 focus-visible:ring-2 focus-visible:ring-amber-500/50 ${
               activeTab === 'policy'
                 ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] font-bold'

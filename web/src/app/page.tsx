@@ -14,6 +14,7 @@ import {
 import { useToast } from '../components/Toast';
 import DisputeDrawer from '../components/DisputeDrawer';
 import ConnectPayPalModal from '../components/ConnectPayPalModal';
+import { hapticLight, hapticMedium, hapticSuccess, hapticWarning, hapticPullTrigger } from '../lib/haptics';
 import { 
   Search, RefreshCw, Zap, ShieldAlert, AlertCircle, CheckCircle2, 
   Clock, DollarSign, Sparkles, Filter, ChevronDown, ChevronLeft, ChevronRight, 
@@ -36,6 +37,46 @@ export default function DashboardPage() {
 
   // Theme State
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+
+  // Mobile Pull-to-Refresh Gesture
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isPulling, setIsPulling] = useState(false);
+  const touchStartY = useRef(0);
+  const pullTriggeredRef = useRef(false);
+
+  function handleTouchStart(e: React.TouchEvent) {
+    if (typeof window !== 'undefined' && window.scrollY <= 5) {
+      touchStartY.current = e.touches[0].clientY;
+      setIsPulling(true);
+      pullTriggeredRef.current = false;
+    }
+  }
+
+  function handleTouchMove(e: React.TouchEvent) {
+    if (!isPulling || syncing) return;
+    if (typeof window !== 'undefined' && window.scrollY <= 5) {
+      const diff = e.touches[0].clientY - touchStartY.current;
+      if (diff > 0) {
+        const distance = Math.min(85, diff * 0.4);
+        setPullDistance(distance);
+        if (distance >= 55 && !pullTriggeredRef.current) {
+          pullTriggeredRef.current = true;
+          hapticPullTrigger();
+        }
+      }
+    }
+  }
+
+  function handleTouchEnd() {
+    if (!isPulling) return;
+    setIsPulling(false);
+    if (pullDistance >= 55) {
+      hapticSuccess();
+      handleSync();
+    }
+    setPullDistance(0);
+  }
+
 
   // Multi-Tenant Store States
   const [stores, setStores] = useState<MerchantStore[]>([
@@ -133,6 +174,7 @@ export default function DashboardPage() {
   }, []);
 
   function toggleTheme() {
+    hapticLight();
     const nextTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(nextTheme);
     localStorage.setItem('resolvepay_theme', nextTheme);
@@ -318,7 +360,14 @@ export default function DashboardPage() {
   useEffect(() => {
     const checkStandalone = () => {
       if (typeof window === 'undefined') return;
-      const urlParam = new URLSearchParams(window.location.search).get('app') || new URLSearchParams(window.location.search).get('mode');
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlParam = urlParams.get('app') || urlParams.get('mode');
+      const tabParam = urlParams.get('tab');
+      if (tabParam === 'disputes') setCurrentTab('DISPUTES');
+      else if (tabParam === 'whatsapp') setCurrentTab('WHATSAPP_AUTOPILOT');
+      else if (tabParam === 'radar') setCurrentTab('EARLY_WARNING');
+      else if (tabParam === 'carrier') setCurrentTab('CARRIER_RADAR');
+      else if (tabParam === 'settings') setCurrentTab('SETTINGS');
 
       if (urlParam === '1' || urlParam === 'standalone') {
         setIsStandalone(true);
@@ -445,13 +494,16 @@ export default function DashboardPage() {
   }
 
   async function handleSync() {
+    hapticLight();
     setSyncing(true);
     setMoreMenuOpen(false);
     try {
       await syncDisputesFromPayPal(activeStoreId);
       await loadDisputes(activeStoreId);
+      hapticSuccess();
       showToast(`PayPal dispute records synchronized for ${activeStore.name}`, 'success', 'Sync Complete');
     } catch (err: any) {
+      hapticWarning();
       showToast(err.message || 'Failed to reach PayPal Sandbox', 'error', 'PayPal Sync Failed');
     } finally {
       setSyncing(false);
@@ -1381,11 +1433,27 @@ export default function DashboardPage() {
       </header>
 
         {/* Dynamic Main Body */}
-        <main className="p-4 sm:p-8 space-y-6 flex-1 overflow-y-auto max-w-[1700px] w-full mx-auto">
+        <main onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} className="p-4 sm:p-8 space-y-6 flex-1 overflow-y-auto max-w-[1700px] w-full mx-auto pb-safe">
           
           {/* TAB 1: DISPUTES QUEUE (PRIMARY HUB) */}
           {currentTab === 'DISPUTES' && (
             <>
+              {/* Mobile Pull-to-Refresh Indicator */}
+              {pullDistance > 0 && (
+                <div 
+                  className="md:hidden flex items-center justify-center overflow-hidden transition-all duration-100 ease-out select-none mb-3"
+                  style={{ height: `${pullDistance}px` }}
+                >
+                  <div className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold shadow-lg transition-all ${
+                    pullDistance >= 55 
+                      ? 'bg-amber-500 text-black scale-105 shadow-amber-500/20' 
+                      : 'bg-[var(--surface)] text-[var(--accent-primary)] border border-[var(--border-color)]'
+                  }`}>
+                    <RefreshCw className={`w-3.5 h-3.5 ${pullDistance >= 55 || syncing ? 'animate-spin' : ''}`} style={{ transform: `rotate(${pullDistance * 4}deg)` }} />
+                    <span>{syncing ? 'Syncing PayPal...' : pullDistance >= 55 ? 'Release to Refresh' : 'Pull down to sync'}</span>
+                  </div>
+                </div>
+              )}
               {/* Executive Metrics Overview using CSS GRID auto-fit & clamp() font sizing */}
               <div 
                 className="grid gap-4"
@@ -1530,8 +1598,8 @@ export default function DashboardPage() {
                   ].map(({ key, label, count }) => (
                     <button
                       key={key}
-                      onClick={() => { setStatusFilter(key as any); setCurrentPage(1); }}
-                      className={`min-h-[40px] px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap flex items-center gap-2 focus-visible:ring-2 focus-visible:ring-amber-500/70 ${
+                      onClick={() => { hapticLight(); setStatusFilter(key as any); setCurrentPage(1); }}
+                      className={`min-h-[40px] px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap flex items-center gap-2 touch-spring focus-visible:ring-2 focus-visible:ring-amber-500/70 ${
                         statusFilter === key
                           ? 'shadow-xs'
                           : 'border text-[var(--text-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)]'
@@ -1647,8 +1715,8 @@ export default function DashboardPage() {
                   return (
                     <div
                       key={dispute.id}
-                      onClick={() => setSelectedDispute(dispute)}
-                      className="p-4 rounded-2xl border space-y-3 cursor-pointer active:scale-98 transition shadow-xs hover:border-[var(--border-strong)] group"
+                      onClick={() => { hapticMedium(); setSelectedDispute(dispute); }}
+                      className="p-4 rounded-2xl border space-y-3 cursor-pointer active:scale-98 transition shadow-xs hover:border-[var(--border-strong)] group touch-spring"
                       style={{
                         backgroundColor: 'var(--surface)',
                         borderColor: 'var(--border-color)'
@@ -1720,13 +1788,14 @@ export default function DashboardPage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
+                            hapticMedium();
                             setSelectedDispute(dispute);
                           }}
                           style={{
                             backgroundColor: 'var(--btn-primary-bg)',
                             color: 'var(--btn-primary-text)'
                           }}
-                          className="px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-xs transition hover:brightness-105 active:scale-95"
+                          className="px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-xs transition hover:brightness-105 active:scale-95 touch-spring"
                         >
                           <span>Review Defense</span>
                           <ArrowUpRight className="w-3.5 h-3.5" />
@@ -2344,15 +2413,15 @@ export default function DashboardPage() {
       {isStandalone && (
         <nav 
           aria-label="Mobile Navigation"
-          className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around px-2 py-1.5 border-t backdrop-blur-md shadow-2xl animate-slide-up"
+          className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around px-2 py-1.5 pb-safe border-t backdrop-blur-md shadow-2xl animate-slide-up"
         style={{
           backgroundColor: 'var(--surface)',
           borderColor: 'var(--border-color)'
         }}
       >
         <button
-          onClick={() => setCurrentTab('DISPUTES')}
-          className="min-h-[44px] min-w-[54px] flex flex-col items-center justify-center gap-1 text-[10px] font-bold transition focus-visible:ring-2 focus-visible:ring-amber-500"
+          onClick={() => { hapticLight(); setCurrentTab('DISPUTES'); }}
+          className="min-h-[44px] min-w-[54px] flex flex-col items-center justify-center gap-1 text-[10px] font-bold transition touch-spring focus-visible:ring-2 focus-visible:ring-amber-500"
           style={{ color: currentTab === 'DISPUTES' ? 'var(--accent-primary)' : 'var(--text-muted)' }}
         >
           <div className="relative">
@@ -2367,8 +2436,8 @@ export default function DashboardPage() {
         </button>
 
         <button
-          onClick={() => setCurrentTab('WHATSAPP_AUTOPILOT')}
-          className="min-h-[44px] min-w-[54px] flex flex-col items-center justify-center gap-1 text-[10px] font-bold transition focus-visible:ring-2 focus-visible:ring-amber-500"
+          onClick={() => { hapticLight(); setCurrentTab('WHATSAPP_AUTOPILOT'); }}
+          className="min-h-[44px] min-w-[54px] flex flex-col items-center justify-center gap-1 text-[10px] font-bold transition touch-spring focus-visible:ring-2 focus-visible:ring-amber-500"
           style={{ color: currentTab === 'WHATSAPP_AUTOPILOT' ? 'var(--accent-primary)' : 'var(--text-muted)' }}
         >
           <div className="relative">
@@ -2379,8 +2448,8 @@ export default function DashboardPage() {
         </button>
 
         <button
-          onClick={() => setCurrentTab('CARRIER_RADAR')}
-          className="min-h-[44px] min-w-[54px] flex flex-col items-center justify-center gap-1 text-[10px] font-bold transition focus-visible:ring-2 focus-visible:ring-amber-500"
+          onClick={() => { hapticLight(); setCurrentTab('CARRIER_RADAR'); }}
+          className="min-h-[44px] min-w-[54px] flex flex-col items-center justify-center gap-1 text-[10px] font-bold transition touch-spring focus-visible:ring-2 focus-visible:ring-amber-500"
           style={{ color: currentTab === 'CARRIER_RADAR' ? 'var(--accent-primary)' : 'var(--text-muted)' }}
         >
           <Truck className="w-5 h-5" />
@@ -2388,8 +2457,8 @@ export default function DashboardPage() {
         </button>
 
         <button
-          onClick={() => setCurrentTab('EARLY_WARNING')}
-          className="min-h-[44px] min-w-[54px] flex flex-col items-center justify-center gap-1 text-[10px] font-bold transition focus-visible:ring-2 focus-visible:ring-amber-500"
+          onClick={() => { hapticLight(); setCurrentTab('EARLY_WARNING'); }}
+          className="min-h-[44px] min-w-[54px] flex flex-col items-center justify-center gap-1 text-[10px] font-bold transition touch-spring focus-visible:ring-2 focus-visible:ring-amber-500"
           style={{ color: currentTab === 'EARLY_WARNING' ? 'var(--accent-primary)' : 'var(--text-muted)' }}
         >
           <div className="relative">
@@ -2402,8 +2471,8 @@ export default function DashboardPage() {
         </button>
 
         <button
-          onClick={() => setCurrentTab('SETTINGS')}
-          className="min-h-[44px] min-w-[54px] flex flex-col items-center justify-center gap-1 text-[10px] font-bold transition focus-visible:ring-2 focus-visible:ring-amber-500"
+          onClick={() => { hapticLight(); setCurrentTab('SETTINGS'); }}
+          className="min-h-[44px] min-w-[54px] flex flex-col items-center justify-center gap-1 text-[10px] font-bold transition touch-spring focus-visible:ring-2 focus-visible:ring-amber-500"
           style={{ color: currentTab === 'SETTINGS' ? 'var(--accent-primary)' : 'var(--text-muted)' }}
         >
           <Settings className="w-5 h-5" />

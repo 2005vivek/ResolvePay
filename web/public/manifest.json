@@ -25,5 +25,28 @@
       "sizes": "any",
       "type": "image/svg+xml"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "Disputes Queue",
+      "short_name": "Disputes",
+      "description": "Review and defend open PayPal disputes",
+      "url": "/?tab=disputes",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "WhatsApp 1-Tap",
+      "short_name": "WhatsApp",
+      "description": "Approve AI dispute evidence via WhatsApp bot",
+      "url": "/?tab=whatsapp",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Early Threat Radar",
+      "short_name": "Radar",
+      "description": "Monitor proactive chargeback radar telemetry",
+      "url": "/?tab=radar",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
   ]
 }
