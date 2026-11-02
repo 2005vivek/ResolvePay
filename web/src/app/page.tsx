@@ -152,7 +152,7 @@ export default function DashboardPage() {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
     setIsIOSDevice(isIOS);
 
-    // 1. Check if early install prompt was captured in layout.tsx before React hydration
+    // 1. Check if early install prompt was captured before React hydration
     if ((window as any).__resolvepay_install_prompt) {
       setDeferredPrompt((window as any).__resolvepay_install_prompt);
       setCanInstall(true);
@@ -174,14 +174,10 @@ export default function DashboardPage() {
     };
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-    // 2. Service Worker Registration & Live Update Detection for Vercel Deployments
+    // 2. Service Worker Registration
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').then((registration) => {
-        if (registration.waiting) {
-          setWaitingWorker(registration.waiting);
-          setHasAppUpdate(true);
-        }
-
+      navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then((registration) => {
+        // Detect background service worker update
         registration.onupdatefound = () => {
           const installing = registration.installing;
           if (installing) {
@@ -189,7 +185,6 @@ export default function DashboardPage() {
               if (installing.state === 'installed' && navigator.serviceWorker.controller) {
                 setWaitingWorker(installing);
                 setHasAppUpdate(true);
-                showToast('A new version of ResolvePay is ready! Tap Update Now.', 'info', '🚀 New App Update Available');
               }
             };
           }
@@ -202,49 +197,59 @@ export default function DashboardPage() {
         };
         document.addEventListener('visibilitychange', handleVisibilityChange);
 
-        const intervalId = setInterval(() => {
-          registration.update().catch(() => {});
-        }, 45000);
-
         return () => {
-          clearInterval(intervalId);
           document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
       }).catch((err) => {
         console.warn('SW register error:', err);
       });
-
-      let refreshing = false;
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (!refreshing) {
-          refreshing = true;
-          window.location.reload();
-        }
-      });
     }
 
-    // 3. Fallback Periodic Vercel Deployment Check via /api/version
-    let lastCommitSha: string | null = null;
-    const checkVersion = async () => {
+    // 3. Automated Vercel Deployment Auto-Fetch Check
+    let currentCommitSha: string | null = null;
+    const checkDeploymentUpdate = async () => {
       try {
         const res = await fetch('/api/version', { cache: 'no-store' });
-        if (res.ok) {
-          const data = await res.json();
-          if (lastCommitSha && data.commitSha && lastCommitSha !== data.commitSha) {
-            setHasAppUpdate(true);
+        if (!res.ok) return;
+        const data = await res.json();
+        const incomingSha = data.commitSha;
+        if (!incomingSha) return;
+
+        // On first run: save the current active SHA. Never show update banner on initial load!
+        if (!currentCommitSha) {
+          currentCommitSha = incomingSha;
+          return;
+        }
+
+        // If the SHA changes during the session: Vercel deployed a new commit!
+        if (incomingSha !== currentCommitSha) {
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistration().then(reg => reg?.update());
           }
-          if (data.commitSha) {
-            lastCommitSha = data.commitSha;
-          }
+          setHasAppUpdate(true);
+          showToast('New deployment live on Vercel! Tap Update Now to refresh.', 'info', '🚀 Update Ready');
         }
       } catch (_) {}
     };
-    checkVersion();
-    const versionInterval = setInterval(checkVersion, 30000);
+
+    // Initial check (initializes currentCommitSha silently, no false positive banner)
+    checkDeploymentUpdate();
+
+    // Check periodically every 20 seconds
+    const versionInterval = setInterval(checkDeploymentUpdate, 20000);
+
+    // Also check on tab focus
+    const handleVisCheck = () => {
+      if (document.visibilityState === 'visible') {
+        checkDeploymentUpdate();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisCheck);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('resolvepay:installable', handleEarlyPrompt);
+      document.removeEventListener('visibilitychange', handleVisCheck);
       clearInterval(versionInterval);
     };
   }, []);
@@ -822,28 +827,7 @@ export default function DashboardPage() {
             </button>
           </nav>
 
-          {/* Mobile-only Drawer Footer: App Install Button */}
-          {!isStandalone && (
-            <div className="md:hidden pt-3 border-t" style={{ borderColor: 'var(--border-color)' }}>
-              <button
-                onClick={handleInstallApp}
-                className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border flex items-center justify-between text-xs font-bold transition active:scale-98 shadow-sm"
-                style={{
-                  backgroundColor: 'var(--surface-hover)',
-                  borderColor: 'var(--border-color)',
-                  color: 'var(--foreground)'
-                }}
-              >
-                <span className="flex items-center gap-2.5">
-                  <Download className="w-4 h-4 text-amber-500" />
-                  <span className="font-semibold" style={{ color: 'var(--foreground)' }}>Install Mobile App</span>
-                </span>
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-500 border border-amber-500/30">
-                  PWA
-                </span>
-              </button>
-            </div>
-          )}
+
         </div>
 
         {/* Sidebar Desktop Footer (Hidden on mobile to keep drawer uncluttered) */}
@@ -906,6 +890,59 @@ export default function DashboardPage() {
             borderColor: 'var(--border-color)'
           }}
         >
+          {/* VERCEL LIVE DEPLOYMENT UPDATE NOTIFICATION BANNER (Inside header, natural layout flow, NEVER covers search bar) */}
+          {hasAppUpdate && (
+            <div 
+              role="alert"
+              className="border-b px-3 sm:px-6 py-2.5 flex items-center justify-between gap-3 animate-top-slide transition-all"
+              style={{
+                backgroundColor: 'var(--surface-hover)',
+                borderColor: 'var(--border-strong)',
+                color: 'var(--foreground)'
+              }}
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span 
+                  className="p-1.5 rounded-lg flex items-center justify-center shrink-0 shadow-xs" 
+                  style={{ 
+                    backgroundColor: 'var(--accent-pill)', 
+                    color: 'var(--accent-pill-text)' 
+                  }}
+                >
+                  <Sparkles className="w-3.5 h-3.5 animate-pulse" />
+                </span>
+                <div className="text-xs font-semibold leading-tight truncate">
+                  <span style={{ color: 'var(--foreground)' }}>🚀 New Update Live on Vercel!</span>
+                  <span className="hidden sm:inline font-normal ml-1.5" style={{ color: 'var(--text-muted)' }}>
+                    A new build is ready.
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={handleApplyAppUpdate}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold transition active:scale-95 shadow-xs flex items-center gap-1.5"
+                  style={{
+                    backgroundColor: 'var(--btn-primary-bg)',
+                    color: 'var(--btn-primary-text)'
+                  }}
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  <span>Update Now</span>
+                </button>
+                <button
+                  onClick={() => setHasAppUpdate(false)}
+                  className="p-1.5 rounded-lg transition hover:opacity-80"
+                  style={{
+                    color: 'var(--text-muted)'
+                  }}
+                  title="Dismiss update banner"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
           {/* Mobile Top Brand Row (Visible only on < md screens) */}
           <div 
             className="md:hidden flex items-center justify-between px-4 py-2.5 border-b"
@@ -927,9 +964,9 @@ export default function DashboardPage() {
                   onClick={handleInstallApp}
                   className="px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 active:scale-95 transition shadow-sm border"
                   style={{
-                    backgroundColor: 'var(--accent-primary)',
-                    color: '#000000',
-                    borderColor: 'var(--accent-primary)'
+                    backgroundColor: 'var(--btn-primary-bg)',
+                    color: 'var(--btn-primary-text)',
+                    borderColor: 'var(--border-strong)'
                   }}
                   title="1-Click Install App to Home Screen"
                 >
@@ -1204,80 +1241,6 @@ export default function DashboardPage() {
           </div>
         </div>
       </header>
-
-        {/* VERCEL LIVE DEPLOYMENT UPDATE POPUP BANNER */}
-        {hasAppUpdate && (
-          <div 
-            role="alert"
-            className="sticky top-0 z-50 px-4 py-2.5 shadow-lg border-b flex items-center justify-between gap-3 animate-top-slide"
-            style={{
-              backgroundColor: 'var(--accent-primary)',
-              color: '#000000',
-              borderColor: 'var(--border-strong)'
-            }}
-          >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <Sparkles className="w-4 h-4 shrink-0 text-black animate-pulse" />
-              <div className="text-xs font-bold leading-tight truncate">
-                <span>🚀 New Update Live on Vercel!</span>
-                <span className="hidden sm:inline font-normal ml-1.5 opacity-90">A new build is ready.</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={handleApplyAppUpdate}
-                className="px-3 py-1 bg-black text-white hover:bg-neutral-800 rounded-lg text-xs font-bold transition active:scale-95 shadow-sm flex items-center gap-1.5"
-              >
-                <RefreshCw className="w-3 h-3" />
-                <span>Update Now</span>
-              </button>
-              <button
-                onClick={() => setHasAppUpdate(false)}
-                className="p-1 hover:bg-black/10 rounded-lg text-black/70 hover:text-black transition"
-                title="Dismiss"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* MOBILE 1-CLICK PWA INSTALL BANNER */}
-        {!isStandalone && showMobileInstallBanner && (
-          <div 
-            className="md:hidden px-4 py-2 border-b flex items-center justify-between gap-2 text-xs"
-            style={{
-              backgroundColor: 'var(--surface)',
-              borderColor: 'var(--border-color)',
-              color: 'var(--foreground)'
-            }}
-          >
-            <div className="flex items-center gap-2 truncate">
-              <Smartphone className="w-4 h-4 text-amber-500 shrink-0" />
-              <span className="truncate font-medium">Install ResolvePay App for 1-click home screen access</span>
-            </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <button
-                onClick={handleInstallApp}
-                className="px-2.5 py-1 rounded text-xs font-bold border shadow-xs active:scale-95 transition"
-                style={{
-                  backgroundColor: 'var(--accent-primary)',
-                  color: '#000000',
-                  borderColor: 'var(--accent-primary)'
-                }}
-              >
-                Install
-              </button>
-              <button
-                onClick={() => setShowMobileInstallBanner(false)}
-                className="p-1 text-slate-400 hover:text-slate-200 transition"
-                title="Dismiss banner"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Dynamic Main Body */}
         <main className="p-4 sm:p-8 space-y-6 flex-1 overflow-y-auto max-w-[1700px] w-full mx-auto">
@@ -2357,11 +2320,11 @@ export default function DashboardPage() {
               onClick={() => setShowInstallGuide(false)}
               className="w-full min-h-[44px] py-2.5 rounded-xl font-bold text-xs transition active:scale-98 shadow-sm flex items-center justify-center gap-2"
               style={{ 
-                backgroundColor: '#F5A524', 
-                color: '#000000' 
+                backgroundColor: 'var(--btn-primary-bg)', 
+                color: 'var(--btn-primary-text)' 
               }}
             >
-              <Check className="w-4 h-4 text-black" />
+              <Check className="w-4 h-4" />
               <span>Done, Got It</span>
             </button>
           </div>

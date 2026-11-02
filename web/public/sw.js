@@ -1,9 +1,9 @@
 // ResolvePay PWA Offline & Background Update Service Worker
-const CACHE_NAME = 'resolvepay-v2.2';
+const CACHE_NAME = 'resolvepay-v2.3';
 
 self.addEventListener('install', (event) => {
-  // Do not automatically force activate on install so the user gets the update banner
-  console.log('[SW] New version installed:', CACHE_NAME);
+  self.skipWaiting();
+  console.log('[SW] Installed & activated version:', CACHE_NAME);
 });
 
 self.addEventListener('activate', (event) => {
@@ -16,7 +16,6 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Listen for SKIP_WAITING signal from app when user taps "Update Now"
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
@@ -24,7 +23,6 @@ self.addEventListener('message', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Pass-through fetch for dynamic Next.js API and pages
   event.respondWith(
     fetch(event.request).catch(() => caches.match(event.request))
   );

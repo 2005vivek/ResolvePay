@@ -133,8 +133,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               </button>
               <button 
                 onClick={() => dismissToast(activeSpotlightToast.id)} 
-                className="min-h-[44px] px-5 py-2 text-xs font-bold rounded-xl shadow-sm text-black transition hover:brightness-105 focus-visible:ring-2 focus-visible:ring-amber-500/50"
-                style={{ backgroundColor: 'var(--accent-primary)' }}
+                className="min-h-[44px] px-5 py-2 text-xs font-bold rounded-xl shadow-sm transition hover:brightness-105 focus-visible:ring-2 focus-visible:ring-amber-500/50"
+                style={{ backgroundColor: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)' }}
               >
                 Acknowledge & Protect
               </button>
@@ -181,7 +181,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                       toast.onUndo?.();
                       dismissToast(toast.id);
                     }}
-                    className="min-h-[36px] px-3 py-1 rounded-lg text-xs font-bold bg-[var(--accent-primary)] text-black flex items-center gap-1.5 hover:brightness-105 transition"
+                    className="min-h-[36px] px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 hover:brightness-105 transition shadow-xs"
+                    style={{ backgroundColor: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)' }}
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
                     <span>{toast.undoLabel || 'Undo Action'}</span>

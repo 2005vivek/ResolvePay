@@ -750,7 +750,8 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
 
                     <button
                       onClick={() => setPreviewItem(item)}
-                      className="min-h-[36px] px-3 py-1 rounded-lg bg-black/20 hover:bg-black/40 text-[var(--accent-primary)] text-xs font-bold flex items-center gap-1 shrink-0 transition"
+                      className="min-h-[36px] px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1 shrink-0 transition border shadow-xs"
+                      style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-color)', color: 'var(--accent-primary)' }}
                     >
                       <Eye className="w-3.5 h-3.5" />
                       <span>View</span>
