@@ -1038,21 +1038,14 @@ export default function DashboardPage() {
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
+                    // Close keyboard and dropdown without automatically opening any dispute
+                    (e.target as HTMLElement).blur();
                     setSearchFocused(false);
                     if (currentTab !== 'DISPUTES') {
                       setCurrentTab('DISPUTES');
                     }
-                    const q = searchQuery.trim().toLowerCase();
-                    if (q) {
-                      const match = disputes.find(d => 
-                        d.paypalDisputeId.toLowerCase().includes(q) || d.id.toLowerCase().includes(q)
-                      );
-                      if (match) {
-                        setSelectedDispute(match);
-                        showToast(`Opened dispute ${match.paypalDisputeId}`, 'success', 'Dispute Located');
-                      }
-                    }
                   } else if (e.key === 'Escape') {
+                    (e.target as HTMLElement).blur();
                     setSearchFocused(false);
                   }
                 }}
@@ -1078,10 +1071,10 @@ export default function DashboardPage() {
                 </button>
               )}
 
-              {/* LIVE SEARCH AUTOCOMPLETE POPUP (Floats directly underneath search bar on mobile & web) */}
+              {/* LIVE SEARCH AUTOCOMPLETE POPUP (Mobile App Only - Hidden on PC/Desktop via md:hidden) */}
               {searchFocused && searchQuery.trim().length > 0 && (
                 <div 
-                  className="absolute left-0 right-0 top-full mt-2 rounded-2xl border shadow-2xl p-2.5 z-[70] space-y-2 animate-top-slide max-h-[75vh] sm:max-h-[380px] overflow-y-auto"
+                  className="md:hidden absolute left-0 right-0 top-full mt-2 rounded-2xl border shadow-2xl p-2.5 z-[70] space-y-2 animate-top-slide max-h-[75vh] sm:max-h-[380px] overflow-y-auto"
                   style={{
                     backgroundColor: 'var(--surface)',
                     borderColor: 'var(--border-strong)',
