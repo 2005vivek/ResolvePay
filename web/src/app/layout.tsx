@@ -39,6 +39,19 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="mobile-web-app-capable" content="yes" />
 
+        {/* Capture PWA Install Prompt early before React Hydration */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.addEventListener('beforeinstallprompt', function(e) {
+                e.preventDefault();
+                window.__resolvepay_install_prompt = e;
+                window.dispatchEvent(new CustomEvent('resolvepay:installable'));
+              });
+            `,
+          }}
+        />
+
         {/* Avoid Theme Flash before First Paint */}
         <script
           dangerouslySetInnerHTML={{

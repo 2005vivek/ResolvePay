@@ -138,31 +138,115 @@ export default function DashboardPage() {
   // Mobile Display Mode: Standalone Installed App vs Standard Mobile Browser
   const [isStandalone, setIsStandalone] = useState(false);
 
-  // PWA Install Prompt State
+  // PWA Install Prompt State & Live Vercel Update State
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [canInstall, setCanInstall] = useState(false);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
   const [isIOSDevice, setIsIOSDevice] = useState(false);
+  const [hasAppUpdate, setHasAppUpdate] = useState(false);
+  const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
+  const [showMobileInstallBanner, setShowMobileInstallBanner] = useState(true);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
     setIsIOSDevice(isIOS);
 
+    // 1. Check if early install prompt was captured in layout.tsx before React hydration
+    if ((window as any).__resolvepay_install_prompt) {
+      setDeferredPrompt((window as any).__resolvepay_install_prompt);
+      setCanInstall(true);
+    }
+
+    const handleEarlyPrompt = () => {
+      if ((window as any).__resolvepay_install_prompt) {
+        setDeferredPrompt((window as any).__resolvepay_install_prompt);
+        setCanInstall(true);
+      }
+    };
+    window.addEventListener('resolvepay:installable', handleEarlyPrompt);
+
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
+      (window as any).__resolvepay_install_prompt = e;
       setDeferredPrompt(e);
       setCanInstall(true);
     };
-
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-    // Register PWA Service Worker for offline support and native app install prompt
+    // 2. Service Worker Registration & Live Update Detection for Vercel Deployments
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
+      navigator.serviceWorker.register('/sw.js').then((registration) => {
+        if (registration.waiting) {
+          setWaitingWorker(registration.waiting);
+          setHasAppUpdate(true);
+        }
+
+        registration.onupdatefound = () => {
+          const installing = registration.installing;
+          if (installing) {
+            installing.onstatechange = () => {
+              if (installing.state === 'installed' && navigator.serviceWorker.controller) {
+                setWaitingWorker(installing);
+                setHasAppUpdate(true);
+                showToast('A new version of ResolvePay is ready! Tap Update Now.', 'info', '🚀 New App Update Available');
+              }
+            };
+          }
+        };
+
+        const handleVisibilityChange = () => {
+          if (document.visibilityState === 'visible') {
+            registration.update().catch(() => {});
+          }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        const intervalId = setInterval(() => {
+          registration.update().catch(() => {});
+        }, 45000);
+
+        return () => {
+          clearInterval(intervalId);
+          document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+      }).catch((err) => {
+        console.warn('SW register error:', err);
+      });
+
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) {
+          refreshing = true;
+          window.location.reload();
+        }
+      });
     }
 
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    // 3. Fallback Periodic Vercel Deployment Check via /api/version
+    let lastCommitSha: string | null = null;
+    const checkVersion = async () => {
+      try {
+        const res = await fetch('/api/version', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (lastCommitSha && data.commitSha && lastCommitSha !== data.commitSha) {
+            setHasAppUpdate(true);
+          }
+          if (data.commitSha) {
+            lastCommitSha = data.commitSha;
+          }
+        }
+      } catch (_) {}
+    };
+    checkVersion();
+    const versionInterval = setInterval(checkVersion, 30000);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('resolvepay:installable', handleEarlyPrompt);
+      clearInterval(versionInterval);
+    };
   }, []);
 
   async function handleInstallApp() {
@@ -170,25 +254,41 @@ export default function DashboardPage() {
     setMobileMenuOpen(false);
 
     if (isStandalone) {
-      showToast('ResolvePay is already installed and running in App Mode!', 'info', 'Already Installed');
+      showToast('ResolvePay is already running in App Mode!', 'info', 'Already Installed');
       return;
     }
 
-    if (deferredPrompt) {
+    const promptEvent = deferredPrompt || (typeof window !== 'undefined' ? (window as any).__resolvepay_install_prompt : null);
+
+    if (promptEvent) {
       try {
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
+        promptEvent.prompt();
+        const { outcome } = await promptEvent.userChoice;
         if (outcome === 'accepted') {
-          showToast('ResolvePay App installing to your home screen...', 'success', 'App Installed');
+          showToast('ResolvePay App installed successfully to your home screen!', 'success', 'App Installed');
           setDeferredPrompt(null);
+          if (typeof window !== 'undefined') (window as any).__resolvepay_install_prompt = null;
           setCanInstall(false);
+          setShowMobileInstallBanner(false);
+        } else {
+          showToast('App installation was cancelled', 'info', 'Installation');
         }
       } catch (err) {
         console.error('PWA install error:', err);
+        setShowInstallGuide(true);
       }
     } else {
       setShowInstallGuide(true);
     }
+  }
+
+  function handleApplyAppUpdate() {
+    if (waitingWorker) {
+      waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+    }
+    setTimeout(() => {
+      window.location.reload();
+    }, 300);
   }
 
   // Instant SWR Cache for Disputes from sessionStorage
@@ -821,20 +921,38 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {!isStandalone && (
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl border transition hover:opacity-80 focus-visible:ring-2 focus-visible:ring-amber-500/70"
-                style={{ 
-                  borderColor: 'var(--border-color)',
-                  backgroundColor: 'var(--surface-hover)',
-                  color: 'var(--foreground)'
-                }}
-                aria-label="Toggle navigation menu"
-              >
-                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {!isStandalone && (
+                <button
+                  onClick={handleInstallApp}
+                  className="px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 active:scale-95 transition shadow-sm border"
+                  style={{
+                    backgroundColor: 'var(--accent-primary)',
+                    color: '#000000',
+                    borderColor: 'var(--accent-primary)'
+                  }}
+                  title="1-Click Install App to Home Screen"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Install App</span>
+                </button>
+              )}
+
+              {!isStandalone && (
+                <button
+                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                  className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl border transition hover:opacity-80 focus-visible:ring-2 focus-visible:ring-amber-500/70"
+                  style={{ 
+                    borderColor: 'var(--border-color)',
+                    backgroundColor: 'var(--surface-hover)',
+                    color: 'var(--foreground)'
+                  }}
+                  aria-label="Toggle navigation menu"
+                >
+                  {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Search, Store Switcher, and More Menu Row */}
@@ -1086,6 +1204,80 @@ export default function DashboardPage() {
           </div>
         </div>
       </header>
+
+        {/* VERCEL LIVE DEPLOYMENT UPDATE POPUP BANNER */}
+        {hasAppUpdate && (
+          <div 
+            role="alert"
+            className="sticky top-0 z-50 px-4 py-2.5 shadow-lg border-b flex items-center justify-between gap-3 animate-top-slide"
+            style={{
+              backgroundColor: 'var(--accent-primary)',
+              color: '#000000',
+              borderColor: 'var(--border-strong)'
+            }}
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <Sparkles className="w-4 h-4 shrink-0 text-black animate-pulse" />
+              <div className="text-xs font-bold leading-tight truncate">
+                <span>🚀 New Update Live on Vercel!</span>
+                <span className="hidden sm:inline font-normal ml-1.5 opacity-90">A new build is ready.</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={handleApplyAppUpdate}
+                className="px-3 py-1 bg-black text-white hover:bg-neutral-800 rounded-lg text-xs font-bold transition active:scale-95 shadow-sm flex items-center gap-1.5"
+              >
+                <RefreshCw className="w-3 h-3" />
+                <span>Update Now</span>
+              </button>
+              <button
+                onClick={() => setHasAppUpdate(false)}
+                className="p-1 hover:bg-black/10 rounded-lg text-black/70 hover:text-black transition"
+                title="Dismiss"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* MOBILE 1-CLICK PWA INSTALL BANNER */}
+        {!isStandalone && showMobileInstallBanner && (
+          <div 
+            className="md:hidden px-4 py-2 border-b flex items-center justify-between gap-2 text-xs"
+            style={{
+              backgroundColor: 'var(--surface)',
+              borderColor: 'var(--border-color)',
+              color: 'var(--foreground)'
+            }}
+          >
+            <div className="flex items-center gap-2 truncate">
+              <Smartphone className="w-4 h-4 text-amber-500 shrink-0" />
+              <span className="truncate font-medium">Install ResolvePay App for 1-click home screen access</span>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                onClick={handleInstallApp}
+                className="px-2.5 py-1 rounded text-xs font-bold border shadow-xs active:scale-95 transition"
+                style={{
+                  backgroundColor: 'var(--accent-primary)',
+                  color: '#000000',
+                  borderColor: 'var(--accent-primary)'
+                }}
+              >
+                Install
+              </button>
+              <button
+                onClick={() => setShowMobileInstallBanner(false)}
+                className="p-1 text-slate-400 hover:text-slate-200 transition"
+                title="Dismiss banner"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Dynamic Main Body */}
         <main className="p-4 sm:p-8 space-y-6 flex-1 overflow-y-auto max-w-[1700px] w-full mx-auto">

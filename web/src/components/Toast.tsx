@@ -143,16 +143,16 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         </div>
       )}
       
-      {/* TOAST CONTAINER: BOTTOM-RIGHT ON DESKTOP, BOTTOM-CENTER ON MOBILE (Never overlaps header) */}
+      {/* TOAST CONTAINER: TOP-RIGHT ON DESKTOP, TOP-CENTER ON MOBILE (Never blocks bottom navigation tabs) */}
       <div 
         aria-live="polite" 
-        className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 z-50 flex flex-col-reverse gap-2.5 max-w-md sm:max-w-sm mx-auto sm:mx-0 pointer-events-none"
+        className="fixed top-4 left-4 right-4 sm:left-auto sm:right-6 sm:top-6 z-[9999] flex flex-col gap-2.5 max-w-md sm:max-w-sm mx-auto sm:mx-0 pointer-events-none"
       >
         {toasts.filter(t => !t.spotlight).map((toast) => (
           <div
             key={toast.id}
             role="alert"
-            className="pointer-events-auto p-3.5 rounded-2xl border shadow-2xl flex items-start gap-3 transition-all duration-200 animate-slide-up"
+            className="pointer-events-auto p-3.5 rounded-2xl border shadow-2xl flex items-start gap-3 transition-all duration-200 animate-top-slide"
             style={{
               backgroundColor: 'var(--surface)',
               borderColor: 'var(--border-color)',
