@@ -16,14 +16,14 @@ import DisputeDrawer from '../components/DisputeDrawer';
 import ConnectPayPalModal from '../components/ConnectPayPalModal';
 import { 
   Search, RefreshCw, Zap, ShieldAlert, AlertCircle, CheckCircle2, 
-  Clock, DollarSign, Sparkles, Filter, ChevronDown, ChevronRight, 
+  Clock, DollarSign, Sparkles, Filter, ChevronDown, ChevronLeft, ChevronRight, 
   Layers, MessageSquare, Truck, AlertTriangle, Settings, Store, 
   Lock, Check, Send, X, ArrowUpRight, ArrowUpDown, Menu, MoreVertical,
   Smartphone, Database, Inbox, Shield, Sun, Moon, Eye, RotateCcw, Download
 } from 'lucide-react';
 
 type Tab = 'DISPUTES' | 'WHATSAPP_AUTOPILOT' | 'CARRIER_RADAR' | 'EARLY_WARNING' | 'SETTINGS';
-type SortField = 'id' | 'reason' | 'amount' | 'status' | 'deadline';
+type SortField = 'latest' | 'deadline' | 'amount' | 'reason' | 'id' | 'status';
 type SortOrder = 'asc' | 'desc';
 
 export default function DashboardPage() {
@@ -75,10 +75,10 @@ export default function DashboardPage() {
   // Filters & Pagination State
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTION_REQUIRED' | 'UNDER_REVIEW' | 'RESOLVED'>('ALL');
-  const [sortField, setSortField] = useState<SortField>('deadline');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  const [sortField, setSortField] = useState<SortField>('latest');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 8;
+  const pageSize = 6;
 
   // Real-time Telemetry
   const [lastSyncTimestamp, setLastSyncTimestamp] = useState<string>('');
@@ -557,6 +557,16 @@ export default function DashboardPage() {
     result.sort((a, b) => {
       let comparison = 0;
       switch (sortField) {
+        case 'latest': {
+          const timeA = a.lastSyncedTime ? new Date(a.lastSyncedTime).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+          const timeB = b.lastSyncedTime ? new Date(b.lastSyncedTime).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+          if (timeA && timeB && timeA !== timeB) {
+            comparison = timeA - timeB;
+          } else {
+            comparison = (a.paypalDisputeId || a.id).localeCompare(b.paypalDisputeId || b.id);
+          }
+          break;
+        }
         case 'id':
           comparison = a.paypalDisputeId.localeCompare(b.paypalDisputeId);
           break;
@@ -1381,31 +1391,73 @@ export default function DashboardPage() {
 
               </div>
 
-              {/* Table / List Filter Controls (44px tap targets) */}
+              {/* Table / List Filter Controls */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
                 <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-                  {(['ALL', 'ACTION_REQUIRED', 'UNDER_REVIEW', 'RESOLVED'] as const).map((filter) => (
+                  {[
+                    { key: 'ALL', label: 'All Disputes', count: disputes.length },
+                    { key: 'ACTION_REQUIRED', label: 'Action Required', count: disputes.filter(d => d.status !== 'UNDER_REVIEW' && d.status !== 'RESOLVED').length },
+                    { key: 'UNDER_REVIEW', label: 'Under Review', count: disputes.filter(d => d.status === 'UNDER_REVIEW').length },
+                    { key: 'RESOLVED', label: 'Resolved', count: disputes.filter(d => d.status === 'RESOLVED').length }
+                  ].map(({ key, label, count }) => (
                     <button
-                      key={filter}
-                      onClick={() => { setStatusFilter(filter); setCurrentPage(1); }}
-                      className={`min-h-[44px] px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap focus-visible:ring-2 focus-visible:ring-amber-500/70 ${
-                        statusFilter === filter
+                      key={key}
+                      onClick={() => { setStatusFilter(key as any); setCurrentPage(1); }}
+                      className={`min-h-[40px] px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap flex items-center gap-2 focus-visible:ring-2 focus-visible:ring-amber-500/70 ${
+                        statusFilter === key
                           ? 'shadow-xs'
-                          : 'border text-[var(--text-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-active)]'
+                          : 'border text-[var(--text-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)]'
                       }`}
                       style={{
-                        borderColor: statusFilter === filter ? 'transparent' : 'var(--border-color)',
-                        backgroundColor: statusFilter === filter ? 'var(--btn-primary-bg)' : 'var(--surface-hover)',
-                        color: statusFilter === filter ? 'var(--btn-primary-text)' : undefined
+                        borderColor: statusFilter === key ? 'transparent' : 'var(--border-color)',
+                        backgroundColor: statusFilter === key ? 'var(--btn-primary-bg)' : 'var(--surface)',
+                        color: statusFilter === key ? 'var(--btn-primary-text)' : undefined
                       }}
                     >
-                      {filter === 'ALL' ? 'All Disputes' : filter.replace('_', ' ')}
+                      <span>{label}</span>
+                      <span 
+                        className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold"
+                        style={{
+                          backgroundColor: statusFilter === key ? 'rgba(0,0,0,0.18)' : 'var(--surface-hover)',
+                          color: statusFilter === key ? 'var(--btn-primary-text)' : 'var(--foreground)'
+                        }}
+                      >
+                        {count}
+                      </span>
                     </button>
                   ))}
                 </div>
 
-                <div className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
-                  Showing {paginatedDisputes.length} of {processedDisputes.length} disputes
+                <div className="flex items-center gap-3 justify-between sm:justify-end text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+                  {/* Quick Sort Dropdown */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-sans font-semibold">Sort:</span>
+                    <select
+                      value={`${sortField}-${sortOrder}`}
+                      onChange={(e) => {
+                        const [f, o] = e.target.value.split('-');
+                        setSortField(f as any);
+                        setSortOrder(o as any);
+                        setCurrentPage(1);
+                      }}
+                      className="px-2.5 py-1 rounded-xl border text-xs font-sans font-bold cursor-pointer transition focus:outline-none"
+                      style={{
+                        backgroundColor: 'var(--surface)',
+                        borderColor: 'var(--border-color)',
+                        color: 'var(--foreground)'
+                      }}
+                    >
+                      <option value="latest-desc">Latest First (Newest)</option>
+                      <option value="deadline-asc">Urgent SLA First</option>
+                      <option value="amount-desc">Highest Amount ($)</option>
+                      <option value="amount-asc">Lowest Amount ($)</option>
+                      <option value="id-desc">Dispute ID</option>
+                    </select>
+                  </div>
+
+                  <span>
+                    Showing {paginatedDisputes.length} of {processedDisputes.length}
+                  </span>
                 </div>
               </div>
 
@@ -1460,7 +1512,7 @@ export default function DashboardPage() {
               )}
 
               {/* MOBILE DISPUTE CARDS (< 768px / md:hidden) */}
-              <div className="grid grid-cols-1 gap-4 md:hidden py-1">
+              <div className="grid grid-cols-1 gap-3.5 md:hidden py-1">
                 {paginatedDisputes.map((dispute) => {
                   const deadlineInfo = calculateDeadlineUrgency(dispute.deadline);
                   const isPending = dispute.status !== 'UNDER_REVIEW' && dispute.status !== 'RESOLVED';
@@ -1468,50 +1520,75 @@ export default function DashboardPage() {
                     <div
                       key={dispute.id}
                       onClick={() => setSelectedDispute(dispute)}
-                      className="p-5 rounded-2xl border space-y-3.5 cursor-pointer active:scale-98 transition shadow-xs"
+                      className="p-4 rounded-2xl border space-y-3 cursor-pointer active:scale-98 transition shadow-xs hover:border-[var(--border-strong)] group"
                       style={{
                         backgroundColor: 'var(--surface)',
                         borderColor: 'var(--border-color)'
                       }}
                     >
-                      {/* Top Row: ID & Amount */}
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono font-bold text-xs text-[var(--accent-primary)]">
-                          {dispute.paypalDisputeId}
-                        </span>
-                        <span className="font-mono font-black text-sm">
-                          {formatCurrency(dispute.amount, dispute.currency)}
-                        </span>
+                      {/* Top Header: ID, Reason, and Amount */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div 
+                            className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border shadow-xs" 
+                            style={{ 
+                              backgroundColor: 'var(--surface-hover)', 
+                              borderColor: 'var(--border-color)' 
+                            }}
+                          >
+                            <ShieldAlert className="w-4 h-4 text-[var(--accent-primary)]" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-mono font-bold text-xs text-[var(--accent-primary)] flex items-center gap-1.5">
+                              <span>{dispute.paypalDisputeId}</span>
+                              {isPending && <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />}
+                            </div>
+                            <div className="text-xs font-semibold truncate" style={{ color: 'var(--foreground)' }}>
+                              {humanizeReason(dispute.reason)}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <div className="font-mono font-black text-sm" style={{ color: 'var(--foreground)' }}>
+                            {formatCurrency(dispute.amount, dispute.currency)}
+                          </div>
+                          <div className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>
+                            {dispute.currency || 'USD'}
+                          </div>
+                        </div>
                       </div>
 
-                      {/* Second Row: Humanized Reason */}
-                      <div className="text-xs font-medium" style={{ color: 'var(--foreground)' }}>
-                        {humanizeReason(dispute.reason)}
-                      </div>
-
-                      {/* Third Row: Status Badge & SLA countdown */}
-                      <div className="flex items-center justify-between pt-2 border-t text-[11px]" style={{ borderColor: 'var(--border-color)' }}>
-                        <span className={`px-2.5 py-1 rounded-full font-bold inline-flex items-center gap-1.5 ${
+                      {/* Middle Status & SLA Countdown Badges */}
+                      <div className="flex items-center justify-between pt-2.5 border-t text-[11px]" style={{ borderColor: 'var(--border-color)' }}>
+                        <span className={`px-2.5 py-0.5 rounded-full font-bold inline-flex items-center gap-1.5 ${
                           isPending 
-                            ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' 
-                            : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                            ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30' 
+                            : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
                         }`}>
                           {isPending ? <AlertCircle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                           <span>{isPending ? 'Action Required' : 'Defended'}</span>
                         </span>
 
-                        {dispute.deadline && (
+                        {dispute.deadline ? (
                           <span className={`font-mono font-bold flex items-center gap-1 ${
-                            deadlineInfo.urgency === 'CRITICAL' ? 'text-rose-400 animate-pulse' : 'text-slate-400'
+                            deadlineInfo.urgency === 'CRITICAL' ? 'text-rose-500 animate-pulse' : 'text-slate-500 dark:text-slate-400'
                           }`}>
                             <Clock className="w-3.5 h-3.5" />
                             <span>{deadlineInfo.label}</span>
                           </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-400 font-mono">No SLA active</span>
                         )}
                       </div>
 
-                      {/* Fourth Row: One primary action button with 44px tap target */}
-                      <div className="pt-1">
+                      {/* Bottom Action Footer */}
+                      <div className="pt-2.5 border-t flex items-center justify-between" style={{ borderColor: 'var(--border-color)' }}>
+                        <span className="text-[11px] font-semibold flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
+                          <Zap className="w-3.5 h-3.5 text-amber-500" />
+                          <span>AI Evidence Package</span>
+                        </span>
+
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -1521,10 +1598,10 @@ export default function DashboardPage() {
                             backgroundColor: 'var(--btn-primary-bg)',
                             color: 'var(--btn-primary-text)'
                           }}
-                          className="w-full min-h-[44px] px-4 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition hover:brightness-105 active:scale-98"
+                          className="px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-xs transition hover:brightness-105 active:scale-95"
                         >
-                          <span>Review defense</span>
-                          <ArrowUpRight className="w-4 h-4" />
+                          <span>Review Defense</span>
+                          <ArrowUpRight className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
@@ -1644,27 +1721,72 @@ export default function DashboardPage() {
                 </table>
               </div>
 
-              {/* Pagination Bar (44px tap targets) */}
+              {/* Premium Theme-Aware Pagination Bar */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between text-xs pt-2">
+                <div 
+                  className="flex items-center justify-between gap-2 sm:gap-4 text-xs pt-4 pb-2 border-t mt-4"
+                  style={{ borderColor: 'var(--border-color)' }}
+                >
+                  {/* Previous Button */}
                   <button
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    onClick={() => {
+                      setCurrentPage(p => Math.max(1, p - 1));
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
                     disabled={currentPage === 1}
-                    className="min-h-[44px] px-4 py-2 rounded-xl border text-slate-300 disabled:opacity-40 transition"
-                    style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--surface-hover)' }}
+                    className="min-h-[40px] px-3 sm:px-4 py-2 rounded-xl border font-bold flex items-center gap-1.5 transition active:scale-95 disabled:opacity-35 disabled:cursor-not-allowed shadow-xs"
+                    style={{ 
+                      borderColor: 'var(--border-strong)', 
+                      backgroundColor: 'var(--surface-hover)',
+                      color: 'var(--foreground)'
+                    }}
+                    aria-label="Previous Page"
                   >
-                    Previous
+                    <ChevronLeft className="w-4 h-4" />
+                    <span>Previous</span>
                   </button>
-                  <span className="font-mono text-slate-400">
-                    Page {currentPage} of {totalPages}
-                  </span>
+
+                  {/* Page Indicator & Numbered Pills */}
+                  <div className="flex items-center gap-1.5 font-mono text-xs">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <button
+                        key={page}
+                        onClick={() => {
+                          setCurrentPage(page);
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        className={`w-9 h-9 rounded-xl font-bold flex items-center justify-center transition active:scale-95 ${
+                          currentPage === page ? 'shadow-sm' : 'border hover:bg-[var(--surface-hover)]'
+                        }`}
+                        style={{
+                          backgroundColor: currentPage === page ? 'var(--btn-primary-bg)' : 'var(--surface)',
+                          color: currentPage === page ? 'var(--btn-primary-text)' : 'var(--foreground)',
+                          borderColor: currentPage === page ? 'transparent' : 'var(--border-color)'
+                        }}
+                        aria-label={`Go to page ${page}`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Next Button */}
                   <button
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    onClick={() => {
+                      setCurrentPage(p => Math.min(totalPages, p + 1));
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
                     disabled={currentPage === totalPages}
-                    className="min-h-[44px] px-4 py-2 rounded-xl border text-slate-300 disabled:opacity-40 transition"
-                    style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--surface-hover)' }}
+                    className="min-h-[40px] px-3 sm:px-4 py-2 rounded-xl border font-bold flex items-center gap-1.5 transition active:scale-95 disabled:opacity-35 disabled:cursor-not-allowed shadow-xs"
+                    style={{ 
+                      borderColor: 'var(--border-strong)', 
+                      backgroundColor: 'var(--surface-hover)',
+                      color: 'var(--foreground)'
+                    }}
+                    aria-label="Next Page"
                   >
-                    Next
+                    <span>Next</span>
+                    <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
               )}
