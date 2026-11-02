@@ -223,11 +223,11 @@ export default function DashboardPage() {
 
         // If the SHA changes during the session: Vercel deployed a new commit!
         if (incomingSha !== currentCommitSha) {
+          currentCommitSha = incomingSha;
           if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistration().then(reg => reg?.update());
           }
           setHasAppUpdate(true);
-          showToast('New deployment live on Vercel! Tap Update Now to refresh.', 'info', '🚀 Update Ready');
         }
       } catch (_) {}
     };
