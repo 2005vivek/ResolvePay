@@ -82,17 +82,28 @@ public class WhatsAppWebhookController {
 
                         String actionPayload = "";
                         if ("interactive".equals(msgType)) {
-                            actionPayload = msg.path("interactive").path("button_reply").path("id").asText("");
+                            JsonNode btn = msg.path("interactive").path("button_reply");
+                            actionPayload = btn.path("id").asText(btn.path("title").asText(""));
+                        } else if ("button".equals(msgType)) {
+                            actionPayload = msg.path("button").path("payload").asText(msg.path("button").path("text").asText(""));
                         } else if ("text".equals(msgType)) {
                             actionPayload = msg.path("text").path("body").asText("").trim().toUpperCase();
                         }
 
                         log.info("Parsed WhatsApp interaction from {}: type={}, actionPayload={}", sender, msgType, actionPayload);
 
-                        if (actionPayload.startsWith("APPROVE") || "1".equals(actionPayload) || actionPayload.contains("DEFEND")) {
+                        String upperPayload = actionPayload.toUpperCase();
+                        if (upperPayload.startsWith("APPROVE") || "1".equals(upperPayload) || upperPayload.contains("DEFEND") || upperPayload.contains("AUTO-DEFEND") || upperPayload.contains("YES") || upperPayload.contains("SUBMIT")) {
                             handleAutoDefend(sender, actionPayload);
-                        } else if (actionPayload.startsWith("STATUS") || "STATUS".equals(actionPayload)) {
+                        } else if (upperPayload.startsWith("STATUS") || "STATUS".equals(upperPayload) || upperPayload.contains("DETAIL")) {
                             handleStatusInquiry(sender, actionPayload);
+                        } else {
+                            // Friendly guidance for any other message
+                            whatsAppService.sendTextMessage(sender,
+                                    "👋 *ResolvePay Autopilot Assistant*\n\n" +
+                                            "• Reply *1* or tap *Auto-Defend* on any dispute alert to safeguard your funds.\n" +
+                                            "• Reply *STATUS* to view pending chargebacks.\n\n" +
+                                            "Live Dashboard: https://resolvepay-autopilot.vercel.app");
                         }
                     }
                 }
@@ -140,7 +151,24 @@ public class WhatsAppWebhookController {
         config.put("webhookUrl", "https://resolvepay-api.onrender.com/api/webhooks/whatsapp");
         config.put("phoneNumberId", whatsAppService.getPhoneNumberId().isBlank() ? "NOT_SET" : whatsAppService.getPhoneNumberId());
         config.put("defaultMerchantPhone", whatsAppService.getDefaultMerchantPhone());
+        config.put("tokenHealth", whatsAppService.verifyTokenHealth());
         return ResponseEntity.ok(config);
+    }
+
+    /**
+     * 5. Update Token Endpoint: Allows updating the Meta Cloud API temporary/permanent access token dynamically.
+     */
+    @PostMapping("/update-token")
+    public ResponseEntity<Map<String, Object>> updateToken(@RequestBody(required = false) Map<String, String> body) {
+        String token = "";
+        if (body != null) {
+            token = body.getOrDefault("token", body.getOrDefault("apiToken", "")).trim();
+        }
+        if (!token.isBlank()) {
+            whatsAppService.setApiToken(token);
+            log.info("Updated WhatsApp API token dynamically in memory");
+        }
+        return ResponseEntity.ok(whatsAppService.verifyTokenHealth());
     }
 
     private void handleAutoDefend(String senderPhone, String actionPayload) {
@@ -148,6 +176,9 @@ public class WhatsAppWebhookController {
         String disputeId = "";
         if (actionPayload.contains("_")) {
             disputeId = actionPayload.substring(actionPayload.indexOf("_") + 1).trim();
+        } else if (actionPayload.contains("PP-D-")) {
+            int idx = actionPayload.indexOf("PP-D-");
+            disputeId = actionPayload.substring(idx).split("[^A-Z0-9-]")[0].trim();
         }
 
         Optional<Dispute> disputeOpt = !disputeId.isBlank()
@@ -158,6 +189,20 @@ public class WhatsAppWebhookController {
 
         if (disputeOpt.isPresent()) {
             Dispute dispute = disputeOpt.get();
+
+            // Gracefully handle if already defended or resolved
+            if ("UNDER_REVIEW".equalsIgnoreCase(dispute.getStatus()) || "RESOLVED".equalsIgnoreCase(dispute.getStatus())) {
+                log.info("Dispute {} is already defended ({}); sending reassurance to {}", 
+                        dispute.getPaypalDisputeId(), dispute.getStatus(), senderPhone);
+                whatsAppService.sendTextMessage(senderPhone,
+                        "ℹ️ *ResolvePay Defense Already Lodged!*\n\n" +
+                                "• Case: *" + dispute.getPaypalDisputeId() + "*\n" +
+                                "• Status: *Defended (Under PayPal Review)*\n" +
+                                "• Proof: Multi-carrier EDI delivery record is already registered.\n\n" +
+                                "This case is already safeguarded and under PayPal investigation.");
+                return;
+            }
+
             try {
                 String rebuttal = "Official Seller Defense Rebuttal for " + dispute.getPaypalDisputeId() +
                         ": Grounded Proof submitted via ResolvePay WhatsApp Autopilot. Verified carrier tracking demonstrates timely delivery to buyer address on file with signature.";

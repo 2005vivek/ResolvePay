@@ -5,7 +5,9 @@ import {
   fetchDisputes, syncDisputesFromPayPal, testPayPalAuth, 
   simulatePayPalDispute, simulateIdempotencyAttack,
   submitDisputeResponse,
-  sendTestWhatsAppAlert
+  sendTestWhatsAppAlert,
+  updateWhatsAppToken,
+  fileCustomerDispute
 } from '../lib/api';
 import { Dispute, MerchantStore, EarlyWarningRisk } from '../lib/types';
 import { 
@@ -793,6 +795,82 @@ export default function DashboardPage() {
     hapticLight();
     showToast('Verify token copied to clipboard!', 'success');
     setTimeout(() => setWaCopiedToken(false), 2000);
+  }
+
+  // Meta Access Token Dynamic Updater State
+  const [waCustomToken, setWaCustomToken] = useState('');
+  const [waUpdatingToken, setWaUpdatingToken] = useState(false);
+  const [waTokenHealth, setWaTokenHealth] = useState<any>(null);
+  const [waCopiedCustomerLink, setWaCopiedCustomerLink] = useState(false);
+
+  // Friend / Customer Real Dispute Ingestion Simulation
+  const [simCustomerName, setSimCustomerName] = useState('Ankit Patel (Friend)');
+  const [simDisputeAmount, setSimDisputeAmount] = useState('249.99');
+  const [simDisputeReason, setSimDisputeReason] = useState('MERCHANDISE_OR_SERVICE_NOT_RECEIVED');
+  const [simDisputeFiling, setSimDisputeFiling] = useState(false);
+  const [simDisputeResult, setSimDisputeResult] = useState<any>(null);
+
+  async function handleUpdateWaToken() {
+    if (!waCustomToken.trim()) {
+      showToast('Please paste a valid Meta access token from Step 1', 'warning');
+      hapticWarning();
+      return;
+    }
+    setWaUpdatingToken(true);
+    hapticMedium();
+    try {
+      const res = await updateWhatsAppToken(waCustomToken.trim());
+      setWaTokenHealth(res);
+      if (res.valid) {
+        showToast('✅ Meta Access Token updated and verified successfully!', 'success');
+        hapticSuccess();
+      } else {
+        showToast('⚠️ Token warning: ' + (res.message || 'Token check failed'), 'warning');
+        hapticWarning();
+      }
+    } catch (err: any) {
+      showToast('Failed to update token: ' + err.message, 'error');
+      hapticWarning();
+    } finally {
+      setWaUpdatingToken(false);
+    }
+  }
+
+  async function handleSimulateFriendDispute() {
+    setSimDisputeFiling(true);
+    setSimDisputeResult(null);
+    hapticMedium();
+    try {
+      const customCaseId = 'PP-D-' + Math.floor(100000 + Math.random() * 900000);
+      const res = await fileCustomerDispute({
+        customerName: simCustomerName,
+        amount: parseFloat(simDisputeAmount) || 249.99,
+        reason: simDisputeReason,
+        details: 'Friend test dispute: Package marked delivered by courier but not received by consignee.',
+        paypalDisputeId: customCaseId,
+        notifyPhone: waPhoneNumber || '919974442291',
+      });
+      setSimDisputeResult(res);
+      showToast('🚀 New dispute ' + res.paypalDisputeId + ' filed & alert sent to WhatsApp!', 'success');
+      hapticSuccess();
+      loadDisputes();
+    } catch (err: any) {
+      showToast('Failed to file friend dispute: ' + err.message, 'error');
+      hapticWarning();
+    } finally {
+      setSimDisputeFiling(false);
+    }
+  }
+
+  function copyCustomerPortalLink() {
+    if (typeof window !== 'undefined') {
+      const portalUrl = window.location.origin + '/report-issue';
+      navigator.clipboard.writeText(portalUrl);
+      setWaCopiedCustomerLink(true);
+      hapticLight();
+      showToast('Customer dispute portal link copied to clipboard!', 'success');
+      setTimeout(() => setWaCopiedCustomerLink(false), 2000);
+    }
   }
 
   // Active top target for WhatsApp simulator
@@ -2200,6 +2278,160 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                   {/* Left Column: Live Sandbox Setup & Dispatcher */}
                   <div className="lg:col-span-7 space-y-5">
+
+                    {/* Customer Dispute Portal Card (Share with Friend) */}
+                    <div className="p-4 rounded-xl border space-y-3 bg-gradient-to-r from-blue-950/40 to-indigo-950/40" style={{ borderColor: 'var(--border-color)' }}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <ExternalLink className="w-4 h-4 text-blue-400" />
+                          <h4 className="text-sm font-bold text-[var(--foreground)]">
+                            Customer Dispute Filing Link (Share with Friend)
+                          </h4>
+                        </div>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 font-mono font-bold">
+                          End-to-End Live
+                        </span>
+                      </div>
+                      <p className="text-xs text-[var(--text-muted)]">
+                        તમારા મિત્રને આ લિંક મોકલો. તે લિંક ખોલીને ફરિયાદ સબમિટ કરશે એટલે <strong>૨ સેકન્ડમાં સીધું તમારા વોટ્સએપ પર ૧-ટેપ એલર્ટ આવી જશે!</strong>
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          readOnly
+                          value={typeof window !== 'undefined' ? `${window.location.origin}/report-issue` : 'https://resolvepay-autopilot.vercel.app/report-issue'}
+                          className="flex-1 px-3 py-1.5 rounded-lg text-xs font-mono border bg-black/20 text-blue-300 select-all"
+                          style={{ borderColor: 'var(--border-color)' }}
+                        />
+                        <button
+                          onClick={copyCustomerPortalLink}
+                          className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition inline-flex items-center gap-1 shrink-0"
+                        >
+                          {waCopiedCustomerLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span>{waCopiedCustomerLink ? 'Copied' : 'Copy Link'}</span>
+                        </button>
+                        <a
+                          href="/report-issue"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-3 py-1.5 rounded-lg border text-xs font-bold hover:bg-[var(--surface-hover)] transition inline-flex items-center gap-1 text-[var(--foreground)] shrink-0"
+                          style={{ borderColor: 'var(--border-color)' }}
+                        >
+                          <span>Open</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    </div>
+
+                    {/* Quick Friend Dispute Simulator Box */}
+                    <div className="p-4 rounded-xl border space-y-3 bg-black/10 dark:bg-black/20" style={{ borderColor: 'var(--border-color)' }}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <ShieldAlert className="w-4 h-4 text-amber-400" />
+                          <h4 className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider">
+                            ⚡ Instant Friend Dispute Simulator (લાઈવ ટેસ્ટ)
+                          </h4>
+                        </div>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 font-mono font-bold">
+                          1-Click Trigger
+                        </span>
+                      </div>
+                      <p className="text-xs text-[var(--text-muted)]">
+                        અહીંથી ૧-ક્લિક કરો: સિસ્ટમ નવો ડિસ્પ્યુટ બનાવશે અને સીધો તમારા WhatsApp પર 1-Tap Auto-Defend બટન સાથે મોકલશે.
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <label className="text-[10px] font-bold text-[var(--text-muted)] block mb-1">Friend / Customer Name</label>
+                          <input
+                            type="text"
+                            value={simCustomerName}
+                            onChange={(e) => setSimCustomerName(e.target.value)}
+                            className="w-full px-2.5 py-1.5 rounded-lg text-xs border bg-black/20 text-white"
+                            style={{ borderColor: 'var(--border-color)' }}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-[var(--text-muted)] block mb-1">Amount ($ USD)</label>
+                          <input
+                            type="number"
+                            value={simDisputeAmount}
+                            onChange={(e) => setSimDisputeAmount(e.target.value)}
+                            className="w-full px-2.5 py-1.5 rounded-lg text-xs border bg-black/20 text-white font-mono"
+                            style={{ borderColor: 'var(--border-color)' }}
+                          />
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleSimulateFriendDispute}
+                        disabled={simDisputeFiling}
+                        className="w-full py-2 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 transition disabled:opacity-50 shadow-md shadow-amber-500/20"
+                      >
+                        {simDisputeFiling ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            <span>Creating Dispute & Pushing to WhatsApp...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Send className="w-3.5 h-3.5" />
+                            <span>🚀 Dispatch Friend Dispute to My WhatsApp</span>
+                          </>
+                        )}
+                      </button>
+                      {simDisputeResult && (
+                        <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-mono">
+                          ✅ Case {simDisputeResult.paypalDisputeId} filed! WhatsApp alert dispatched to merchant phone.
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Meta Cloud API Token Dynamic Updater */}
+                    <div className="p-4 rounded-xl border space-y-3 bg-black/10 dark:bg-black/20" style={{ borderColor: 'var(--border-color)' }}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Lock className="w-4 h-4 text-emerald-400" />
+                          <h4 className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider">
+                            🔑 Meta Access Token Update (૨૪-કલાક ટોકન અપડેટ)
+                          </h4>
+                        </div>
+                        <a
+                          href="https://developers.facebook.com/apps"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[11px] text-emerald-400 hover:underline inline-flex items-center gap-1 font-bold"
+                        >
+                          <span>Meta Step 1</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                      <p className="text-xs text-[var(--text-muted)]">
+                        જો Meta Developer નો ૨૪-કલાકનો ટેસ્ટ ટોકન expire થાય, તો Step 1 માંથી "Generate new token" કરી અહીં પેસ્ટ કરીને "Update Token" દબાવો.
+                      </p>
+                      <div className="flex gap-2">
+                        <input
+                          type="password"
+                          value={waCustomToken}
+                          onChange={(e) => setWaCustomToken(e.target.value)}
+                          placeholder="Paste Meta Access Token (EAADbNUHhHJoBS...)"
+                          className="flex-1 px-3 py-1.5 rounded-lg text-xs font-mono border bg-black/20 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                          style={{ borderColor: 'var(--border-color)' }}
+                        />
+                        <button
+                          onClick={handleUpdateWaToken}
+                          disabled={waUpdatingToken}
+                          className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition disabled:opacity-50 shrink-0"
+                        >
+                          {waUpdatingToken ? 'Verifying...' : 'Update & Test'}
+                        </button>
+                      </div>
+                      {waTokenHealth && (
+                        <div className={`p-2 rounded-lg text-xs font-mono ${
+                          waTokenHealth.valid ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/10 text-red-400 border border-red-500/30'
+                        }`}>
+                          {waTokenHealth.valid ? '✅ Meta Token is ACTIVE & CONNECTED!' : `⚠️ ${waTokenHealth.message || 'Token check failed'}`}
+                        </div>
+                      )}
+                    </div>
                     {/* Live Dispatcher Box */}
                     <div className="p-4 rounded-xl border space-y-3.5 bg-black/10 dark:bg-black/20" style={{ borderColor: 'var(--border-color)' }}>
                       <div className="flex items-center justify-between">

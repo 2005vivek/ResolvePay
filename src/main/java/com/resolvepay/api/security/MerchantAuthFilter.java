@@ -60,8 +60,8 @@ public class MerchantAuthFilter extends OncePerRequestFilter {
             return true;
         }
 
-        // 3. Allow Public Health & Diagnostic Checks
-        if ("/api/disputes/test-auth".equals(path) || "/api/health".equals(path) || "/api/ping".equals(path) || "/health".equals(path) || "/".equals(path)) {
+        // 3. Allow Public Health & Diagnostic Checks, and Public Customer Dispute Ingestion
+        if ("/api/disputes/test-auth".equals(path) || path.startsWith("/api/disputes/customer-file") || "/api/health".equals(path) || "/api/ping".equals(path) || "/health".equals(path) || "/".equals(path)) {
             return true;
         }
 
