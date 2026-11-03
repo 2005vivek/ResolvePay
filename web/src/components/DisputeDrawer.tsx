@@ -9,7 +9,8 @@ import {
   calculateTacticalRecommendation, 
   getPolicyMatch, 
   generateMultilingualRebuttal,
-  humanizeReason
+  humanizeReason,
+  calculateDisputeTracking
 } from '../lib/utils';
 import { useToast } from './Toast';
 import { hapticLight, hapticMedium, hapticSuccess, hapticWarning } from '../lib/haptics';
@@ -19,16 +20,19 @@ import {
   ShieldCheck, ArrowRight, Loader2, Copy, Check, ExternalLink,
   Truck, Clock, ChevronRight, FileCheck, Eye, ShieldAlert,
   AlertCircle, Undo2, Globe, Scale, Send, Shield, RefreshCw,
-  RotateCcw
+  RotateCcw,
+  Radio,
+  Activity
 } from 'lucide-react';
 
 interface Props {
   dispute: Dispute;
   onClose: () => void;
   onDisputeUpdated: () => void;
+  initialTab?: 'ai' | 'carrier' | 'evidence' | 'policy' | 'tracking';
 }
 
-export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Props) {
+export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, initialTab }: Props) {
   const { showToast } = useToast();
 
   const [evidenceList, setEvidenceList] = useState<EvidenceItem[]>([]);
@@ -41,7 +45,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
   const [submitting, setSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [submittedStatus, setSubmittedStatus] = useState(dispute.status === 'UNDER_REVIEW' || dispute.status === 'RESOLVED');
-  const [activeTab, setActiveTab] = useState<'ai' | 'carrier' | 'evidence' | 'policy'>('ai');
+  const [activeTab, setActiveTab] = useState<'ai' | 'carrier' | 'evidence' | 'policy' | 'tracking'>(initialTab || 'tracking');
   const [previewItem, setPreviewItem] = useState<EvidenceItem | null>(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
@@ -116,6 +120,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
   // Tactical AI Evaluation
   const tactical = calculateTacticalRecommendation(dispute, evidenceList.length, carrierProof);
   const policyMatch = getPolicyMatch(dispute.reason);
+  const trackingInfo = calculateDisputeTracking(dispute, carrierProof);
 
   // Auto-close on Escape key
   useEffect(() => {
@@ -478,6 +483,21 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
         >
           <button 
             role="tab"
+            aria-selected={activeTab === 'tracking'}
+            onClick={() => { hapticLight(); setActiveTab('tracking'); }}
+            className={`min-h-[44px] py-2.5 px-3 border-b-2 flex items-center gap-1.5 transition shrink-0 focus-visible:ring-2 focus-visible:ring-amber-500/50 ${
+              activeTab === 'tracking'
+                ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] font-bold'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Radio className="w-4 h-4 text-emerald-400 animate-pulse" />
+            <span>Live Tracking</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+          </button>
+
+          <button 
+            role="tab"
             aria-selected={activeTab === 'ai'}
             onClick={() => { hapticLight(); setActiveTab('ai'); }}
             className={`min-h-[44px] py-2.5 px-3 border-b-2 flex items-center gap-1.5 transition shrink-0 focus-visible:ring-2 focus-visible:ring-amber-500/50 ${
@@ -539,6 +559,223 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated }: Pr
 
         {/* Scrollable Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+
+          {/* TAB 0: LIVE DISPUTE TRACKING HUB */}
+          {activeTab === 'tracking' && (
+            <div className="space-y-6 animate-slide-up">
+              
+              {/* Live Status Hero Banner */}
+              <div 
+                className="p-5 rounded-2xl border space-y-3"
+                style={{
+                  backgroundColor: trackingInfo.stageStatus === 'RESOLVED' 
+                    ? 'rgba(52, 211, 153, 0.08)' 
+                    : trackingInfo.stageStatus === 'UNDER_REVIEW' 
+                      ? 'rgba(52, 211, 153, 0.08)' 
+                      : 'rgba(245, 165, 36, 0.08)',
+                  borderColor: trackingInfo.stageStatus === 'ACTION_REQUIRED' ? 'rgba(245, 165, 36, 0.3)' : 'rgba(52, 211, 153, 0.3)'
+                }}
+              >
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-3 w-3">
+                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                        trackingInfo.stageStatus === 'ACTION_REQUIRED' ? 'bg-amber-400' : 'bg-emerald-400'
+                      }`} />
+                      <span className={`relative inline-flex rounded-full h-3 w-3 ${
+                        trackingInfo.stageStatus === 'ACTION_REQUIRED' ? 'bg-amber-500' : 'bg-emerald-500'
+                      }`} />
+                    </span>
+                    <span className="font-bold text-xs uppercase tracking-wider font-mono">
+                      {trackingInfo.stageStatus === 'RESOLVED' 
+                        ? 'Case Settled & Closed' 
+                        : trackingInfo.stageStatus === 'UNDER_REVIEW' 
+                          ? 'PayPal Live Adjudication Active' 
+                          : 'Action Required • SLA Countdown Active'}
+                    </span>
+                  </div>
+
+                  <span className="px-2.5 py-1 rounded-full text-[11px] font-mono font-bold bg-black/20 border border-[var(--border-color)]">
+                    {trackingInfo.stageName}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
+                  <div className="p-3 rounded-xl bg-[var(--surface)] border border-[var(--border-color)]">
+                    <div className="text-[10px] text-slate-400 font-medium">Ball In Court</div>
+                    <div className="font-bold text-sm text-[var(--accent-primary)] mt-0.5 truncate">
+                      {trackingInfo.ballInCourt}
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-[var(--surface)] border border-[var(--border-color)]">
+                    <div className="text-[10px] text-slate-400 font-medium">Resolution Window</div>
+                    <div className="font-bold text-sm font-mono mt-0.5">
+                      {trackingInfo.estimatedResolutionWindow}
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-[var(--surface)] border border-[var(--border-color)]">
+                    <div className="text-[10px] text-slate-400 font-medium">Outbox Dispatch ID</div>
+                    <div className="font-bold text-sm font-mono mt-0.5 text-slate-300">
+                      {trackingInfo.outboxEventId}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 5-Stage Visual Stepper */}
+              <div 
+                className="p-5 rounded-2xl border space-y-4"
+                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-color)' }}
+              >
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                    <Activity className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Dispute Resolution Journey</span>
+                  </h4>
+                  <span className="text-[11px] font-mono font-semibold text-[var(--accent-primary)]">
+                    Step {trackingInfo.currentStage} of 5
+                  </span>
+                </div>
+
+                <div className="relative pl-6 sm:pl-8 space-y-6 before:absolute before:left-2.5 sm:before:left-3.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-[var(--border-color)]">
+                  {trackingInfo.stages.map((stage) => {
+                    const isDone = stage.status === 'COMPLETED';
+                    const isInProgress = stage.status === 'IN_PROGRESS';
+                    const isActionRequired = stage.status === 'ACTION_REQUIRED';
+
+                    return (
+                      <div key={stage.id} className="relative flex items-start gap-3">
+                        {/* Node Indicator */}
+                        <div className={`absolute -left-6 sm:-left-8 top-0.5 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                          isDone 
+                            ? 'bg-emerald-500 text-black shadow-xs shadow-emerald-500/30' 
+                            : isInProgress 
+                              ? 'bg-amber-500 text-black animate-pulse shadow-md shadow-amber-500/40 ring-4 ring-amber-500/20' 
+                              : isActionRequired
+                                ? 'bg-rose-500 text-white animate-bounce shadow-md shadow-rose-500/40'
+                                : 'bg-[var(--surface-hover)] border border-[var(--border-color)] text-slate-500'
+                        }`}>
+                          {isDone ? (
+                            <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          ) : isInProgress ? (
+                            <Radio className="w-3 h-3 animate-spin" />
+                          ) : isActionRequired ? (
+                            <AlertCircle className="w-3.5 h-3.5" />
+                          ) : (
+                            <span>{stage.stageNumber}</span>
+                          )}
+                        </div>
+
+                        {/* Stage Content */}
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center justify-between flex-wrap gap-1">
+                            <div className="font-bold text-xs sm:text-sm text-[var(--foreground)]">
+                              {stage.title}
+                            </div>
+                            {stage.timestamp && (
+                              <span className="text-[10px] font-mono text-slate-400">
+                                {stage.timestamp}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="text-xs text-slate-300">
+                            {stage.subtitle}
+                          </div>
+
+                          {stage.details && (
+                            <div className="text-[11px] font-mono text-slate-400 pt-0.5">
+                              {stage.details}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Live Carrier Delivery Telemetry Card */}
+              {carrierProof ? (
+                <div 
+                  className="p-5 rounded-2xl border space-y-3"
+                  style={{ backgroundColor: 'var(--surface-hover)', borderColor: 'var(--border-color)' }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Truck className="w-4 h-4 text-emerald-400" />
+                      <span className="font-bold text-xs uppercase tracking-wide">Live Carrier Delivery Proof</span>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                      {carrierProof.status}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
+                    <div>
+                      <span className="text-slate-400 text-[11px]">Carrier & Tracking:</span>
+                      <div className="font-bold font-mono text-sm text-[var(--accent-primary)] mt-0.5">
+                        {carrierProof.carrier} #{carrierProof.trackingNumber}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 text-[11px]">Recipient Signed By:</span>
+                      <div className="font-semibold text-slate-200 mt-0.5">
+                        {carrierProof.signedBy} ({carrierProof.deliveryLocation})
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div 
+                  className="p-4 rounded-xl border border-dashed flex items-center justify-between text-xs"
+                  style={{ borderColor: 'var(--border-color)' }}
+                >
+                  <div className="flex items-center gap-2 text-slate-400">
+                    <Truck className="w-4 h-4 text-amber-500" />
+                    <span>No Carrier tracking number bound yet</span>
+                  </div>
+                  <button
+                    onClick={() => setActiveTab('carrier')}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 transition touch-spring"
+                  >
+                    Attach Carrier POD
+                  </button>
+                </div>
+              )}
+
+              {/* Gateway Live Heartbeat Card */}
+              <div 
+                className="p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-400 font-mono"
+                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-color)' }}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                  <span className="text-slate-300 font-medium">PayPal Webhook Gateway: ACTIVE</span>
+                </div>
+                <div className="text-[11px]">
+                  Latency: 24ms • Telemetry Synced
+                </div>
+              </div>
+
+              {/* Action Button to switch to Defense Rebuttal if not yet submitted */}
+              {!submittedStatus && (
+                <div className="pt-2">
+                  <button
+                    onClick={() => { hapticMedium(); setActiveTab('ai'); }}
+                    style={{ backgroundColor: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)' }}
+                    className="w-full py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition hover:brightness-105 active:scale-98 touch-spring"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>Review & Transmit AI Defense Package Now</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* TAB 1: AI REBUTTAL WORKSPACE */}
           {activeTab === 'ai' && (
