@@ -1686,7 +1686,7 @@ export default function DashboardPage() {
                     <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                       Total Value at Risk
                     </span>
-                    <div className="p-2 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                    <div className="p-2 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
                       <DollarSign className="w-4 h-4" />
                     </div>
                   </div>
@@ -1700,7 +1700,7 @@ export default function DashboardPage() {
                       formatCurrency(totalAmountAtRisk)
                     )}
                   </div>
-                  <div className="text-[11px] text-amber-400 font-semibold flex items-center gap-1">
+                  <div className="text-[11px] text-amber-700 dark:text-amber-400 font-semibold flex items-center gap-1">
                     <span>{disputes.length} Total Disputes</span>
                     <span className="opacity-60">• Automated Defense</span>
                   </div>
@@ -1718,12 +1718,12 @@ export default function DashboardPage() {
                     <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                       Action Required
                     </span>
-                    <div className="p-2 rounded-xl bg-rose-500/15 text-rose-400 border border-rose-500/30">
+                    <div className="p-2 rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
                       <AlertCircle className="w-4 h-4" />
                     </div>
                   </div>
                   <div 
-                    className="font-bold font-serif-heading text-rose-400"
+                    className="font-bold font-serif-heading text-rose-600 dark:text-rose-400"
                     style={{ fontSize: 'clamp(1.4rem, 2.2vw, 2rem)' }}
                   >
                     {loading ? (
@@ -1732,7 +1732,7 @@ export default function DashboardPage() {
                       <span>{pendingActionCount} <span className="text-xs font-normal" style={{ color: 'var(--text-muted)' }}>cases</span></span>
                     )}
                   </div>
-                  <div className="text-[11px] text-rose-400 font-semibold">
+                  <div className="text-[11px] text-rose-700 dark:text-rose-400 font-semibold">
                     Urgent SLA Deadlines Active
                   </div>
                 </div>
@@ -1749,12 +1749,12 @@ export default function DashboardPage() {
                     <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                       Defended & In Review
                     </span>
-                    <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                    <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
                       <Clock className="w-4 h-4" />
                     </div>
                   </div>
                   <div 
-                    className="font-bold font-serif-heading text-emerald-400"
+                    className="font-bold font-serif-heading text-emerald-600 dark:text-emerald-400"
                     style={{ fontSize: 'clamp(1.4rem, 2.2vw, 2rem)' }}
                   >
                     {loading ? (
@@ -1763,7 +1763,7 @@ export default function DashboardPage() {
                       <span>{underReviewCount} <span className="text-xs font-normal" style={{ color: 'var(--text-muted)' }}>defended</span></span>
                     )}
                   </div>
-                  <div className="text-[11px] text-emerald-400 font-semibold">
+                  <div className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">
                     Submitted via Outbox Pipeline
                   </div>
                 </div>
@@ -1780,7 +1780,7 @@ export default function DashboardPage() {
                     <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                       AI Defense Win Ratio
                     </span>
-                    <div className="p-2 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                    <div className="p-2 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
                       <Sparkles className="w-4 h-4" />
                     </div>
                   </div>
@@ -2006,7 +2006,7 @@ export default function DashboardPage() {
                           className="flex-1 py-2 px-2.5 rounded-xl border border-[var(--border-color)] hover:border-[var(--accent-primary)] text-xs font-bold inline-flex items-center justify-center gap-1.5 transition text-[var(--foreground)] touch-spring"
                           title="Open Live Tracking Journey"
                         >
-                          <Radio className="w-3.5 h-3.5 text-emerald-400" />
+                          <Radio className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                           <span>Track Live</span>
                         </button>
 
@@ -2102,8 +2102,8 @@ export default function DashboardPage() {
                             {dispute.deadline ? (
                               <span className={`px-2.5 py-1 rounded-full font-bold inline-flex items-center gap-1.5 ${
                                 deadlineInfo.urgency === 'CRITICAL' 
-                                  ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30 animate-pulse'
-                                  : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                                  ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 animate-pulse'
+                                  : 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30'
                               }`}>
                                 <Clock className="w-3.5 h-3.5" />
                                 <span>{deadlineInfo.label}</span>
@@ -2115,8 +2115,8 @@ export default function DashboardPage() {
                           <td className="py-4 px-5">
                             <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] inline-flex items-center gap-1.5 ${
                               isPending
-                                ? 'bg-amber-500/15 text-amber-500 dark:text-amber-400 border border-amber-500/30'
-                                : 'bg-emerald-500/15 text-emerald-500 dark:text-emerald-400 border border-emerald-500/30'
+                                ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30'
+                                : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30'
                             }`}>
                               <span className={`w-2 h-2 rounded-full ${isPending ? 'bg-amber-400 animate-ping' : 'bg-emerald-400 animate-pulse'}`} />
                               <span>{isPending ? 'Action Required' : 'Defended'}</span>
@@ -2135,7 +2135,7 @@ export default function DashboardPage() {
                                 className="px-3 py-1.5 min-h-[36px] rounded-xl font-bold text-xs inline-flex items-center gap-1.5 border border-[var(--border-color)] hover:border-[var(--accent-primary)] hover:bg-[var(--surface-hover)] transition text-[var(--foreground)] touch-spring"
                                 title="Track live dispute lifecycle"
                               >
-                                <Radio className="w-3.5 h-3.5 text-emerald-400" />
+                                <Radio className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                                 <span>Track Live</span>
                               </button>
 
@@ -2256,7 +2256,7 @@ export default function DashboardPage() {
                     <div>
                       <div className="flex items-center gap-2">
                         <h3 className="text-lg font-black font-serif-heading">Meta WhatsApp 1-Tap Autopilot</h3>
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-mono text-[10px] font-bold border border-emerald-500/40">
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-mono text-[10px] font-bold border border-emerald-500/30">
                           100% FREE DEV SANDBOX
                         </span>
                       </div>
@@ -2267,8 +2267,8 @@ export default function DashboardPage() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className="px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-400 font-mono text-xs font-bold border border-emerald-500/30 flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-mono text-xs font-bold border border-emerald-500/30 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
                       <span>ONLINE • BOT READY</span>
                     </span>
                   </div>
@@ -2280,74 +2280,84 @@ export default function DashboardPage() {
                   <div className="lg:col-span-7 space-y-5">
 
                     {/* Customer Dispute Portal Card (Share with Friend) */}
-                    <div className="p-4 rounded-xl border space-y-3 bg-gradient-to-r from-blue-950/40 to-indigo-950/40" style={{ borderColor: 'var(--border-color)' }}>
+                    <div className="p-4 rounded-xl border space-y-3 bg-blue-50/60 dark:bg-gradient-to-r dark:from-blue-950/40 dark:to-indigo-950/40" style={{ borderColor: 'var(--border-color)' }}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <ExternalLink className="w-4 h-4 text-blue-400" />
+                          <ExternalLink className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                           <h4 className="text-sm font-bold text-[var(--foreground)]">
                             Customer Dispute Filing Link (Share with Friend)
                           </h4>
                         </div>
-                        <span className="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 font-mono font-bold">
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-blue-500/15 text-blue-700 dark:text-blue-400 border border-blue-500/30 font-mono font-bold">
                           End-to-End Live
                         </span>
                       </div>
                       <p className="text-xs text-[var(--text-muted)]">
                         તમારા મિત્રને આ લિંક મોકલો. તે લિંક ખોલીને ફરિયાદ સબમિટ કરશે એટલે <strong>૨ સેકન્ડમાં સીધું તમારા વોટ્સએપ પર ૧-ટેપ એલર્ટ આવી જશે!</strong>
                       </p>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                         <input
                           type="text"
                           readOnly
                           value={typeof window !== 'undefined' ? `${window.location.origin}/report-issue` : 'https://resolvepay-autopilot.vercel.app/report-issue'}
-                          className="flex-1 px-3 py-1.5 rounded-lg text-xs font-mono border bg-black/20 text-blue-300 select-all"
-                          style={{ borderColor: 'var(--border-color)' }}
+                          className="flex-1 min-w-0 px-3 py-2 rounded-lg text-xs font-mono border select-all"
+                          style={{
+                            backgroundColor: 'var(--surface)',
+                            borderColor: 'var(--border-color)',
+                            color: 'var(--foreground)'
+                          }}
                         />
-                        <button
-                          onClick={copyCustomerPortalLink}
-                          className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition inline-flex items-center gap-1 shrink-0"
-                        >
-                          {waCopiedCustomerLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                          <span>{waCopiedCustomerLink ? 'Copied' : 'Copy Link'}</span>
-                        </button>
-                        <a
-                          href="/report-issue"
-                          target="_blank"
-                          rel="noreferrer"
-                          className="px-3 py-1.5 rounded-lg border text-xs font-bold hover:bg-[var(--surface-hover)] transition inline-flex items-center gap-1 text-[var(--foreground)] shrink-0"
-                          style={{ borderColor: 'var(--border-color)' }}
-                        >
-                          <span>Open</span>
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={copyCustomerPortalLink}
+                            className="flex-1 sm:flex-initial px-3.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition inline-flex items-center justify-center gap-1.5"
+                          >
+                            {waCopiedCustomerLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                            <span>{waCopiedCustomerLink ? 'Copied' : 'Copy Link'}</span>
+                          </button>
+                          <a
+                            href="/report-issue"
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex-1 sm:flex-initial px-3.5 py-2 rounded-lg border text-xs font-bold hover:bg-[var(--surface-hover)] transition inline-flex items-center justify-center gap-1 text-[var(--foreground)]"
+                            style={{ borderColor: 'var(--border-color)' }}
+                          >
+                            <span>Open</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
                       </div>
                     </div>
 
                     {/* Quick Friend Dispute Simulator Box */}
-                    <div className="p-4 rounded-xl border space-y-3 bg-black/10 dark:bg-black/20" style={{ borderColor: 'var(--border-color)' }}>
+                    <div className="p-4 rounded-xl border space-y-3" style={{ backgroundColor: 'var(--surface-hover)', borderColor: 'var(--border-color)' }}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <ShieldAlert className="w-4 h-4 text-amber-400" />
+                          <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                           <h4 className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider">
                             ⚡ Instant Friend Dispute Simulator (લાઈવ ટેસ્ટ)
                           </h4>
                         </div>
-                        <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 font-mono font-bold">
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 font-mono font-bold">
                           1-Click Trigger
                         </span>
                       </div>
                       <p className="text-xs text-[var(--text-muted)]">
                         અહીંથી ૧-ક્લિક કરો: સિસ્ટમ નવો ડિસ્પ્યુટ બનાવશે અને સીધો તમારા WhatsApp પર 1-Tap Auto-Defend બટન સાથે મોકલશે.
                       </p>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                         <div>
                           <label className="text-[10px] font-bold text-[var(--text-muted)] block mb-1">Friend / Customer Name</label>
                           <input
                             type="text"
                             value={simCustomerName}
                             onChange={(e) => setSimCustomerName(e.target.value)}
-                            className="w-full px-2.5 py-1.5 rounded-lg text-xs border bg-black/20 text-white"
-                            style={{ borderColor: 'var(--border-color)' }}
+                            className="w-full px-3 py-2 rounded-lg text-xs border"
+                            style={{
+                              backgroundColor: 'var(--surface)',
+                              borderColor: 'var(--border-color)',
+                              color: 'var(--foreground)'
+                            }}
                           />
                         </div>
                         <div>
@@ -2356,8 +2366,12 @@ export default function DashboardPage() {
                             type="number"
                             value={simDisputeAmount}
                             onChange={(e) => setSimDisputeAmount(e.target.value)}
-                            className="w-full px-2.5 py-1.5 rounded-lg text-xs border bg-black/20 text-white font-mono"
-                            style={{ borderColor: 'var(--border-color)' }}
+                            className="w-full px-3 py-2 rounded-lg text-xs border font-mono"
+                            style={{
+                              backgroundColor: 'var(--surface)',
+                              borderColor: 'var(--border-color)',
+                              color: 'var(--foreground)'
+                            }}
                           />
                         </div>
                       </div>
@@ -2386,10 +2400,10 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Meta Cloud API Token Dynamic Updater */}
-                    <div className="p-4 rounded-xl border space-y-3 bg-black/10 dark:bg-black/20" style={{ borderColor: 'var(--border-color)' }}>
+                    <div className="p-4 rounded-xl border space-y-3" style={{ backgroundColor: 'var(--surface-hover)', borderColor: 'var(--border-color)' }}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Lock className="w-4 h-4 text-emerald-400" />
+                          <Lock className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                           <h4 className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider">
                             🔑 Meta Access Token Update (૨૪-કલાક ટોકન અપડેટ)
                           </h4>
@@ -2398,7 +2412,7 @@ export default function DashboardPage() {
                           href="https://developers.facebook.com/apps"
                           target="_blank"
                           rel="noreferrer"
-                          className="text-[11px] text-emerald-400 hover:underline inline-flex items-center gap-1 font-bold"
+                          className="text-[11px] text-emerald-700 dark:text-emerald-400 hover:underline inline-flex items-center gap-1 font-bold"
                         >
                           <span>Meta Step 1</span>
                           <ExternalLink className="w-3 h-3" />
@@ -2407,19 +2421,23 @@ export default function DashboardPage() {
                       <p className="text-xs text-[var(--text-muted)]">
                         જો Meta Developer નો ૨૪-કલાકનો ટેસ્ટ ટોકન expire થાય, તો Step 1 માંથી "Generate new token" કરી અહીં પેસ્ટ કરીને "Update Token" દબાવો.
                       </p>
-                      <div className="flex gap-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
                         <input
                           type="password"
                           value={waCustomToken}
                           onChange={(e) => setWaCustomToken(e.target.value)}
                           placeholder="Paste Meta Access Token (EAADbNUHhHJoBS...)"
-                          className="flex-1 px-3 py-1.5 rounded-lg text-xs font-mono border bg-black/20 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                          style={{ borderColor: 'var(--border-color)' }}
+                          className="flex-1 min-w-0 px-3 py-2 rounded-lg text-xs font-mono border focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                          style={{
+                            backgroundColor: 'var(--surface)',
+                            borderColor: 'var(--border-color)',
+                            color: 'var(--foreground)'
+                          }}
                         />
                         <button
                           onClick={handleUpdateWaToken}
                           disabled={waUpdatingToken}
-                          className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition disabled:opacity-50 shrink-0"
+                          className="w-full sm:w-auto px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition disabled:opacity-50 shrink-0 flex items-center justify-center gap-1"
                         >
                           {waUpdatingToken ? 'Verifying...' : 'Update & Test'}
                         </button>
@@ -2433,34 +2451,34 @@ export default function DashboardPage() {
                       )}
                     </div>
                     {/* Live Dispatcher Box */}
-                    <div className="p-4 rounded-xl border space-y-3.5 bg-black/10 dark:bg-black/20" style={{ borderColor: 'var(--border-color)' }}>
+                    <div className="p-4 rounded-xl border space-y-3.5" style={{ backgroundColor: 'var(--surface-hover)', borderColor: 'var(--border-color)' }}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Zap className="w-4 h-4 text-emerald-400" />
+                          <Zap className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                           <h4 className="text-sm font-bold text-[var(--foreground)]">Send Live WhatsApp Alert to Your Phone</h4>
                         </div>
-                        <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-mono font-bold">
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 font-mono font-bold">
                           Free Testing (₹0)
                         </span>
                       </div>
 
                       <p className="text-xs text-[var(--text-muted)]">
-                        Targeting active case: <strong className="text-amber-400 font-mono">{targetDisputeForWhatsApp?.paypalDisputeId || 'PP-D-849102'}</strong> ({formatCurrency(targetDisputeForWhatsApp?.amount || 249.99)})
+                        Targeting active case: <strong className="text-amber-700 dark:text-amber-400 font-mono font-bold">{targetDisputeForWhatsApp?.paypalDisputeId || 'PP-D-849102'}</strong> ({formatCurrency(targetDisputeForWhatsApp?.amount || 249.99)})
                       </p>
 
                       <div className="space-y-2">
                         <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] block">
                           Your WhatsApp Phone Number (with Country Code)
                         </label>
-                        <div className="flex gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2">
                           <input
                             type="tel"
                             value={waPhoneNumber}
                             onChange={(e) => setWaPhoneNumber(e.target.value)}
                             placeholder="+91 98765 43210"
-                            className="flex-1 px-3 py-2 rounded-xl text-xs font-mono border focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            className="flex-1 min-w-0 px-3 py-2.5 rounded-xl text-xs font-mono border focus:outline-none focus:ring-2 focus:ring-emerald-500"
                             style={{
-                              backgroundColor: 'var(--surface-hover)',
+                              backgroundColor: 'var(--surface)',
                               borderColor: 'var(--border-color)',
                               color: 'var(--foreground)'
                             }}
@@ -2468,7 +2486,7 @@ export default function DashboardPage() {
                           <button
                             onClick={handleSendRealWhatsApp}
                             disabled={waSending}
-                            className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 transition disabled:opacity-50 shadow-md shadow-emerald-500/20 shrink-0"
+                            className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition disabled:opacity-50 shadow-md shadow-emerald-500/20 shrink-0"
                           >
                             {waSending ? (
                               <>
@@ -2484,7 +2502,7 @@ export default function DashboardPage() {
                           </button>
                         </div>
                         <p className="text-[10px] text-[var(--text-muted)]">
-                          Format: Include country code without symbols or spaces (e.g., <code className="text-emerald-400 font-mono">919876543210</code>).
+                          Format: Include country code without symbols or spaces (e.g., <code className="text-emerald-700 dark:text-emerald-400 font-mono font-bold">919876543210</code>).
                         </p>
                       </div>
 
@@ -2517,10 +2535,10 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Meta Webhook Connection Credentials */}
-                    <div className="p-4 rounded-xl border space-y-3" style={{ borderColor: 'var(--border-color)' }}>
+                    <div className="p-4 rounded-xl border space-y-3" style={{ backgroundColor: 'var(--surface-hover)', borderColor: 'var(--border-color)' }}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Lock className="w-4 h-4 text-sky-400" />
+                          <Lock className="w-4 h-4 text-sky-600 dark:text-sky-400" />
                           <h4 className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider">
                             Meta Cloud API Webhook Handshake Config
                           </h4>
@@ -2529,7 +2547,7 @@ export default function DashboardPage() {
                           href="https://developers.facebook.com/apps" 
                           target="_blank" 
                           rel="noreferrer"
-                          className="text-[11px] text-sky-400 hover:underline inline-flex items-center gap-1 font-bold"
+                          className="text-[11px] text-sky-600 dark:text-sky-400 hover:underline inline-flex items-center gap-1 font-bold"
                         >
                           <span>Meta Developers</span>
                           <ExternalLink className="w-3 h-3" />
@@ -2542,20 +2560,24 @@ export default function DashboardPage() {
                           <label className="text-[10px] font-bold text-[var(--text-muted)] block mb-1">
                             Callback URL (Webhook URL)
                           </label>
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                             <input
                               type="text"
                               readOnly
                               value="https://resolvepay-api.onrender.com/api/webhooks/whatsapp"
-                              className="flex-1 px-3 py-1.5 rounded-lg text-xs font-mono border bg-black/20 text-slate-300 select-all"
-                              style={{ borderColor: 'var(--border-color)' }}
+                              className="flex-1 min-w-0 px-3 py-2 rounded-lg text-xs font-mono border select-all"
+                              style={{
+                                backgroundColor: 'var(--surface)',
+                                borderColor: 'var(--border-color)',
+                                color: 'var(--foreground)'
+                              }}
                             />
                             <button
                               onClick={copyWebhookUrl}
-                              className="px-3 py-1.5 rounded-lg border text-xs font-bold hover:bg-[var(--surface-hover)] transition inline-flex items-center gap-1 text-[var(--foreground)]"
+                              className="px-3.5 py-2 rounded-lg border text-xs font-bold hover:bg-[var(--surface-hover)] transition inline-flex items-center justify-center gap-1 text-[var(--foreground)] shrink-0"
                               style={{ borderColor: 'var(--border-color)' }}
                             >
-                              {waCopiedWebhook ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                              {waCopiedWebhook ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                               <span>{waCopiedWebhook ? 'Copied' : 'Copy'}</span>
                             </button>
                           </div>
@@ -2566,20 +2588,23 @@ export default function DashboardPage() {
                           <label className="text-[10px] font-bold text-[var(--text-muted)] block mb-1">
                             Verify Token
                           </label>
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                             <input
                               type="text"
                               readOnly
                               value="resolvepay_wa_verify_2026"
-                              className="flex-1 px-3 py-1.5 rounded-lg text-xs font-mono border bg-black/20 text-emerald-400 select-all font-bold"
-                              style={{ borderColor: 'var(--border-color)' }}
+                              className="flex-1 min-w-0 px-3 py-2 rounded-lg text-xs font-mono border select-all font-bold text-emerald-700 dark:text-emerald-400"
+                              style={{
+                                backgroundColor: 'var(--surface)',
+                                borderColor: 'var(--border-color)'
+                              }}
                             />
                             <button
                               onClick={copyVerifyToken}
-                              className="px-3 py-1.5 rounded-lg border text-xs font-bold hover:bg-[var(--surface-hover)] transition inline-flex items-center gap-1 text-[var(--foreground)]"
+                              className="px-3.5 py-2 rounded-lg border text-xs font-bold hover:bg-[var(--surface-hover)] transition inline-flex items-center justify-center gap-1 text-[var(--foreground)] shrink-0"
                               style={{ borderColor: 'var(--border-color)' }}
                             >
-                              {waCopiedToken ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                              {waCopiedToken ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                               <span>{waCopiedToken ? 'Copied' : 'Copy'}</span>
                             </button>
                           </div>
@@ -2605,25 +2630,25 @@ export default function DashboardPage() {
                       {showWaGuide && (
                         <div className="p-4 pt-1 border-t space-y-2.5 text-xs text-[var(--text-muted)]" style={{ borderColor: 'var(--border-color)' }}>
                           <div className="flex gap-2">
-                            <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold font-mono flex items-center justify-center shrink-0 text-[11px]">1</span>
+                            <span className="w-5 h-5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 font-bold font-mono flex items-center justify-center shrink-0 text-[11px]">1</span>
                             <div>
                               <strong className="text-[var(--foreground)]">developers.facebook.com</strong> પર જઈને નવું App બનાવો (Type: Other &gt; Business) અને તેમાં <strong>WhatsApp</strong> પ્રોડક્ટ ઉમેરો.
                             </div>
                           </div>
                           <div className="flex gap-2">
-                            <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold font-mono flex items-center justify-center shrink-0 text-[11px]">2</span>
+                            <span className="w-5 h-5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 font-bold font-mono flex items-center justify-center shrink-0 text-[11px]">2</span>
                             <div>
                               <strong>WhatsApp &gt; API Setup</strong> માં જઈને "To" ના ડ્રોપડાઉન માં <em>Manage phone number list</em> પર ક્લિક કરીને તમારો સાચો WhatsApp મોબાઈલ નંબર નાખો અને 6-digit OTP થી વેરીફાય કરો.
                             </div>
                           </div>
                           <div className="flex gap-2">
-                            <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold font-mono flex items-center justify-center shrink-0 text-[11px]">3</span>
+                            <span className="w-5 h-5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 font-bold font-mono flex items-center justify-center shrink-0 text-[11px]">3</span>
                             <div>
                               <strong>Configuration &gt; Webhook</strong> માં Edit ક્લિક કરીને ઉપર દર્શાવેલ <strong>Callback URL</strong> અને <strong>Verify Token</strong> પેસ્ટ કરો અને <strong>messages</strong> ફીલ્ડ સબસ્ક્રાઈબ કરો.
                             </div>
                           </div>
                           <div className="flex gap-2">
-                            <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold font-mono flex items-center justify-center shrink-0 text-[11px]">4</span>
+                            <span className="w-5 h-5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 font-bold font-mono flex items-center justify-center shrink-0 text-[11px]">4</span>
                             <div>
                               હવે ઉપર આપેલા બોક્સમાં તમારો નંબર નાખીને <strong>Send WhatsApp Alert</strong> ક્લિક કરો — તમને તરત જ WhatsApp પર 1-Tap બટન સાથે મેસેજ આવી જશે!
                             </div>
@@ -2740,7 +2765,7 @@ export default function DashboardPage() {
                         <c.icon className="w-5 h-5 text-[var(--accent-primary)]" />
                         <div>
                           <div className="font-bold">{c.carrier}</div>
-                          <div className="text-[10px] text-emerald-400 font-mono">{c.status}</div>
+                          <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-mono font-semibold">{c.status}</div>
                         </div>
                       </div>
                       <span className="font-mono text-slate-400 text-[11px]">{c.latency}</span>
