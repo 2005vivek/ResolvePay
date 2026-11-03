@@ -1,4 +1,4 @@
-export type Language = 'en' | 'zh' | 'es' | 'ja' | 'de' | 'hi' | 'gu';
+export type Language = 'en' | 'zh' | 'es' | 'ja' | 'de' | 'hi';
 
 export interface LanguageOption {
   code: Language;
@@ -14,7 +14,6 @@ export const SUPPORTED_LANGUAGES: LanguageOption[] = [
   { code: 'ja', label: 'Japanese', nativeName: '日本語', flag: '🇯🇵' },
   { code: 'de', label: 'German', nativeName: 'Deutsch', flag: '🇩🇪' },
   { code: 'hi', label: 'Hindi', nativeName: 'हिन्दी', flag: '🇮🇳' },
-  { code: 'gu', label: 'Gujarati', nativeName: 'ગુજરાતી', flag: '🇮🇳' },
 ];
 
 export const translations = {
@@ -40,9 +39,9 @@ export const translations = {
     // Navigation Tabs
     nav_disputes: 'Disputes Queue',
     nav_whatsapp: 'WhatsApp Autopilot',
-    nav_carrier: 'Carrier Radar',
-    nav_warning: 'Early Warning',
-    nav_settings: 'Settings',
+    nav_carrier: 'Carrier Telemetry Radar',
+    nav_warning: 'Early Threat Radar',
+    nav_settings: 'Merchant Security',
 
     // KPI Cards
     kpi_risk_title: 'Total Value at Risk',
@@ -76,7 +75,7 @@ export const translations = {
     wa_header_sub: 'Direct Meta Cloud API integration. Resolve chargebacks from your actual WhatsApp in seconds with 0 dashboard logins.',
     wa_bot_ready: 'ONLINE • BOT READY',
 
-    // Customer Dispute Filing Link Card (Image Fix)
+    // Customer Dispute Filing Link Card
     cust_portal_title: 'Customer Dispute Filing Link (Share with Friend)',
     cust_portal_badge: 'End-to-End Live',
     cust_portal_desc: 'Send this live link to a customer or friend. When they submit a dispute, a 1-Tap alert is dispatched to your WhatsApp in 2 seconds!',
@@ -138,10 +137,48 @@ export const translations = {
     phone_btn_defended: 'Submitted & Defended in PayPal',
     phone_btn_inspect: '2. Inspect POD & Evidence',
 
-    // Carrier Radar Tab
+    // TAB 3: Carrier Radar
     carrier_title: 'Live Logistics EDI & Carrier Proof Integrations',
     carrier_sub: 'Synchronized carrier gateways providing automatic GPS-verified proof of delivery.',
     carrier_connected: 'Connected',
+    carrier_status_edi: 'Connected (EDI 214)',
+    carrier_status_rest: 'Connected (REST API)',
+    carrier_status_soap: 'Connected (SOAP)',
+    carrier_status_india: 'Connected (India API)',
+
+    // TAB 4: Early Threat Radar
+    warning_title: 'Pre-Dispute Threat & Sentiment Scanner',
+    warning_sub: 'AI monitors customer support tickets to intercept dispute threats before they turn into costly PayPal chargebacks.',
+    warning_btn_intercept: 'Intercept Now',
+    warning_sent_toast: 'Sent 1-click preemptive resolution for {order}',
+
+    // TAB 5: Merchant Security
+    sec_title: 'Merchant Security & Live PayPal Integration',
+    sec_sub: 'Multi-tenant data isolation, zero-trust token auth, and real-time PayPal Sandbox telemetry.',
+    sec_btn_ping: 'Test PayPal Connection Ping',
+    sec_pinging: 'Pinging PayPal...',
+    sec_wa_title: 'WhatsApp 1-Tap Autopilot Dispatch',
+    sec_wa_sub: 'Resolves incoming dispute alerts right from merchant phone without login',
+    sec_btn_bot_preview: 'Open Bot Preview',
+    sec_paypal_card_title: 'PayPal Sandbox REST API Connection',
+    sec_paypal_card_sub: 'Direct OAuth2 & Disputes Engine Handshake',
+    sec_active_connected: 'ACTIVE & CONNECTED',
+    sec_disconnected: 'DISCONNECTED',
+    sec_tenant_title: 'Active Store & Tenant Isolation',
+    sec_tenant_sub: 'Multi-tenant database partition for {name}',
+    sec_btn_connect_another: '+ Connect Another Store',
+    sec_active_store_label: 'Active Business Store:',
+    sec_verified_badge: 'PayPal Verified Account',
+    sec_tenant_id_label: 'Merchant Tenant ID:',
+    sec_payer_id_label: 'PayPal Payer ID:',
+    sec_linked_label: 'Linked:',
+    sec_auth_token_label: 'Internal Auth Token:',
+    sec_btn_copy_token: 'Copy Token',
+    idem_title: 'Live Webhook Idempotency Engine Test',
+    idem_sub: 'Simulate network re-transmissions and duplicate dispute attacks',
+    idem_btn_testing: 'Testing Idempotency...',
+    idem_btn_simulate: 'Simulate Duplicate Webhook',
+    idem_empty_hint: 'Click "Simulate Duplicate Webhook" to send two identical webhook events concurrently and witness the unique index block duplicate financial deductions in real-time.',
 
     // Notification Toasts
     toast_lang_switched: 'Language switched to English',
@@ -202,9 +239,9 @@ export const translations = {
     // Navigation Tabs
     nav_disputes: '争议队列',
     nav_whatsapp: 'WhatsApp 自动处理',
-    nav_carrier: '承运商雷达',
-    nav_warning: '预警中心',
-    nav_settings: '设置',
+    nav_carrier: '承运商遥测雷达',
+    nav_warning: '早期威胁雷达',
+    nav_settings: '商户安全设置',
 
     // KPI Cards
     kpi_risk_title: '风险资金总额',
@@ -238,7 +275,7 @@ export const translations = {
     wa_header_sub: 'Meta Cloud API 官方直连。无需登录后台，直接从手机 WhatsApp 几秒内快速抗辩退款。',
     wa_bot_ready: '在线 • 机器人就绪',
 
-    // Customer Dispute Filing Link Card (Image Fix)
+    // Customer Dispute Filing Link Card
     cust_portal_title: '客户争议提交链接 (与好友分享)',
     cust_portal_badge: '端到端实时生效',
     cust_portal_desc: '将此实时链接发送给客户或好友。他们提交争议后，2秒内您的 WhatsApp 就会收到一键抗辩警报！',
@@ -300,10 +337,48 @@ export const translations = {
     phone_btn_defended: '已成功在 PayPal 提交抗辩',
     phone_btn_inspect: '2. 检查 POD 签收与证据',
 
-    // Carrier Radar Tab
+    // TAB 3: Carrier Radar
     carrier_title: '实时物流 EDI 与承运商举证网关',
     carrier_sub: '承运商网关毫秒级同步，提供自动 GPS 验证签收证明。',
     carrier_connected: '已连接',
+    carrier_status_edi: '已连接 (EDI 214)',
+    carrier_status_rest: '已连接 (REST API)',
+    carrier_status_soap: '已连接 (SOAP)',
+    carrier_status_india: '已连接 (India API)',
+
+    // TAB 4: Early Threat Radar
+    warning_title: '争议前威胁与客户情绪扫描器',
+    warning_sub: 'AI 实时监控客服会话，在争议升级为昂贵的 PayPal 扣款前提前拦截。',
+    warning_btn_intercept: '立即拦截',
+    warning_sent_toast: '已为订单 {order} 发送一键预防性解决方案',
+
+    // TAB 5: Merchant Security
+    sec_title: '商户安全与实时 PayPal 官方集成',
+    sec_sub: '多租户数据完全隔离、零信任令牌认证及实时 PayPal 沙盒遥测。',
+    sec_btn_ping: '测试 PayPal 连接响应',
+    sec_pinging: '正在 Ping PayPal...',
+    sec_wa_title: 'WhatsApp 一键自动处理调度器',
+    sec_wa_sub: '无需登录，直接在商户手机上解决传入的争议警报',
+    sec_btn_bot_preview: '打开机器人预览',
+    sec_paypal_card_title: 'PayPal 沙盒 REST API 直连',
+    sec_paypal_card_sub: 'OAuth2 与争议核心引擎即时握手',
+    sec_active_connected: '运行中且已连接',
+    sec_disconnected: '未连接',
+    sec_tenant_title: '活跃店铺与租户隔离',
+    sec_tenant_sub: '针对 {name} 的多租户数据库隔离分区',
+    sec_btn_connect_another: '+ 连接另一个店铺',
+    sec_active_store_label: '活跃商户店铺：',
+    sec_verified_badge: 'PayPal 官方认证账户',
+    sec_tenant_id_label: '商户租户 ID：',
+    sec_payer_id_label: 'PayPal Payer ID：',
+    sec_linked_label: '绑定时间：',
+    sec_auth_token_label: '内部认证令牌：',
+    sec_btn_copy_token: '复制令牌',
+    idem_title: '实时 Webhook 幂等引擎测试',
+    idem_sub: '模拟网络重传和重复争议攻击',
+    idem_btn_testing: '正在测试幂等性...',
+    idem_btn_simulate: '模拟重放重复 Webhook',
+    idem_empty_hint: '点击“模拟重放重复 Webhook”并发发送两个相同的 Webhook 事件，实时见证唯一索引拦截重复扣款。',
 
     // Notification Toasts
     toast_lang_switched: '界面语言已切换为简体中文',
@@ -364,9 +439,9 @@ export const translations = {
     // Navigation Tabs
     nav_disputes: 'Cola de disputas',
     nav_whatsapp: 'Piloto automático de WhatsApp',
-    nav_carrier: 'Radar de transportistas',
-    nav_warning: 'Alerta temprana',
-    nav_settings: 'Configuración',
+    nav_carrier: 'Radar de telemetría de transportistas',
+    nav_warning: 'Radar de amenazas tempranas',
+    nav_settings: 'Seguridad del comerciante',
 
     // KPI Cards
     kpi_risk_title: 'Valor total en riesgo',
@@ -400,7 +475,7 @@ export const translations = {
     wa_header_sub: 'Integración directa con Meta Cloud API. Resuelve devoluciones desde tu WhatsApp en segundos con 0 inicios de sesión en el panel.',
     wa_bot_ready: 'EN LÍNEA • BOT LISTO',
 
-    // Customer Dispute Filing Link Card (Image Fix)
+    // Customer Dispute Filing Link Card
     cust_portal_title: 'Enlace de disputa de cliente (compartir con amigo)',
     cust_portal_badge: 'En vivo de extremo a extremo',
     cust_portal_desc: 'Envía este enlace activo a un cliente o amigo. Cuando envíen una disputa, ¡recibirás una alerta de 1 toque en tu WhatsApp en 2 segundos!',
@@ -462,10 +537,48 @@ export const translations = {
     phone_btn_defended: 'Enviado y defendido en PayPal',
     phone_btn_inspect: '2. Inspeccionar comprobante y pruebas',
 
-    // Carrier Radar Tab
+    // TAB 3: Carrier Radar
     carrier_title: 'Integraciones de pruebas de transportistas y EDI en vivo',
     carrier_sub: 'Pasarelas de transportistas sincronizadas que proporcionan comprobantes de entrega verificados por GPS.',
     carrier_connected: 'Conectado',
+    carrier_status_edi: 'Conectado (EDI 214)',
+    carrier_status_rest: 'Conectado (REST API)',
+    carrier_status_soap: 'Conectado (SOAP)',
+    carrier_status_india: 'Conectado (India API)',
+
+    // TAB 4: Early Threat Radar
+    warning_title: 'Escáner de sentimiento y amenazas previas a disputas',
+    warning_sub: 'La IA supervisa las conversaciones de soporte para interceptar amenazas antes de que se conviertan en costosas disputas de PayPal.',
+    warning_btn_intercept: 'Interceptar ahora',
+    warning_sent_toast: 'Resolución preventiva enviada para {order}',
+
+    // TAB 5: Merchant Security
+    sec_title: 'Seguridad del comerciante e integración en vivo con PayPal',
+    sec_sub: 'Aislamiento de datos multi-inquilino, autenticación de confianza cero y telemetría de PayPal Sandbox en tiempo real.',
+    sec_btn_ping: 'Probar ping de conexión con PayPal',
+    sec_pinging: 'Comprobando PayPal...',
+    sec_wa_title: 'Despachador automático de WhatsApp en 1 toque',
+    sec_wa_sub: 'Resuelve disputas entrantes directamente desde el teléfono del comerciante sin iniciar sesión',
+    sec_btn_bot_preview: 'Abrir vista previa del bot',
+    sec_paypal_card_title: 'Conexión REST API de PayPal Sandbox',
+    sec_paypal_card_sub: 'Enlace directo de OAuth2 con el motor de disputas',
+    sec_active_connected: 'ACTIVO Y CONECTADO',
+    sec_disconnected: 'DESCONECTADO',
+    sec_tenant_title: 'Aislamiento de tienda activa y multi-inquilino',
+    sec_tenant_sub: 'Partición de base de datos aislada para {name}',
+    sec_btn_connect_another: '+ Conectar otra tienda',
+    sec_active_store_label: 'Tienda comercial activa:',
+    sec_verified_badge: 'Cuenta verificada de PayPal',
+    sec_tenant_id_label: 'ID de inquilino comerciante:',
+    sec_payer_id_label: 'PayPal Payer ID:',
+    sec_linked_label: 'Vinculado:',
+    sec_auth_token_label: 'Token de autenticación interno:',
+    sec_btn_copy_token: 'Copiar token',
+    idem_title: 'Prueba del motor de idempotencia de webhooks en vivo',
+    idem_sub: 'Simula retransmisiones de red y ataques de disputas duplicadas',
+    idem_btn_testing: 'Probando idempotencia...',
+    idem_btn_simulate: 'Simular webhook duplicado',
+    idem_empty_hint: 'Haz clic en "Simular webhook duplicado" para enviar dos eventos webhook idénticos simultáneamente y presenciar el bloqueo de deducciones duplicadas.',
 
     // Notification Toasts
     toast_lang_switched: 'Idioma cambiado a Español',
@@ -526,9 +639,9 @@ export const translations = {
     // Navigation Tabs
     nav_disputes: '異議申し立てキュー',
     nav_whatsapp: 'WhatsApp オートパイロット',
-    nav_carrier: '配送キャリアレーダー',
-    nav_warning: '早期警告センター',
-    nav_settings: '設定',
+    nav_carrier: '配送キャリアテレメトリレーダー',
+    nav_warning: '早期脅威検知レーダー',
+    nav_settings: '加盟店セキュリティ設定',
 
     // KPI Cards
     kpi_risk_title: 'リスク総額',
@@ -562,7 +675,7 @@ export const translations = {
     wa_header_sub: 'Meta Cloud API 直接連携。ダッシュボードへのログイン不要で、WhatsApp から数秒でチャージバックに反論できます。',
     wa_bot_ready: 'オンライン • ボット待機中',
 
-    // Customer Dispute Filing Link Card (Image Fix)
+    // Customer Dispute Filing Link Card
     cust_portal_title: '顧客異議申し立て提出リンク (友人と共有)',
     cust_portal_badge: 'エンドツーエンド稼働中',
     cust_portal_desc: 'このリンクを顧客または友人に送信します。相手が異議を送信すると、2秒以内にあなたの WhatsApp へ1タップ通知が届きます！',
@@ -624,10 +737,48 @@ export const translations = {
     phone_btn_defended: 'PayPal にて防御提出完了',
     phone_btn_inspect: '2. 配達証明 (POD) と証拠を確認',
 
-    // Carrier Radar Tab
+    // TAB 3: Carrier Radar
     carrier_title: 'ライブ物流 EDI ＆ キャリア配達証明統合',
     carrier_sub: 'GPS 認証済みの配達証明をミリ秒単位で自動同期するキャリアゲートウェイ。',
     carrier_connected: '接続完了',
+    carrier_status_edi: '接続完了 (EDI 214)',
+    carrier_status_rest: '接続完了 (REST API)',
+    carrier_status_soap: '接続完了 (SOAP)',
+    carrier_status_india: '接続完了 (India API)',
+
+    // TAB 4: Early Threat Radar
+    warning_title: '異議申し立て前の脅威・顧客感情スキャナー',
+    warning_sub: 'AI がサポートチケットを監視し、高額なチャージバックに発展する前にトラブルを先回りして検知・解決します。',
+    warning_btn_intercept: '先回り対応を実行',
+    warning_sent_toast: '注文 {order} に対するワンクリック事前解決策を送信しました',
+
+    // TAB 5: Merchant Security
+    sec_title: '加盟店セキュリティ ＆ リアルタイム PayPal 公式連携',
+    sec_sub: 'マルチテナントデータ完全分離、ゼロトラスト認証、リアルタイム PayPal サンドボックステレメトリ。',
+    sec_btn_ping: 'PayPal 接続テストを実行',
+    sec_pinging: 'PayPal に ping 実行中...',
+    sec_wa_title: 'WhatsApp 1タップ 自動対応ディスパッチャー',
+    sec_wa_sub: 'ログイン不要で加盟店のスマートフォンから直接アラートに対応',
+    sec_btn_bot_preview: 'ボットプレビューを開く',
+    sec_paypal_card_title: 'PayPal サンドボックス REST API 直結',
+    sec_paypal_card_sub: 'OAuth2 ＆ 異議申し立てエンジン即時ハンドシェイク',
+    sec_active_connected: '稼働中 ＆ 正常接続',
+    sec_disconnected: '切断中',
+    sec_tenant_title: 'アクティブストア ＆ テナント完全分離',
+    sec_tenant_sub: '{name} 専用の独立データベースパーティション',
+    sec_btn_connect_another: '+ 別のストアを追加接続',
+    sec_active_store_label: 'アクティブなビジネスストア：',
+    sec_verified_badge: 'PayPal 認証済みアカウント',
+    sec_tenant_id_label: '加盟店テナント ID：',
+    sec_payer_id_label: 'PayPal Payer ID：',
+    sec_linked_label: '連携日時：',
+    sec_auth_token_label: '内部認証トークン：',
+    sec_btn_copy_token: 'トークンをコピー',
+    idem_title: 'リアルタイム Webhook 冪等性エンジンテスト',
+    idem_sub: 'ネットワークの再送と重複異議申し立て攻撃をシミュレート',
+    idem_btn_testing: '冪等性をテスト中...',
+    idem_btn_simulate: '重複 Webhook をシミュレート',
+    idem_empty_hint: '「重複 Webhook をシミュレート」をクリックして2つの同一 Webhook を同時に送信し、重複引き落としがリアルタイムで遮断される動作を確認します。',
 
     // Notification Toasts
     toast_lang_switched: '言語を日本語に切り替えました',
@@ -688,9 +839,9 @@ export const translations = {
     // Navigation Tabs
     nav_disputes: 'Konflikt-Warteschlange',
     nav_whatsapp: 'WhatsApp-Autopilot',
-    nav_carrier: 'Versanddienstleister-Radar',
-    nav_warning: 'Frühwarnsystem',
-    nav_settings: 'Einstellungen',
+    nav_carrier: 'Versanddienstleister-Telemetrieradar',
+    nav_warning: 'Frühwarnradar für Bedrohungen',
+    nav_settings: 'Händlersicherheit',
 
     // KPI Cards
     kpi_risk_title: 'Gefährdeter Gesamtwert',
@@ -724,7 +875,7 @@ export const translations = {
     wa_header_sub: 'Direkte Meta Cloud API-Integration. Lösen Sie Rückbuchungen sekundenschnell direkt über WhatsApp ohne Dashboard-Login.',
     wa_bot_ready: 'ONLINE • BOT BEREIT',
 
-    // Customer Dispute Filing Link Card (Image Fix)
+    // Customer Dispute Filing Link Card
     cust_portal_title: 'Kunden-Konflikt-Link (Mit Freund teilen)',
     cust_portal_badge: 'End-to-End Live',
     cust_portal_desc: 'Senden Sie diesen Link an einen Kunden oder Freund. Sobald dieser einen Fall einreicht, erhalten Sie in 2 Sekunden einen 1-Tap-Alert auf WhatsApp!',
@@ -786,10 +937,48 @@ export const translations = {
     phone_btn_defended: 'Erfolgreich bei PayPal verteidigt',
     phone_btn_inspect: '2. Zustellnachweis (POD) einsehen',
 
-    // Carrier Radar Tab
+    // TAB 3: Carrier Radar
     carrier_title: 'Live-Logistik-EDI & Versanddienstleister-Nachweise',
     carrier_sub: 'Synchronisierte Versand-Gateways mit automatischer GPS-geprüfter Zustellungsbestätigung.',
     carrier_connected: 'Verbunden',
+    carrier_status_edi: 'Verbunden (EDI 214)',
+    carrier_status_rest: 'Verbunden (REST API)',
+    carrier_status_soap: 'Verbunden (SOAP)',
+    carrier_status_india: 'Verbunden (India API)',
+
+    // TAB 4: Early Threat Radar
+    warning_title: 'Scanner für Vorab-Bedrohungen & Kundenstimmung',
+    warning_sub: 'KI überwacht Support-Tickets in Echtzeit, um Streitigkeiten abzuwenden, bevor kostspielige PayPal-Rückbuchungen entstehen.',
+    warning_btn_intercept: 'Jetzt intervenieren',
+    warning_sent_toast: 'Präventive 1-Klick-Lösung für {order} gesendet',
+
+    // TAB 5: Merchant Security
+    sec_title: 'Händlersicherheit & Live-PayPal-Integration',
+    sec_sub: 'Multi-Tenant-Datenisolierung, Zero-Trust-Authentifizierung und Live-Telemetrie der PayPal-Sandbox.',
+    sec_btn_ping: 'PayPal-Verbindungstest ausführen',
+    sec_pinging: 'PayPal wird angefragt...',
+    sec_wa_title: 'WhatsApp 1-Tap Autopilot-Dispatch',
+    sec_wa_sub: 'Löst eingehende Konflikte direkt vom Händler-Smartphone ohne Anmeldung',
+    sec_btn_bot_preview: 'Bot-Vorschau öffnen',
+    sec_paypal_card_title: 'PayPal Sandbox REST API-Verbindung',
+    sec_paypal_card_sub: 'Direkter OAuth2-Handshake mit der Konflikt-Engine',
+    sec_active_connected: 'AKTIV & VERBUNDEN',
+    sec_disconnected: 'GETRENNT',
+    sec_tenant_title: 'Aktiver Shop & Mandantentrennung',
+    sec_tenant_sub: 'Isolierte Datenbankpartition für {name}',
+    sec_btn_connect_another: '+ Weiteren Shop verbinden',
+    sec_active_store_label: 'Aktiver Unternehmens-Shop:',
+    sec_verified_badge: 'Von PayPal verifiziertes Konto',
+    sec_tenant_id_label: 'Händler-Mandanten-ID:',
+    sec_payer_id_label: 'PayPal Payer-ID:',
+    sec_linked_label: 'Verknüpft am:',
+    sec_auth_token_label: 'Internes Authentifizierungstoken:',
+    sec_btn_copy_token: 'Token kopieren',
+    idem_title: 'Echtzeit-Webhook-Idempotenz-Test',
+    idem_sub: 'Simuliert Netzwerk-Wiederholungen und doppelte Konflikt-Angriffe',
+    idem_btn_testing: 'Idempotenz wird getestet...',
+    idem_btn_simulate: 'Doppelten Webhook simulieren',
+    idem_empty_hint: 'Klicken Sie auf "Doppelten Webhook simulieren", um zwei identische Webhook-Ereignisse gleichzeitig zu senden und die Sperrung doppelter Belastungen zu sehen.',
 
     // Notification Toasts
     toast_lang_switched: 'Sprache auf Deutsch umgestellt',
@@ -850,9 +1039,9 @@ export const translations = {
     // Navigation Tabs
     nav_disputes: 'विवाद कतार',
     nav_whatsapp: 'WhatsApp ऑटोपायलट',
-    nav_carrier: 'कूरियर रडार',
-    nav_warning: 'पूर्व चेतावनी केंद्र',
-    nav_settings: 'सेटिंग्स',
+    nav_carrier: 'कूरियर टेलीमेट्री रडार',
+    nav_warning: 'प्रारंभिक खतरा रडार',
+    nav_settings: 'व्यापारी सुरक्षा केंद्र',
 
     // KPI Cards
     kpi_risk_title: 'जोखिम में कुल राशि',
@@ -886,7 +1075,7 @@ export const translations = {
     wa_header_sub: 'सीधा Meta Cloud API एकीकरण। डैशबोर्ड में लॉगिन किए बिना, अपने WhatsApp से सेकंडों में चार्जबैक का समाधान करें।',
     wa_bot_ready: 'ऑनलाइन • बॉट तैयार है',
 
-    // Customer Dispute Filing Link Card (Image Fix)
+    // Customer Dispute Filing Link Card
     cust_portal_title: 'ग्राहक विवाद दर्ज करने का लिंक (मित्र के साथ साझा करें)',
     cust_portal_badge: 'एंड-टू-एंड लाइव',
     cust_portal_desc: 'यह लाइव लिंक अपने ग्राहक या मित्र को भेजें। जब वे विवाद सबमिट करेंगे, तो 2 सेकंड में आपके WhatsApp पर 1-टैप अलर्ट आ जाएगा!',
@@ -948,10 +1137,48 @@ export const translations = {
     phone_btn_defended: 'PayPal में सफलतापूर्वक सुरक्षित प्रस्तुत',
     phone_btn_inspect: '2. डिलीवरी साक्ष्य (POD) देखें',
 
-    // Carrier Radar Tab
+    // TAB 3: Carrier Radar
     carrier_title: 'लाइव लॉजिस्टिक्स EDI एवं कैरियर साक्ष्य एकीकरण',
     carrier_sub: 'स्वचालित GPS-सत्यापित डिलीवरी साक्ष्य प्रदान करने वाली कैरियर गेटवे प्रणाली।',
     carrier_connected: 'कनेक्टेड',
+    carrier_status_edi: 'कनेक्टेड (EDI 214)',
+    carrier_status_rest: 'कनेक्टेड (REST API)',
+    carrier_status_soap: 'कनेक्टेड (SOAP)',
+    carrier_status_india: 'कनेक्टेड (India API)',
+
+    // TAB 4: Early Threat Radar
+    warning_title: 'विवाद-पूर्व खतरा एवं ग्राहक भावना स्कैनर',
+    warning_sub: 'AI ग्राहक सहायता संदेशों की निगरानी करता है ताकि महंगी PayPal चार्जबैक में बदलने से पहले विवादों को रोका जा सके।',
+    warning_btn_intercept: 'तुरंत समाधान भेजें',
+    warning_sent_toast: 'ऑर्डर {order} के लिए एक-क्लिक निवारण भेजा गया',
+
+    // TAB 5: Merchant Security
+    sec_title: 'व्यापारी सुरक्षा एवं लाइव PayPal एकीकरण',
+    sec_sub: 'मल्टी-टेनेंट डेटा अलगाव, ज़ीरो-ट्रस्ट टोकन प्रमाणीकरण और रीयल-टाइम PayPal सैंडबॉक्स टेलीमेट्री।',
+    sec_btn_ping: 'PayPal कनेक्शन पिंग टेस्ट करें',
+    sec_pinging: 'PayPal से संपर्क किया जा रहा है...',
+    sec_wa_title: 'WhatsApp 1-टैप ऑटोपायलट डिस्पैच',
+    sec_wa_sub: 'बिना लॉगिन किए व्यापारी के फोन से सीधे विवाद अलर्ट हल करें',
+    sec_btn_bot_preview: 'बॉट पूर्वावलोकन खोलें',
+    sec_paypal_card_title: 'PayPal सैंडबॉक्स REST API कनेक्शन',
+    sec_paypal_card_sub: 'OAuth2 और विवाद इंजन के बीच सीधा हैंडशेक',
+    sec_active_connected: 'सक्रिय एवं कनेक्टेड',
+    sec_disconnected: 'डिस्कनेक्टेड',
+    sec_tenant_title: 'सक्रिय स्टोर एवं टेनेंट अलगाव',
+    sec_tenant_sub: '{name} के लिए सुरक्षित डेटाबेस पार्टीशन',
+    sec_btn_connect_another: '+ एक और स्टोर जोड़ें',
+    sec_active_store_label: 'सक्रिय बिजनेस स्टोर:',
+    sec_verified_badge: 'PayPal सत्यापित खाता',
+    sec_tenant_id_label: 'मर्चेंट टेनेंट आईडी:',
+    sec_payer_id_label: 'PayPal Payer आईडी:',
+    sec_linked_label: 'जोड़ा गया:',
+    sec_auth_token_label: 'आंतरिक प्रमाणीकरण टोकन:',
+    sec_btn_copy_token: 'टोकन कॉपी करें',
+    idem_title: 'लाइव वेबहुक आइडमपोटेंसी इंजन परीक्षण',
+    idem_sub: 'नेटवर्क पुनः प्रसारण और डुप्लिकेट विवाद हमलों का अनुकरण करें',
+    idem_btn_testing: 'आइडमपोटेंसी का परीक्षण हो रहा है...',
+    idem_btn_simulate: 'डुप्लिकेट वेबहुक का अनुकरण करें',
+    idem_empty_hint: 'एक साथ दो समान वेबहुक इवेंट भेजने के लिए "डुप्लिकेट वेबहुक का अनुकरण करें" पर क्लिक करें और वास्तविक समय में कटौती अवरुद्ध देखें।',
 
     // Notification Toasts
     toast_lang_switched: 'भाषा बदलकर हिन्दी कर दी गई है',
@@ -988,168 +1215,6 @@ export const translations = {
     modal_currency: 'निपटान मुद्रा',
     modal_btn_connect: 'PayPal OAuth 2.0 कनेक्शन शुरू करें',
     modal_connecting: 'सुरक्षित सैंडबॉक्स हैंडशेक स्थापित किया जा रहा है...',
-  },
-
-  gu: {
-    // Top Bar & App Info
-    app_subtitle: 'પેપાલ ડિસ્પ્યુટ ઓટોપાયલટ',
-    search_placeholder: 'ID, ગ્રાહક નામ અથવા રકમ દ્વારા શોધો...',
-    connected_store: 'કનેક્ટેડ સ્ટોર',
-    manage_stores: 'સ્ટોર્સ મેનેજ કરો',
-    connect_new_store: '+ નવો સ્ટોર કનેક્ટ કરો',
-    theme: 'થીમ',
-    language: 'ભાષા',
-    preferences_actions: 'પસંદગીઓ અને ક્રિયાઓ',
-    sync_disputes: 'ડિસ્પ્યુટ્સ સિંક કરો',
-    paypal_sandbox: 'PayPal સેન્ડબોક્સ',
-    connect_paypal: 'PayPal એકાઉન્ટ કનેક્ટ કરો',
-    install_mobile_app: 'મોબાઇલ એપ ઇન્સ્ટોલ કરો',
-    developer_simulation: 'ડેવલપર સિમ્યુલેશન',
-    simulate_item_not_received: 'માલ ન મળવાનો ડિસ્પ્યુટ બનાવો ($249.99)',
-    simulate_unauthorized: 'અજાણ્યા વ્યવહારનો ડિસ્પ્યુટ બનાવો ($149.50)',
-    reset_live_demo: 'લાઇવ ડેમો ડેટા રીસેટ કરો',
-
-    // Navigation Tabs
-    nav_disputes: 'ડિસ્પ્યુટ્સ કતાર',
-    nav_whatsapp: 'WhatsApp ઓટોપાયલટ',
-    nav_carrier: 'કેરિયર રડાર',
-    nav_warning: 'અર્લી વોર્નિંગ',
-    nav_settings: 'સેટિંગ્સ',
-
-    // KPI Cards
-    kpi_risk_title: 'જોખમમાં કુલ રકમ',
-    kpi_risk_sub: 'કુલ ડિસ્પ્યુટ્સ • સ્વચાલિત સંરક્ષણ',
-    kpi_action_title: 'જરૂરી કાર્યવાહી',
-    kpi_action_sub: 'તાત્કાલિક SLA સમયમર્યાદા સક્રિય',
-    kpi_defended_title: 'ડિફેન્ડ કરેલ અને સમીક્ષા હેઠળ',
-    kpi_defended_sub: 'ઓટોમેટેડ પાઇપલાઇન દ્વારા સબમિટ',
-    kpi_win_title: 'AI ડિફેન્સ વિન રેશિયો',
-
-    // Table Filters
-    filter_all: 'તમામ ડિસ્પ્યુટ્સ',
-    filter_action: 'જરૂરી કાર્યવાહી',
-    filter_defended: 'ડિફેન્ડ કરેલ / સમીક્ષા હેઠળ',
-    total_count: 'મળેલા ડિસ્પ્યુટ્સ',
-
-    // Table Columns
-    col_case_id: 'કેસ ID / સંદર્ભ',
-    col_buyer: 'ખરીદનાર / ગ્રાહક',
-    col_amount: 'જોખમમાં રકમ',
-    col_evidence: 'EDI પુરાવા',
-    col_deadline: 'SLA કાઉન્ટડાઉન',
-    col_ai_status: 'AI સ્ટેટસ',
-    col_actions: 'ક્રિયાઓ',
-    btn_track_live: 'લાઇવ ટ્રેક કરો',
-    btn_review_defense: 'ડિફેન્સ જુઓ',
-
-    // WhatsApp Tab: Header
-    wa_header_title: 'Meta WhatsApp 1-Tap Autopilot',
-    wa_sandbox_badge: '૧૦૦% મફત ડેવલપર સેન્ડબોક્સ',
-    wa_header_sub: 'સીધું Meta Cloud API ઇન્ટિગ્રેશન. ૦ ડેશબોર્ડ લૉગિન સાથે તમારા WhatsApp પરથી સેકન્ડોમાં ચાર્જબેક ઉકેલો.',
-    wa_bot_ready: 'ઓનલાઇન • બોટ તૈયાર છે',
-
-    // Customer Dispute Filing Link Card (Image Fix)
-    cust_portal_title: 'કસ્ટમર ડિસ્પ્યુટ ફાઇલિંગ લિંક (મિત્ર સાથે શેર કરો)',
-    cust_portal_badge: 'એન્ડ-ટુ-એન્ડ લાઈવ',
-    cust_portal_desc: 'તમારા મિત્રને આ લિંક મોકલો. તે લિંક ખોલીને ફરિયાદ સબમિટ કરશે એટલે ૨ સેકન્ડમાં સીધું તમારા વોટ્સએપ પર ૧-ટેપ એલર્ટ આવી જશે!',
-    cust_portal_copy: 'લિંક કોપી કરો',
-    cust_portal_copied: 'કોપી થઈ ગયું',
-    cust_portal_open: 'ખોલો',
-
-    // Instant Friend Dispute Simulator Card
-    sim_title: 'ઇન્સ્ટન્ટ મિત્ર ડિસ્પ્યુટ સિમ્યુલેટર (લાઈવ ટેસ્ટ)',
-    sim_badge: '૧-ક્લિક ટ્રિગર',
-    sim_desc: 'અહીંથી ૧-ક્લિક કરો: સિસ્ટમ નવો ડિસ્પ્યુટ બનાવશે અને સીધો તમારા WhatsApp પર 1-Tap Auto-Defend બટન સાથે મોકલશે.',
-    sim_name_label: 'મિત્ર / કસ્ટમર નામ',
-    sim_amount_label: 'રકમ ($ USD)',
-    sim_btn_dispatch: '🚀 મિત્રનો ડિસ્પ્યુટ મારા WhatsApp પર મોકલો',
-    sim_btn_loading: 'ડિસ્પ્યુટ બનાવી WhatsApp પર મોકલી રહ્યા છીએ...',
-    sim_success_msg: 'કેસ {id} દાખલ થયો! વેપારીના ફોન પર WhatsApp એલર્ટ મોકલી દીધું.',
-
-    // Meta Access Token Update Card
-    token_title: 'Meta એક્સેસ ટોકન અપડેટ (૨૪-કલાક ટોકન)',
-    token_step1: 'Meta સ્ટેપ ૧',
-    token_desc: 'જો Meta Developer નો ૨૪-કલાકનો ટેસ્ટ ટોકન expire થાય, તો Step 1 માંથી નવો ટોકન મેળવી અહીં પેસ્ટ કરો અને "Update Token" દબાવો.',
-    token_placeholder: 'Meta Access Token પેસ્ટ કરો (EAADbNUHhHJoBS...)',
-    token_btn: 'અપડેટ અને ટેસ્ટ',
-    token_verifying: 'ચકાસી રહ્યા છીએ...',
-    token_active: '✅ Meta Token સક્રિય અને કનેક્ટેડ છે!',
-
-    // Live Dispatcher Box
-    dispatch_title: 'તમારા ફોન પર લાઇવ WhatsApp એલર્ટ મોકલો',
-    dispatch_badge: 'મફત ટેસ્ટિંગ (₹0)',
-    dispatch_targeting: 'લક્ષિત સક્રિય કેસ:',
-    dispatch_phone_label: 'તમારો WhatsApp ફોન નંબર (કન્ટ્રી કોડ સાથે)',
-    dispatch_btn: 'WhatsApp એલર્ટ મોકલો',
-    dispatch_sending: 'મોકલી રહ્યા છીએ...',
-    dispatch_hint: 'ફોર્મેટ: કોઈપણ ચિહ્નો અથવા જગ્યા વિના દેશનો કોડ શામેલ કરો (દા.ત. 919876543210).',
-    dispatch_success: 'WhatsApp એલર્ટ સફળતાપૂર્વક મોકલાયું',
-
-    // Webhook Handshake Config
-    webhook_title: 'Meta Cloud API Webhook હેન્ડશેક સેટિંગ',
-    webhook_meta_devs: 'Meta Developers',
-    webhook_callback_label: 'Callback URL (Webhook URL)',
-    webhook_verify_label: 'Verify Token',
-    btn_copy: 'કોપી',
-    btn_copied: 'કોપી થઈ ગયું',
-
-    // 2-Minute Setup Guide
-    guide_title: '૨ મિનિટ Meta Developer Setup ગાઈડ (૧૦૦% મફત Sandbox)',
-    guide_step1: 'developers.facebook.com પર જઈને નવું App બનાવો (Type: Other > Business) અને તેમાં WhatsApp પ્રોડક્ટ ઉમેરો.',
-    guide_step2: 'WhatsApp > API Setup માં જઈને "To" ના ડ્રોપડાઉન માં Manage phone number list પર ક્લિક કરીને તમારો સાચો WhatsApp મોબાઈલ નંબર નાખો અને 6-digit OTP થી વેરીફાય કરો.',
-    guide_step3: 'Configuration > Webhook માં Edit ક્લિક કરીને ઉપર દર્શાવેલ Callback URL અને Verify Token પેસ્ટ કરો અને messages ફીલ્ડ સબસ્ક્રાઈબ કરો.',
-    guide_step4: 'હવે ઉપર આપેલા બોક્સમાં તમારો નંબર નાખીને Send WhatsApp Alert ક્લિક કરો — તમને તરત જ WhatsApp પર 1-Tap બટન સાથે મેસેજ આવી જશે!',
-
-    // Phone Mockup
-    phone_verified: 'વેરીફાઈડ બિઝનેસ એકાઉન્ટ',
-    phone_dispute_alert: '🚨 પેપાલ ડિસ્પ્યુટ એલર્ટ:',
-    phone_amount_at_risk: 'જોખમમાં રકમ:',
-    phone_reason: 'કારણ:',
-    phone_ai_action: '⚡ AI એકશન: FedEx ટ્રેકિંગ સાબિત કરે છે કે ગ્રાહકની સહી સાથે ડિલિવરી થઈ ગઈ છે.',
-    phone_btn_approve: '૧. મંજૂર કરો અને ડિફેન્સ સબમિટ કરો',
-    phone_btn_defended: 'પેપાલમાં સફળતાપૂર્વક ડિફેન્ડ થઈ ગયું',
-    phone_btn_inspect: '૨. POD પુરાવા તપાસો',
-
-    // Carrier Radar Tab
-    carrier_title: 'લાઈવ લોજિસ્ટિક્સ EDI અને કેરિયર પુરાવા જોડાણ',
-    carrier_sub: 'સ્વચાલિત GPS-ચકાસાયેલ ડિલિવરી પુરાવા પ્રદાન કરતી કેરિયર ગેટવે સિસ્ટમ.',
-    carrier_connected: 'કનેક્ટેડ',
-
-    // Notification Toasts
-    toast_lang_switched: 'ગુજરાતી ભાષા પસંદ કરી',
-    toast_theme_switched: '{theme} થીમ લાગુ કરી',
-
-    // Customer Resolution Portal (/report-issue)
-    portal_page_title: 'PayPal ગ્રાહક સમાધાન કેન્દ્ર',
-    portal_page_sub: 'ગ્રાહક ફરિયાદ નિવારણ પોર્ટલ — ફરિયાદ સબમિટ કરવાથી વેપારીના WhatsApp પર તરત જ 1-ટેપ એલર્ટ મોકલવામાં આવે છે.',
-    portal_form_title: 'લાઇવ ટ્રાન્ઝેક્શન ડિસ્પ્યુટ નોંધાવો',
-    portal_form_desc: 'કસ્ટમર સમસ્યા માટે આ ફોર્મ ભરો. સબમિટ કરવાથી સેકન્ડોમાં WhatsApp પર 1-ટેપ ડિફેન્સ એલર્ટ જશે!',
-    portal_field_case_id: 'PayPal કેસ / ડિસ્પ્યુટ ID',
-    portal_field_amount: 'ડિસ્પ્યુટ રકમ ($ USD)',
-    portal_field_cust_name: 'ગ્રાહક / મિત્રનું નામ',
-    portal_field_cust_email: 'ગ્રાહક ઇમેઇલ',
-    portal_field_reason: 'ડિસ્પ્યુટનું કારણ',
-    portal_opt_inr: 'માલ મળ્યો નથી (Item Not Received)',
-    portal_opt_snad: 'વર્ણન કરતાં અલગ માલ (SNAD)',
-    portal_opt_unauth: 'અજાણ્યો વ્યવહાર (Unauthorised Transaction)',
-    portal_field_details: 'ગ્રાહકનું સ્પષ્ટીકરણ અને વિગતો',
-    portal_btn_submit: 'ગ્રાહક ડિસ્પ્યુટ સબમિટ કરો',
-    portal_transmitting: 'ડિસ્પ્યુટ મોકલી રહ્યા છીએ અને WhatsApp ને એલર્ટ કરી રહ્યા છીએ...',
-    portal_success_title: 'ડિસ્પ્યુટ સફળતાપૂર્વક નોંધાઈ ગયો!',
-    portal_success_desc: 'ગ્રાહકની ફરિયાદ ResolvePay અને PayPal સેન્ડબોક્સ સિસ્ટમમાં સત્તાવાર રીતે નોંધાઈ ગઈ છે.',
-    portal_wa_alert_title: '📱 વેપારીના ફોન પર WhatsApp એલર્ટ મોકલાઈ ગયું!',
-    portal_wa_alert_desc: 'વેપારીના રજિસ્ટર્ડ WhatsApp નંબર પર 1-ટેપ એલર્ટ મોકલવામાં આવ્યું છે. વેપારી સીધા પોતાના ફોન પરથી કેસ ડિફેન્ડ કરી શકે છે.',
-    portal_btn_dashboard: 'વેપારી ડેશબોર્ડ પર જુઓ',
-    portal_btn_another: 'બીજો ટેસ્ટ ડિસ્પ્યુટ દાખલ કરો',
-
-    // Connect PayPal Modal
-    modal_paypal_title: 'PayPal બિઝનેસ એકાઉન્ટ કનેક્ટ કરો',
-    modal_paypal_sub: 'OAuth 2.0 પાર્ટનર ઓનબોર્ડિંગ અને ઓટો-સિંક',
-    modal_store_name: 'સ્ટોર / બ્રાન્ડનું નામ',
-    modal_business_email: 'પ્રાથમિક બિઝનેસ PayPal ઇમેઇલ',
-    modal_currency: 'ચુકવણી ચલણ',
-    modal_btn_connect: 'PayPal OAuth 2.0 કનેક્શન શરૂ કરો',
-    modal_connecting: 'સુરક્ષિત સેન્ડબોક્સ જોડાણ સ્થાપિત થઈ રહ્યું છે...',
   }
 };
 

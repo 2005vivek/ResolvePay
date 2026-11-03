@@ -2850,20 +2850,20 @@ export default function DashboardPage() {
                   <div>
                     <h3 className="text-base font-black font-serif-heading flex items-center gap-2">
                       <Truck className="w-5 h-5 text-[var(--accent-primary)]" />
-                      <span>Live Logistics EDI & Carrier Proof Integrations</span>
+                      <span>{t('carrier_title')}</span>
                     </h3>
                     <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                      Synchronized carrier gateways providing automatic GPS-verified proof of delivery.
+                      {t('carrier_sub')}
                     </p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                   {[
-                    { carrier: 'FedEx Express', status: 'Connected (EDI 214)', latency: '34ms', icon: Truck },
-                    { carrier: 'DHL Express Global', status: 'Connected (REST API)', latency: '52ms', icon: Truck },
-                    { carrier: 'USPS Priority WebTools', status: 'Connected (SOAP)', latency: '88ms', icon: Truck },
-                    { carrier: 'Shiprocket & BlueDart', status: 'Connected (India API)', latency: '41ms', icon: Truck }
+                    { carrier: 'FedEx Express', status: t('carrier_status_edi'), latency: '34ms', icon: Truck },
+                    { carrier: 'DHL Express Global', status: t('carrier_status_rest'), latency: '52ms', icon: Truck },
+                    { carrier: 'USPS Priority WebTools', status: t('carrier_status_soap'), latency: '88ms', icon: Truck },
+                    { carrier: 'Shiprocket & BlueDart', status: t('carrier_status_india'), latency: '41ms', icon: Truck }
                   ].map((c) => (
                     <div 
                       key={c.carrier}
@@ -2901,10 +2901,10 @@ export default function DashboardPage() {
                 <div>
                   <h3 className="text-base font-black font-serif-heading flex items-center gap-2 text-amber-400">
                     <AlertTriangle className="w-5 h-5" />
-                    <span>Pre-Dispute Threat & Sentiment Scanner</span>
+                    <span>{t('warning_title')}</span>
                   </h3>
                   <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                    AI monitors customer support tickets to intercept dispute threats before they turn into costly PayPal chargebacks.
+                    {t('warning_sub')}
                   </p>
                 </div>
 
@@ -2930,11 +2930,11 @@ export default function DashboardPage() {
                       <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-t border-slate-700/60">
                         <span className="text-[var(--accent-primary)] font-semibold leading-snug">{risk.recommendedAction}</span>
                         <button 
-                          onClick={() => showToast(`Sent 1-click preemptive resolution for ${risk.orderNumber}`, 'success', 'Interception Sent')}
+                          onClick={() => showToast(t('warning_sent_toast', { order: risk.orderNumber }), 'success', 'Interception Sent')}
                           style={{ backgroundColor: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)' }}
                           className="min-h-[44px] px-4 py-2 rounded-xl font-bold text-xs self-start sm:self-auto shrink-0 transition hover:brightness-105 active:scale-98 shadow-xs"
                         >
-                          Intercept Now
+                          {t('warning_btn_intercept')}
                         </button>
                       </div>
                     </div>
@@ -2950,9 +2950,9 @@ export default function DashboardPage() {
               {/* Header */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
                 <div>
-                  <h2 className="text-xl font-black font-serif-heading">Merchant Security & Live PayPal Integration</h2>
+                  <h2 className="text-xl font-black font-serif-heading">{t('sec_title')}</h2>
                   <p className="text-xs text-slate-400 mt-1">
-                    Multi-tenant data isolation, zero-trust token auth, and real-time PayPal Sandbox telemetry.
+                    {t('sec_sub')}
                   </p>
                 </div>
                 <button
@@ -2962,7 +2962,7 @@ export default function DashboardPage() {
                   className="min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition disabled:opacity-50 self-start sm:self-auto hover:brightness-105 active:scale-98"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${checkingPayPal ? 'animate-spin' : ''}`} />
-                  <span>{checkingPayPal ? 'Pinging PayPal...' : 'Test PayPal Connection Ping'}</span>
+                  <span>{checkingPayPal ? t('sec_pinging') : t('sec_btn_ping')}</span>
                 </button>
               </div>
 
@@ -2975,15 +2975,15 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-2.5">
                     <MessageSquare className="w-5 h-5 text-emerald-400" />
                     <div>
-                      <h4 className="text-sm font-bold text-emerald-400">WhatsApp 1-Tap Autopilot Dispatch</h4>
-                      <p className="text-[11px] text-slate-300">Resolves incoming dispute alerts right from merchant phone without login</p>
+                      <h4 className="text-sm font-bold text-emerald-400">{t('sec_wa_title')}</h4>
+                      <p className="text-[11px] text-slate-300">{t('sec_wa_sub')}</p>
                     </div>
                   </div>
                   <button
                     onClick={() => setWhatsAppModalOpen(true)}
                     className="min-h-[40px] px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs transition shadow-sm"
                   >
-                    Open Bot Preview
+                    {t('sec_btn_bot_preview')}
                   </button>
                 </div>
               </div>
@@ -2999,8 +2999,8 @@ export default function DashboardPage() {
                       <Zap className="w-4 h-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold font-serif-heading">PayPal Sandbox REST API Connection</h3>
-                      <p className="text-[11px] text-slate-400">Direct OAuth2 & Disputes Engine Handshake</p>
+                      <h3 className="text-sm font-bold font-serif-heading">{t('sec_paypal_card_title')}</h3>
+                      <p className="text-[11px] text-slate-400">{t('sec_paypal_card_sub')}</p>
                     </div>
                   </div>
                   <div 
@@ -3012,7 +3012,7 @@ export default function DashboardPage() {
                     }}
                   >
                     <span className={`w-2 h-2 rounded-full ${payPalHealth?.connected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
-                    <span>{payPalHealth?.connected ? 'ACTIVE & CONNECTED' : 'DISCONNECTED'}</span>
+                    <span>{payPalHealth?.connected ? t('sec_active_connected') : t('sec_disconnected')}</span>
                   </div>
                 </div>
 
@@ -3043,8 +3043,8 @@ export default function DashboardPage() {
                       <Lock className="w-4 h-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold font-serif-heading">Active Store & Tenant Isolation</h3>
-                      <p className="text-[11px] text-slate-400">Multi-tenant database partition for {activeStore.name}</p>
+                      <h3 className="text-sm font-bold font-serif-heading">{t('sec_tenant_title')}</h3>
+                      <p className="text-[11px] text-slate-400">{t('sec_tenant_sub', { name: activeStore.name })}</p>
                     </div>
                   </div>
                   <button
@@ -3053,25 +3053,25 @@ export default function DashboardPage() {
                     className="min-h-[44px] px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 transition shadow-xs self-start sm:self-auto shrink-0 hover:brightness-105 active:scale-98"
                   >
                     <Zap className="w-3.5 h-3.5" />
-                    <span>+ Connect Another Store</span>
+                    <span>{t('sec_btn_connect_another')}</span>
                   </button>
                 </div>
 
                 <div className="space-y-2.5 text-xs">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border font-mono gap-2 transition-colors" style={{ backgroundColor: 'var(--surface-hover)', borderColor: 'var(--border-color)' }}>
                     <div>
-                      <span style={{ color: 'var(--text-muted)' }}>Active Business Store: </span>
+                      <span style={{ color: 'var(--text-muted)' }}>{t('sec_active_store_label')} </span>
                       <span className="font-bold font-sans" style={{ color: 'var(--foreground)' }}>{activeStore.name}</span>
                     </div>
                     <span className="text-[10px] px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 self-start sm:self-auto font-sans font-bold flex items-center gap-1">
                       <Check className="w-3 h-3" />
-                      <span>PayPal Verified Account</span>
+                      <span>{t('sec_verified_badge')}</span>
                     </span>
                   </div>
 
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border font-mono gap-2 transition-colors" style={{ backgroundColor: 'var(--surface-hover)', borderColor: 'var(--border-color)' }}>
                     <div>
-                      <span style={{ color: 'var(--text-muted)' }}>Merchant Tenant ID: </span>
+                      <span style={{ color: 'var(--text-muted)' }}>{t('sec_tenant_id_label')} </span>
                       <span className="font-bold" style={{ color: 'var(--foreground)' }}>{activeStore.id}</span>
                     </div>
                     <span className="text-[10px] px-2.5 py-1 rounded-md border self-start sm:self-auto font-bold" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-strong)', color: 'var(--accent-primary)' }}>
@@ -3081,15 +3081,15 @@ export default function DashboardPage() {
 
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border font-mono gap-2 transition-colors" style={{ backgroundColor: 'var(--surface-hover)', borderColor: 'var(--border-color)' }}>
                     <div>
-                      <span style={{ color: 'var(--text-muted)' }}>PayPal Payer ID: </span>
+                      <span style={{ color: 'var(--text-muted)' }}>{t('sec_payer_id_label')} </span>
                       <span className="text-emerald-400 font-bold">{activeStore.paypalPayerId}</span>
                     </div>
-                    <div className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>Linked: {activeStore.connectedAt}</div>
+                    <div className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>{t('sec_linked_label')} {activeStore.connectedAt}</div>
                   </div>
 
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border font-mono gap-2 transition-colors" style={{ backgroundColor: 'var(--surface-hover)', borderColor: 'var(--border-color)' }}>
                     <div className="truncate">
-                      <span style={{ color: 'var(--text-muted)' }}>Internal Auth Token: </span>
+                      <span style={{ color: 'var(--text-muted)' }}>{t('sec_auth_token_label')} </span>
                       <span className="text-amber-400 font-bold font-mono">rzp_live_sec_789f2a4b8c1d</span>
                     </div>
                     <button
@@ -3100,7 +3100,7 @@ export default function DashboardPage() {
                       className="min-h-[36px] text-[11px] px-3 py-1 rounded-lg border transition font-sans font-bold flex items-center gap-1 self-start sm:self-auto shadow-2xs hover:opacity-90"
                       style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-strong)', color: 'var(--foreground)' }}
                     >
-                      <span>Copy Token</span>
+                      <span>{t('sec_btn_copy_token')}</span>
                     </button>
                   </div>
                 </div>
@@ -3117,8 +3117,8 @@ export default function DashboardPage() {
                       <Shield className="w-4 h-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold font-serif-heading">Live Webhook Idempotency Engine Test</h3>
-                      <p className="text-[11px] text-slate-400">Simulate network re-transmissions and duplicate dispute attacks</p>
+                      <h3 className="text-sm font-bold font-serif-heading">{t('idem_title')}</h3>
+                      <p className="text-[11px] text-slate-400">{t('idem_sub')}</p>
                     </div>
                   </div>
                   <button
@@ -3128,7 +3128,7 @@ export default function DashboardPage() {
                     className="min-h-[44px] px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition disabled:opacity-50 self-start sm:self-auto shadow-sm hover:brightness-105 active:scale-98"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${idempotencyLoading ? 'animate-spin' : ''}`} />
-                    <span>{idempotencyLoading ? 'Testing Idempotency...' : 'Simulate Duplicate Webhook'}</span>
+                    <span>{idempotencyLoading ? t('idem_btn_testing') : t('idem_btn_simulate')}</span>
                   </button>
                 </div>
 
@@ -3151,7 +3151,7 @@ export default function DashboardPage() {
                     </div>
                   ) : (
                     <div className="text-slate-400 py-3 text-center text-[11px] leading-relaxed">
-                      Click "Simulate Duplicate Webhook" to send two identical webhook events concurrently and witness the unique index block duplicate financial deductions in real-time.
+                      {t('idem_empty_hint')}
                     </div>
                   )}
                 </div>
@@ -3187,7 +3187,7 @@ export default function DashboardPage() {
               </span>
             )}
           </div>
-          <span>Disputes</span>
+          <span>{t('nav_disputes')}</span>
         </button>
 
         <button
@@ -3199,7 +3199,7 @@ export default function DashboardPage() {
             <Smartphone className="w-5 h-5" />
             <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400" />
           </div>
-          <span>WhatsApp</span>
+          <span>{t('nav_whatsapp')}</span>
         </button>
 
         <button
@@ -3208,7 +3208,7 @@ export default function DashboardPage() {
           style={{ color: currentTab === 'CARRIER_RADAR' ? 'var(--accent-primary)' : 'var(--text-muted)' }}
         >
           <Truck className="w-5 h-5" />
-          <span>Carrier</span>
+          <span>{t('nav_carrier')}</span>
         </button>
 
         <button
@@ -3222,7 +3222,7 @@ export default function DashboardPage() {
               2
             </span>
           </div>
-          <span>Radar</span>
+          <span>{t('nav_warning')}</span>
         </button>
 
         <button
@@ -3231,7 +3231,7 @@ export default function DashboardPage() {
           style={{ color: currentTab === 'SETTINGS' ? 'var(--accent-primary)' : 'var(--text-muted)' }}
         >
           <Settings className="w-5 h-5" />
-          <span>Security</span>
+          <span>{t('nav_settings')}</span>
         </button>
       </nav>
       )}

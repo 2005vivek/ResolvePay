@@ -43,7 +43,7 @@ export interface PolicyMatch {
   summary: string;
 }
 
-export type SupportedLanguage = 'en' | 'de' | 'fr' | 'es' | 'ja' | 'zh' | 'hi' | 'gu';
+export type SupportedLanguage = 'en' | 'zh' | 'es' | 'ja' | 'de' | 'hi' | 'fr';
 
 export interface EvidenceItem {
   id: string;

@@ -126,11 +126,11 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
   // Smart Features States
   const { currentLang } = useLanguage();
   const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>(
-    (['en', 'de', 'es', 'ja', 'zh', 'hi', 'gu'].includes(currentLang) ? currentLang : 'en') as SupportedLanguage
+    (['en', 'zh', 'es', 'ja', 'de', 'hi'].includes(currentLang) ? currentLang : 'en') as SupportedLanguage
   );
 
   useEffect(() => {
-    if (['en', 'de', 'es', 'ja', 'zh', 'hi', 'gu'].includes(currentLang)) {
+    if (['en', 'zh', 'es', 'ja', 'de', 'hi'].includes(currentLang)) {
       handleLanguageChange(currentLang as SupportedLanguage);
     }
   }, [currentLang]);
@@ -841,8 +841,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
                     { code: 'es', flag: '🇪🇸', label: 'ES' },
                     { code: 'ja', flag: '🇯🇵', label: 'JA' },
                     { code: 'de', flag: '🇩🇪', label: 'DE' },
-                    { code: 'hi', flag: '🇮🇳', label: 'HI' },
-                    { code: 'gu', flag: '🇮🇳', label: 'GU' }
+                    { code: 'hi', flag: '🇮🇳', label: 'HI' }
                   ].map(({ code, flag, label }) => (
                     <button
                       key={code}
