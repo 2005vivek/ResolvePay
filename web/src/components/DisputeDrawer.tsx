@@ -124,7 +124,42 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
   }
 
   // Smart Features States
-  const { currentLang } = useLanguage();
+  const { currentLang, t } = useLanguage();
+
+  function getLocalizedReason(reason?: string | null): string {
+    if (!reason || reason.trim() === '') return t('reason_other');
+    const r = reason.trim().toUpperCase();
+    if (r.includes('NOT_RECEIVED') || r === 'MERCHANDISE_OR_SERVICE_NOT_RECEIVED') {
+      return t('reason_not_received');
+    }
+    if (r.includes('NOT_AS_DESCRIBED') || r === 'MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED') {
+      return t('reason_not_as_described');
+    }
+    if (r.includes('UNAUTHORISED') || r.includes('UNAUTHORIZED') || r === 'UNAUTHORISED_TRANSACTION') {
+      return t('reason_unauthorized');
+    }
+    if (r.includes('CREDIT_NOT_PROCESSED')) {
+      return t('reason_credit_not_processed');
+    }
+    if (r.includes('DUPLICATE_PROCESSING') || r.includes('DUPLICATE')) {
+      return t('reason_duplicate');
+    }
+    if (r.includes('INCORRECT_AMOUNT')) {
+      return t('reason_incorrect_amount');
+    }
+    return humanizeReason(reason);
+  }
+
+  function getStageLocalizedTitle(stageId: string, fallback: string): string {
+    switch (stageId) {
+      case 'INGESTED': return t('drawer_stage1_title');
+      case 'EVIDENCE_READY': return t('drawer_stage2_title');
+      case 'DEFENSE_TRANSMITTED': return t('drawer_stage3_title');
+      case 'PAYPAL_REVIEW': return t('drawer_stage4_title');
+      case 'SETTLEMENT': return t('drawer_stage5_title');
+      default: return fallback;
+    }
+  }
   const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>(
     (['en', 'zh', 'es', 'ja', 'de', 'hi'].includes(currentLang) ? currentLang : 'en') as SupportedLanguage
   );
@@ -415,7 +450,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
                   : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
               }`}>
                 {submittedStatus ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
-                <span>{submittedStatus ? 'Defended' : 'Action Required'}</span>
+                <span>{submittedStatus ? t('drawer_defended') : t('drawer_action_required')}</span>
               </span>
 
               {/* SLA Timer (Red when under 24 hours) */}
@@ -436,7 +471,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
                 {formatCurrency(dispute.amount, dispute.currency)}
               </span>
               <span>•</span>
-              <span className="font-medium text-slate-300">{humanizeReason(dispute.reason)}</span>
+              <span className="font-medium text-slate-300">{getLocalizedReason(dispute.reason)}</span>
               {dispute.buyerName && (
                 <>
                   <span>•</span>
@@ -456,7 +491,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
               aria-label="Send WhatsApp alert"
             >
               <Smartphone className="w-4 h-4 text-emerald-400" />
-              <span className="hidden sm:inline">{sendingWhatsApp ? 'Sending...' : 'Alert WhatsApp'}</span>
+              <span className="hidden sm:inline">{sendingWhatsApp ? t('drawer_sending_whatsapp') : t('drawer_alert_whatsapp')}</span>
             </button>
 
             {/* Native Web Share API */}
@@ -499,19 +534,19 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
           <div className="flex items-center gap-2.5">
             <Scale className="w-4 h-4 text-[var(--accent-primary)] shrink-0" />
             <div>
-              <span className="font-bold">AI Win Probability: </span>
+              <span className="font-bold">{t('drawer_win_prob')} </span>
               <span className="font-mono font-black text-[var(--accent-primary)]">
                 {tactical.winProbability}%
               </span>
               <span className="ml-2 font-medium" style={{ color: 'var(--text-muted)' }}>
-                ({tactical.action === 'FIGHT_DISPUTE' ? 'Recommended: Submit Strong Defense' : 'Recommended: Issue Quick Refund'})
+                ({tactical.action === 'FIGHT_DISPUTE' ? t('drawer_rec_fight') : t('drawer_rec_refund')})
               </span>
             </div>
           </div>
 
           <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
             <span className="px-2.5 py-1 rounded-md text-[10px] font-mono font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
-              Protects {formatCurrency(dispute.amount)}
+              {t('drawer_protects', { amount: formatCurrency(dispute.amount) })}
             </span>
           </div>
         </div>
@@ -533,7 +568,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
             }`}
           >
             <Radio className="w-4 h-4 text-emerald-400 animate-pulse" />
-            <span>Live Tracking</span>
+            <span>{t('drawer_tab_tracking')}</span>
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
           </button>
 
@@ -548,7 +583,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
             }`}
           >
             <Sparkles className="w-4 h-4" />
-            <span>AI Rebuttal</span>
+            <span>{t('drawer_tab_rebuttal')}</span>
             {isStreaming && <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />}
           </button>
 
@@ -563,7 +598,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
             }`}
           >
             <Truck className="w-4 h-4" />
-            <span>Carrier POD</span>
+            <span>{t('drawer_tab_pod')}</span>
             {carrierProof && (
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
             )}
@@ -580,7 +615,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
             }`}
           >
             <FileText className="w-4 h-4" />
-            <span>Evidence Vault ({evidenceList.length})</span>
+            <span>{t('drawer_tab_vault', { count: evidenceList.length })}</span>
           </button>
 
           <button 
@@ -594,7 +629,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
             }`}
           >
             <ShieldCheck className="w-4 h-4" />
-            <span>Policy Match</span>
+            <span>{t('drawer_tab_policy')}</span>
           </button>
         </div>
 
@@ -629,10 +664,10 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
                     </span>
                     <span className="font-bold text-xs uppercase tracking-wider font-mono">
                       {trackingInfo.stageStatus === 'RESOLVED' 
-                        ? 'Case Settled & Closed' 
+                        ? t('drawer_sla_resolved') 
                         : trackingInfo.stageStatus === 'UNDER_REVIEW' 
-                          ? 'PayPal Live Adjudication Active' 
-                          : 'Action Required • SLA Countdown Active'}
+                          ? t('drawer_sla_under_review') 
+                          : t('drawer_sla_action_required')}
                     </span>
                   </div>
 
@@ -643,21 +678,25 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
                   <div className="p-3 rounded-xl bg-[var(--surface)] border border-[var(--border-color)]">
-                    <div className="text-[10px] text-slate-400 font-medium">Ball In Court</div>
+                    <div className="text-[10px] text-slate-400 font-medium">{t('drawer_ball_in_court')}</div>
                     <div className="font-bold text-sm text-[var(--accent-primary)] mt-0.5 truncate">
-                      {trackingInfo.ballInCourt}
+                      {trackingInfo.stageStatus === 'RESOLVED' 
+                        ? t('drawer_ball_settled') 
+                        : trackingInfo.stageStatus === 'UNDER_REVIEW' 
+                          ? t('drawer_ball_paypal') 
+                          : t('drawer_ball_merchant')}
                     </div>
                   </div>
 
                   <div className="p-3 rounded-xl bg-[var(--surface)] border border-[var(--border-color)]">
-                    <div className="text-[10px] text-slate-400 font-medium">Resolution Window</div>
+                    <div className="text-[10px] text-slate-400 font-medium">{t('drawer_resolution_window')}</div>
                     <div className="font-bold text-sm font-mono mt-0.5">
                       {trackingInfo.estimatedResolutionWindow}
                     </div>
                   </div>
 
                   <div className="p-3 rounded-xl bg-[var(--surface)] border border-[var(--border-color)]">
-                    <div className="text-[10px] text-slate-400 font-medium">Outbox Dispatch ID</div>
+                    <div className="text-[10px] text-slate-400 font-medium">{t('drawer_outbox_id')}</div>
                     <div className="font-bold text-sm font-mono mt-0.5 text-slate-300">
                       {trackingInfo.outboxEventId}
                     </div>
@@ -673,10 +712,10 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                     <Activity className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Dispute Resolution Journey</span>
+                    <span>{t('drawer_journey_title')}</span>
                   </h4>
                   <span className="text-[11px] font-mono font-semibold text-[var(--accent-primary)]">
-                    Step {trackingInfo.currentStage} of 5
+                    {t('drawer_step_count', { step: trackingInfo.currentStage })}
                   </span>
                 </div>
 
@@ -713,7 +752,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
                         <div className="flex-1 space-y-1">
                           <div className="flex items-center justify-between flex-wrap gap-1">
                             <div className="font-bold text-xs sm:text-sm text-[var(--foreground)]">
-                              {stage.title}
+                              {getStageLocalizedTitle(stage.id, stage.title)}
                             </div>
                             {stage.timestamp && (
                               <span className="text-[10px] font-mono text-slate-400">
@@ -747,7 +786,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Truck className="w-4 h-4 text-emerald-400" />
-                      <span className="font-bold text-xs uppercase tracking-wide">Live Carrier Delivery Proof</span>
+                      <span className="font-bold text-xs uppercase tracking-wide">{t('drawer_carrier_delivery_proof')}</span>
                     </div>
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
                       {carrierProof.status}
@@ -756,13 +795,13 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
                     <div>
-                      <span className="text-slate-400 text-[11px]">Carrier & Tracking:</span>
+                      <span className="text-slate-400 text-[11px]">{t('drawer_carrier_and_tracking')}</span>
                       <div className="font-bold font-mono text-sm text-[var(--accent-primary)] mt-0.5">
                         {carrierProof.carrier} #{carrierProof.trackingNumber}
                       </div>
                     </div>
                     <div>
-                      <span className="text-slate-400 text-[11px]">Recipient Signed By:</span>
+                      <span className="text-slate-400 text-[11px]">{t('drawer_recipient_signed_by')}</span>
                       <div className="font-semibold text-slate-200 mt-0.5">
                         {carrierProof.signedBy} ({carrierProof.deliveryLocation})
                       </div>
@@ -776,7 +815,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
                 >
                   <div className="flex items-center gap-2 text-slate-400">
                     <Truck className="w-4 h-4 text-amber-500" />
-                    <span>No Carrier tracking number bound yet</span>
+                    <span>{t('drawer_no_carrier_bound')}</span>
                   </div>
                   <button
                     onClick={() => setActiveTab('carrier')}
@@ -810,7 +849,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
                     className="w-full py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition hover:brightness-105 active:scale-98 touch-spring"
                   >
                     <Sparkles className="w-4 h-4" />
-                    <span>Review & Transmit AI Defense Package Now</span>
+                    <span>{t('drawer_btn_review_transmit')}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -832,7 +871,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
               >
                 <div className="flex items-center gap-2">
                   <Globe className="w-4 h-4 text-[var(--accent-primary)]" />
-                  <span className="font-semibold">Reviewer Language:</span>
+                  <span className="font-semibold">{t('drawer_reviewer_language')}</span>
                 </div>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {[
@@ -864,11 +903,11 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
               <div className="space-y-2">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <label className="text-xs font-bold uppercase tracking-wider flex items-center gap-2" style={{ color: 'var(--text-muted)' }}>
-                    <span>Legal Defense Statement</span>
+                    <span>{t('drawer_legal_statement')}</span>
                     {isStreaming ? (
                       <span className="text-[11px] text-amber-400 font-mono flex items-center gap-1">
                         <Sparkles className="w-3 h-3 animate-spin" />
-                        <span>Streaming AI Rebuttal...</span>
+                        <span>{t('drawer_streaming_rebuttal')}</span>
                       </span>
                     ) : draftText ? (
                       <span className="text-[10px] text-emerald-400 font-mono font-normal">
@@ -889,7 +928,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
                         style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--surface-hover)' }}
                       >
                         {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                        <span>{copied ? 'Copied' : 'Copy'}</span>
+                        <span>{copied ? t('drawer_copied') : t('drawer_btn_copy')}</span>
                       </button>
                     )}
 
@@ -905,7 +944,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
                       title="Regenerate defense statement with latest grounded carrier facts"
                     >
                       {generatingDraft ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                      <span>Regenerate Rebuttal</span>
+                      <span>{t('drawer_btn_regenerate')}</span>
                     </button>
                   </div>
                 </div>
@@ -921,12 +960,12 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
                       borderColor: 'var(--border-color)',
                       color: 'var(--foreground)'
                     }}
-                    placeholder="Auto-generating Gemini AI legal defense rebuttal..."
+                    placeholder={t('drawer_placeholder_generating')}
                   />
                   {isStreaming && (
                     <div className="absolute bottom-3 right-3 px-2 py-1 rounded bg-amber-500/20 text-amber-400 text-[10px] font-mono flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                      <span>Generating with Gemini</span>
+                      <span>{t('drawer_generating_gemini')}</span>
                     </div>
                   )}
                 </div>
@@ -966,10 +1005,10 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
                 <div>
                   <h4 className="text-sm font-black flex items-center gap-2">
                     <Truck className="w-4 h-4 text-[var(--accent-primary)]" />
-                    <span>Logistics & Courier Telemetry Integration</span>
+                    <span>{t('drawer_pod_title')}</span>
                   </h4>
                   <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                    Auto-queries shipping carrier APIs to retrieve certified Proof of Delivery (POD) & digital signature.
+                    {t('drawer_pod_sub')}
                   </p>
                 </div>
 
@@ -1002,12 +1041,12 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
                   {fetchingCarrier ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Querying {selectedCarrier} EDI Gateway...</span>
+                      <span>{t('drawer_pod_querying', { carrier: selectedCarrier })}</span>
                     </>
                   ) : (
                     <>
                       <Sparkles className="w-4 h-4" />
-                      <span>⚡ 1-Click Auto-Fetch {selectedCarrier} POD & Signature</span>
+                      <span>{t('drawer_pod_fetch_btn', { carrier: selectedCarrier })}</span>
                     </>
                   )}
                 </button>
@@ -1025,7 +1064,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-black text-emerald-400 flex items-center gap-1.5">
                       <CheckCircle2 className="w-4 h-4" />
-                      <span>CERTIFIED PROOF OF DELIVERY ATTACHED</span>
+                      <span>{t('drawer_pod_certified')}</span>
                     </span>
                     <span className="text-[11px] font-mono text-emerald-400 bg-emerald-500/20 px-2.5 py-0.5 rounded font-bold">
                       {carrierProof.status}
@@ -1034,19 +1073,19 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono pt-2 border-t border-emerald-500/20">
                     <div>
-                      <span className="text-slate-400">Carrier:</span> {carrierProof.carrier}
+                      <span className="text-slate-400">{t('drawer_pod_carrier_label')}</span> {carrierProof.carrier}
                     </div>
                     <div>
-                      <span className="text-slate-400">Tracking:</span> {carrierProof.trackingNumber}
+                      <span className="text-slate-400">{t('drawer_pod_tracking_label')}</span> {carrierProof.trackingNumber}
                     </div>
                     <div>
-                      <span className="text-slate-400">Delivered On:</span> {carrierProof.deliveryDate}
+                      <span className="text-slate-400">{t('drawer_pod_delivered_on')}</span> {carrierProof.deliveryDate}
                     </div>
                     <div>
-                      <span className="text-slate-400">Signed By:</span> {carrierProof.signedBy}
+                      <span className="text-slate-400">{t('drawer_pod_signed_by')}</span> {carrierProof.signedBy}
                     </div>
                     <div className="sm:col-span-2">
-                      <span className="text-slate-400">Location:</span> {carrierProof.deliveryLocation}
+                      <span className="text-slate-400">{t('drawer_pod_location')}</span> {carrierProof.deliveryLocation}
                     </div>
                   </div>
                 </div>
@@ -1060,7 +1099,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
                   }}
                 >
                   <Truck className="w-8 h-8 mx-auto opacity-40 text-[var(--accent-primary)]" />
-                  <p>No carrier proof attached yet. Click the button above to auto-fetch.</p>
+                  <p>{t('drawer_pod_empty')}</p>
                 </div>
               )}
             </div>
@@ -1087,10 +1126,10 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
                 <label htmlFor="evidence-file-input" className="cursor-pointer block space-y-2 p-2">
                   <Upload className="w-6 h-6 mx-auto text-[var(--accent-primary)]" />
                   <div className="text-xs font-bold">
-                    {uploading ? 'Ingesting Evidence...' : 'Click to Upload Additional Invoices, Receipts, or Photos'}
+                    {uploading ? t('drawer_sending_whatsapp') : t('drawer_vault_upload_title')}
                   </div>
                   <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                    PDF, JPG, PNG up to 10MB • SHA-256 Fingerprinted
+                    {t('drawer_vault_upload_hint')}
                   </div>
                 </label>
               </div>
@@ -1122,7 +1161,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
                       style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-color)', color: 'var(--accent-primary)' }}
                     >
                       <Eye className="w-3.5 h-3.5" />
-                      <span>View</span>
+                      <span>{t('drawer_vault_btn_view')}</span>
                     </button>
                   </div>
                 ))}
@@ -1142,7 +1181,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
               >
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-5 h-5 text-emerald-400" />
-                  <h4 className="text-sm font-black">Store Policy & Terms Compliance Check</h4>
+                  <h4 className="text-sm font-black">{t('drawer_policy_title')}</h4>
                 </div>
 
                 <div className="p-4 rounded-xl border space-y-2 text-xs transition-colors" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-color)', color: 'var(--foreground)' }}>
@@ -1155,7 +1194,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
 
                 <div className="flex items-center gap-2 text-xs text-emerald-400 font-bold">
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>Automatically cited in your AI Rebuttal statement.</span>
+                  <span>{t('drawer_policy_cited')}</span>
                 </div>
               </div>
             </div>
@@ -1172,8 +1211,8 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
           }}
         >
           <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            Status: <span className="font-bold" style={{ color: submittedStatus ? '#34D399' : '#F5A524' }}>
-              {submittedStatus ? 'Defended • In Review' : 'Draft Prepared'}
+            {t('drawer_status_label')} <span className="font-bold" style={{ color: submittedStatus ? '#34D399' : '#F5A524' }}>
+              {submittedStatus ? t('drawer_defended') : t('drawer_status_draft')}
             </span>
           </div>
 
@@ -1187,7 +1226,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
                 color: 'var(--foreground)'
               }}
             >
-              Close
+              {t('drawer_btn_close')}
             </button>
 
             <button
@@ -1202,17 +1241,17 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
               {submitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Transmitting to PayPal...</span>
+                  <span>{t('drawer_btn_transmitting')}</span>
                 </>
               ) : submittedStatus ? (
                 <>
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>Dispute Response Defended</span>
+                  <span>{t('drawer_btn_defended')}</span>
                 </>
               ) : (
                 <>
                   <Send className="w-4 h-4" />
-                  <span>Submit Rebuttal to PayPal</span>
+                  <span>{t('drawer_btn_submit')}</span>
                 </>
               )}
             </button>
@@ -1233,7 +1272,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
           >
             <div className="flex items-center gap-3 text-[var(--accent-primary)]">
               <ShieldAlert className="w-6 h-6 shrink-0" />
-              <h3 className="font-bold text-base font-serif-heading">Submit Official Rebuttal to PayPal?</h3>
+              <h3 className="font-bold text-base font-serif-heading">{t('drawer_modal_submit_title')}</h3>
             </div>
             <p className="text-xs text-slate-300 leading-relaxed">
               You are about to transmit this legal rebuttal and evidence to the PayPal Dispute Engine for case <strong className="text-white font-mono">{dispute.paypalDisputeId}</strong> ({formatCurrency(dispute.amount)}). 
@@ -1247,7 +1286,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
                 className="min-h-[44px] px-4 py-2 rounded-xl text-xs font-semibold border text-[var(--text-secondary)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)] transition"
                 style={{ borderColor: 'var(--border-color)' }}
               >
-                Review Statement
+                {t('drawer_modal_btn_cancel')}
               </button>
               <button
                 onClick={handleConfirmSubmit}
@@ -1255,7 +1294,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
                 className="min-h-[44px] px-5 py-2 rounded-xl text-xs font-bold transition hover:brightness-105 active:scale-98 shadow-md flex items-center gap-1.5"
               >
                 <Send className="w-3.5 h-3.5" />
-                <span>Confirm & Transmit</span>
+                <span>{t('drawer_modal_btn_confirm')}</span>
               </button>
             </div>
           </div>
@@ -1274,7 +1313,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
           >
             <div className="flex items-center gap-3 text-amber-400">
               <AlertTriangle className="w-6 h-6 shrink-0" />
-              <h3 className="font-bold text-base font-serif-heading">Discard Unsubmitted Rebuttal?</h3>
+              <h3 className="font-bold text-base font-serif-heading">{t('drawer_modal_discard_title')}</h3>
             </div>
             <p className="text-xs text-slate-300 leading-relaxed">
               You have drafted an AI rebuttal that has not been submitted to PayPal yet. If you close now, changes will be lost.
@@ -1284,7 +1323,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
                 onClick={() => setShowExitConfirm(false)}
                 className="min-h-[44px] px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-white"
               >
-                Continue Editing
+                {t('drawer_modal_btn_keep')}
               </button>
               <button
                 onClick={() => {
@@ -1293,7 +1332,7 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
                 }}
                 className="min-h-[44px] px-4 py-2 rounded-xl text-xs font-semibold bg-rose-600 text-white"
               >
-                Discard & Close
+                {t('drawer_modal_btn_discard')}
               </button>
             </div>
           </div>
