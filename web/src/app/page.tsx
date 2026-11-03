@@ -4,7 +4,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   fetchDisputes, syncDisputesFromPayPal, testPayPalAuth, 
   simulatePayPalDispute, simulateIdempotencyAttack,
-  submitDisputeResponse
+  submitDisputeResponse,
+  sendTestWhatsAppAlert
 } from '../lib/api';
 import { Dispute, MerchantStore, EarlyWarningRisk } from '../lib/types';
 import { 
@@ -22,7 +23,8 @@ import {
   Layers, MessageSquare, Truck, AlertTriangle, Settings, Store, 
   Lock, Check, Send, X, ArrowUpRight, ArrowUpDown, Menu, MoreVertical,
   Smartphone, Database, Inbox, Shield, Sun, Moon, Eye, RotateCcw, Download,
-  Radio, Activity
+  Radio, Activity,
+  Copy, ExternalLink, HelpCircle
 } from 'lucide-react';
 
 type Tab = 'DISPUTES' | 'WHATSAPP_AUTOPILOT' | 'CARRIER_RADAR' | 'EARLY_WARNING' | 'SETTINGS';
@@ -728,6 +730,70 @@ export default function DashboardPage() {
       (d.buyerName && d.buyerName.toLowerCase().includes(q))
     ).slice(0, 6);
   }, [disputes, searchQuery]);
+
+  // Meta WhatsApp Cloud API Live Integration State
+  const [waPhoneNumber, setWaPhoneNumber] = useState('');
+  const [waSending, setWaSending] = useState(false);
+  const [waDispatchResult, setWaDispatchResult] = useState<{
+    success: boolean;
+    mode?: string;
+    disputeId?: string;
+    recipient?: string;
+    message?: string;
+    status?: string;
+    previewText?: string;
+  } | null>(null);
+  const [waCopiedWebhook, setWaCopiedWebhook] = useState(false);
+  const [waCopiedToken, setWaCopiedToken] = useState(false);
+  const [showWaGuide, setShowWaGuide] = useState(false);
+
+  async function handleSendRealWhatsApp() {
+    const cleanDigits = (waPhoneNumber || '').replace(/[^0-9]/g, '');
+    if (!cleanDigits || cleanDigits.length < 10) {
+      showToast('Please enter your WhatsApp phone number with country code (e.g. +91 98765 43210)', 'warning');
+      hapticWarning();
+      return;
+    }
+
+    try {
+      setWaSending(true);
+      hapticMedium();
+      const result = await sendTestWhatsAppAlert(
+        waPhoneNumber,
+        targetDisputeForWhatsApp?.paypalDisputeId || 'PP-D-849102'
+      );
+      setWaDispatchResult(result);
+      hapticSuccess();
+      showToast(
+        result.mode === 'LIVE_META_API'
+          ? '🚀 Real WhatsApp alert dispatched via Meta Cloud API!'
+          : '⚡ WhatsApp Sandbox alert simulated and dispatched!',
+        'success',
+        'WhatsApp Alert'
+      );
+    } catch (err: any) {
+      hapticWarning();
+      showToast(err.message || 'Failed to dispatch WhatsApp alert', 'error');
+    } finally {
+      setWaSending(false);
+    }
+  }
+
+  function copyWebhookUrl() {
+    navigator.clipboard.writeText('https://resolvepay-api.onrender.com/api/webhooks/whatsapp');
+    setWaCopiedWebhook(true);
+    hapticLight();
+    showToast('Webhook URL copied to clipboard!', 'success');
+    setTimeout(() => setWaCopiedWebhook(false), 2000);
+  }
+
+  function copyVerifyToken() {
+    navigator.clipboard.writeText('resolvepay_wa_verify_2026');
+    setWaCopiedToken(true);
+    hapticLight();
+    showToast('Verify token copied to clipboard!', 'success');
+    setTimeout(() => setWaCopiedToken(false), 2000);
+  }
 
   // Active top target for WhatsApp simulator
   const targetDisputeForWhatsApp = useMemo(() => {
@@ -2095,89 +2161,306 @@ export default function DashboardPage() {
 
           {/* TAB 2: WHATSAPP 1-TAP AUTOPILOT */}
           {currentTab === 'WHATSAPP_AUTOPILOT' && (
-            <div className="space-y-6 max-w-4xl">
+            <div className="space-y-6 max-w-5xl">
+              {/* Top Banner Card */}
               <div 
-                className="p-6 rounded-2xl border space-y-4"
+                className="p-6 rounded-2xl border space-y-6"
                 style={{ 
                   backgroundColor: 'var(--surface)', 
                   borderColor: 'var(--border-color)' 
                 }}
               >
-                <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center justify-between flex-wrap gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
-                      <Smartphone className="w-5 h-5" />
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/25">
+                      <Smartphone className="w-6 h-6" />
                     </div>
                     <div>
-                      <h3 className="text-base font-black font-serif-heading">WhatsApp 1-Tap Dispute Resolution Engine</h3>
-                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        Enable merchants to resolve chargebacks right from WhatsApp without logging into any dashboard.
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-black font-serif-heading">Meta WhatsApp 1-Tap Autopilot</h3>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-mono text-[10px] font-bold border border-emerald-500/40">
+                          100% FREE DEV SANDBOX
+                        </span>
+                      </div>
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                        Direct Meta Cloud API integration. Resolve chargebacks from your actual WhatsApp in seconds with 0 dashboard logins.
                       </p>
                     </div>
                   </div>
 
-                  <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 font-mono text-xs font-bold border border-emerald-500/40">
-                    ONLINE • BOT ACTIVE
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-400 font-mono text-xs font-bold border border-emerald-500/30 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>ONLINE • BOT READY</span>
+                    </span>
+                  </div>
                 </div>
 
-                {/* Simulated Phone Mockup */}
-                <div className="max-w-md mx-auto rounded-3xl p-4 bg-[#0B141A] text-white shadow-2xl border border-slate-700/60 space-y-4">
-                  {/* WhatsApp Top Bar */}
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-xs">
-                        RP
+                {/* Grid: Live Meta Sandbox Config (Left) + WhatsApp Phone Mockup (Right) */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                  {/* Left Column: Live Sandbox Setup & Dispatcher */}
+                  <div className="lg:col-span-7 space-y-5">
+                    {/* Live Dispatcher Box */}
+                    <div className="p-4 rounded-xl border space-y-3.5 bg-black/10 dark:bg-black/20" style={{ borderColor: 'var(--border-color)' }}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Zap className="w-4 h-4 text-emerald-400" />
+                          <h4 className="text-sm font-bold text-[var(--foreground)]">Send Live WhatsApp Alert to Your Phone</h4>
+                        </div>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-mono font-bold">
+                          Free Testing (₹0)
+                        </span>
                       </div>
-                      <div>
-                        <div className="font-bold text-xs">ResolvePay Autopilot</div>
-                        <div className="text-[10px] text-emerald-400">verified business account</div>
-                      </div>
-                    </div>
-                    <Lock className="w-3.5 h-3.5 text-slate-400" />
-                  </div>
 
-                  {/* Incoming WhatsApp Alert Bubble */}
-                  <div className="p-3.5 rounded-2xl bg-[#202C33] text-xs space-y-2 border border-slate-700/50">
-                    <div className="text-amber-400 font-bold flex items-center gap-1.5">
-                      <AlertCircle className="w-3.5 h-3.5" />
-                      <span>🚨 PayPal Dispute Alert: {targetDisputeForWhatsApp?.paypalDisputeId || 'PP-D-849102'}</span>
-                    </div>
-                    <div className="text-slate-300 space-y-1 font-mono text-[11px]">
-                      <div>Amount at Risk: <span className="font-bold text-white">{formatCurrency(targetDisputeForWhatsApp?.amount || 249.99)}</span></div>
-                      <div>Reason: <span className="text-white">{humanizeReason(targetDisputeForWhatsApp?.reason || 'Item not received')}</span></div>
-                      <div className="text-emerald-400 pt-1">
-                        ⚡ AI Action: FedEx tracking #784920 proves delivered with recipient signature yesterday.
-                      </div>
-                    </div>
-                  </div>
+                      <p className="text-xs text-[var(--text-muted)]">
+                        Targeting active case: <strong className="text-amber-400 font-mono">{targetDisputeForWhatsApp?.paypalDisputeId || 'PP-D-849102'}</strong> ({formatCurrency(targetDisputeForWhatsApp?.amount || 249.99)})
+                      </p>
 
-                  {/* Interactive Buttons (44px tap targets) */}
-                  <div className="space-y-2 pt-2">
-                    <button
-                      onClick={handleWhatsAppApprove}
-                      disabled={isTargetDefended}
-                      className="w-full min-h-[44px] py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition disabled:opacity-50"
-                    >
-                      {isTargetDefended ? (
-                        <>
-                          <Check className="w-4 h-4" />
-                          <span>Submitted & Defended in PayPal</span>
-                        </>
-                      ) : (
-                        <>
-                          <Send className="w-3.5 h-3.5" />
-                          <span>1. Approve & Auto-Submit Rebuttal</span>
-                        </>
+                      <div className="space-y-2">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] block">
+                          Your WhatsApp Phone Number (with Country Code)
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="tel"
+                            value={waPhoneNumber}
+                            onChange={(e) => setWaPhoneNumber(e.target.value)}
+                            placeholder="+91 98765 43210"
+                            className="flex-1 px-3 py-2 rounded-xl text-xs font-mono border focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            style={{
+                              backgroundColor: 'var(--surface-hover)',
+                              borderColor: 'var(--border-color)',
+                              color: 'var(--foreground)'
+                            }}
+                          />
+                          <button
+                            onClick={handleSendRealWhatsApp}
+                            disabled={waSending}
+                            className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 transition disabled:opacity-50 shadow-md shadow-emerald-500/20 shrink-0"
+                          >
+                            {waSending ? (
+                              <>
+                                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                <span>Sending...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Send className="w-3.5 h-3.5" />
+                                <span>Send WhatsApp Alert</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-[var(--text-muted)]">
+                          Format: Include country code without symbols or spaces (e.g., <code className="text-emerald-400 font-mono">919876543210</code>).
+                        </p>
+                      </div>
+
+                      {/* Live Dispatch Result Banner */}
+                      {waDispatchResult && (
+                        <div className={`p-3 rounded-xl border text-xs space-y-1.5 ${
+                          waDispatchResult.success 
+                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' 
+                            : 'bg-red-500/10 border-red-500/30 text-red-300'
+                        }`}>
+                          <div className="flex items-center justify-between font-bold">
+                            <span className="flex items-center gap-1.5">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                              <span>WhatsApp Alert Dispatched</span>
+                            </span>
+                            <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-black/30">
+                              {waDispatchResult.mode || 'SANDBOX'}
+                            </span>
+                          </div>
+                          <div className="text-[11px] font-mono text-slate-300">
+                            Recipient: <span className="text-white font-bold">{waDispatchResult.recipient}</span> • Dispute: <span className="text-white font-bold">{waDispatchResult.disputeId}</span>
+                          </div>
+                          {waDispatchResult.previewText && (
+                            <div className="p-2 rounded bg-black/40 text-[10px] font-mono text-slate-300 whitespace-pre-line mt-1 border border-slate-700/40">
+                              {waDispatchResult.previewText}
+                            </div>
+                          )}
+                        </div>
                       )}
-                    </button>
+                    </div>
 
-                    <button
-                      onClick={() => targetDisputeForWhatsApp && setSelectedDispute(targetDisputeForWhatsApp)}
-                      className="w-full min-h-[44px] py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition"
-                    >
-                      2. Inspect POD & Evidence
-                    </button>
+                    {/* Meta Webhook Connection Credentials */}
+                    <div className="p-4 rounded-xl border space-y-3" style={{ borderColor: 'var(--border-color)' }}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Lock className="w-4 h-4 text-sky-400" />
+                          <h4 className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider">
+                            Meta Cloud API Webhook Handshake Config
+                          </h4>
+                        </div>
+                        <a 
+                          href="https://developers.facebook.com/apps" 
+                          target="_blank" 
+                          rel="noreferrer"
+                          className="text-[11px] text-sky-400 hover:underline inline-flex items-center gap-1 font-bold"
+                        >
+                          <span>Meta Developers</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        {/* 1. Callback URL */}
+                        <div>
+                          <label className="text-[10px] font-bold text-[var(--text-muted)] block mb-1">
+                            Callback URL (Webhook URL)
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              readOnly
+                              value="https://resolvepay-api.onrender.com/api/webhooks/whatsapp"
+                              className="flex-1 px-3 py-1.5 rounded-lg text-xs font-mono border bg-black/20 text-slate-300 select-all"
+                              style={{ borderColor: 'var(--border-color)' }}
+                            />
+                            <button
+                              onClick={copyWebhookUrl}
+                              className="px-3 py-1.5 rounded-lg border text-xs font-bold hover:bg-[var(--surface-hover)] transition inline-flex items-center gap-1 text-[var(--foreground)]"
+                              style={{ borderColor: 'var(--border-color)' }}
+                            >
+                              {waCopiedWebhook ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                              <span>{waCopiedWebhook ? 'Copied' : 'Copy'}</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* 2. Verify Token */}
+                        <div>
+                          <label className="text-[10px] font-bold text-[var(--text-muted)] block mb-1">
+                            Verify Token
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              readOnly
+                              value="resolvepay_wa_verify_2026"
+                              className="flex-1 px-3 py-1.5 rounded-lg text-xs font-mono border bg-black/20 text-emerald-400 select-all font-bold"
+                              style={{ borderColor: 'var(--border-color)' }}
+                            />
+                            <button
+                              onClick={copyVerifyToken}
+                              className="px-3 py-1.5 rounded-lg border text-xs font-bold hover:bg-[var(--surface-hover)] transition inline-flex items-center gap-1 text-[var(--foreground)]"
+                              style={{ borderColor: 'var(--border-color)' }}
+                            >
+                              {waCopiedToken ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                              <span>{waCopiedToken ? 'Copied' : 'Copy'}</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Step-by-Step Meta Setup Guide Toggle */}
+                    <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border-color)' }}>
+                      <button
+                        onClick={() => setShowWaGuide(!showWaGuide)}
+                        className="w-full p-3.5 text-left flex items-center justify-between hover:bg-[var(--surface-hover)] transition"
+                      >
+                        <div className="flex items-center gap-2">
+                          <HelpCircle className="w-4 h-4 text-emerald-400" />
+                          <span className="text-xs font-bold text-[var(--foreground)]">
+                            ૨ મિનિટ Meta Developer Setup ગાઈડ (૧૦૦% મફત Sandbox)
+                          </span>
+                        </div>
+                        <ChevronDown className={`w-4 h-4 transition text-[var(--text-muted)] ${showWaGuide ? 'rotate-180' : ''}`} />
+                      </button>
+
+                      {showWaGuide && (
+                        <div className="p-4 pt-1 border-t space-y-2.5 text-xs text-[var(--text-muted)]" style={{ borderColor: 'var(--border-color)' }}>
+                          <div className="flex gap-2">
+                            <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold font-mono flex items-center justify-center shrink-0 text-[11px]">1</span>
+                            <div>
+                              <strong className="text-[var(--foreground)]">developers.facebook.com</strong> પર જઈને નવું App બનાવો (Type: Other &gt; Business) અને તેમાં <strong>WhatsApp</strong> પ્રોડક્ટ ઉમેરો.
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold font-mono flex items-center justify-center shrink-0 text-[11px]">2</span>
+                            <div>
+                              <strong>WhatsApp &gt; API Setup</strong> માં જઈને "To" ના ડ્રોપડાઉન માં <em>Manage phone number list</em> પર ક્લિક કરીને તમારો સાચો WhatsApp મોબાઈલ નંબર નાખો અને 6-digit OTP થી વેરીફાય કરો.
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold font-mono flex items-center justify-center shrink-0 text-[11px]">3</span>
+                            <div>
+                              <strong>Configuration &gt; Webhook</strong> માં Edit ક્લિક કરીને ઉપર દર્શાવેલ <strong>Callback URL</strong> અને <strong>Verify Token</strong> પેસ્ટ કરો અને <strong>messages</strong> ફીલ્ડ સબસ્ક્રાઈબ કરો.
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold font-mono flex items-center justify-center shrink-0 text-[11px]">4</span>
+                            <div>
+                              હવે ઉપર આપેલા બોક્સમાં તમારો નંબર નાખીને <strong>Send WhatsApp Alert</strong> ક્લિક કરો — તમને તરત જ WhatsApp પર 1-Tap બટન સાથે મેસેજ આવી જશે!
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right Column: Simulated Phone Mockup */}
+                  <div className="lg:col-span-5">
+                    <div className="rounded-3xl p-4 bg-[#0B141A] text-white shadow-2xl border border-slate-700/60 space-y-4 max-w-sm mx-auto">
+                      {/* WhatsApp Top Bar */}
+                      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-xs">
+                            RP
+                          </div>
+                          <div>
+                            <div className="font-bold text-xs">ResolvePay Autopilot</div>
+                            <div className="text-[10px] text-emerald-400">verified business account</div>
+                          </div>
+                        </div>
+                        <Lock className="w-3.5 h-3.5 text-slate-400" />
+                      </div>
+
+                      {/* Incoming WhatsApp Alert Bubble */}
+                      <div className="p-3.5 rounded-2xl bg-[#202C33] text-xs space-y-2 border border-slate-700/50">
+                        <div className="text-amber-400 font-bold flex items-center gap-1.5">
+                          <AlertCircle className="w-3.5 h-3.5" />
+                          <span>🚨 PayPal Dispute Alert: {targetDisputeForWhatsApp?.paypalDisputeId || 'PP-D-849102'}</span>
+                        </div>
+                        <div className="text-slate-300 space-y-1 font-mono text-[11px]">
+                          <div>Amount at Risk: <span className="font-bold text-white">{formatCurrency(targetDisputeForWhatsApp?.amount || 249.99)}</span></div>
+                          <div>Reason: <span className="text-white">{humanizeReason(targetDisputeForWhatsApp?.reason || 'Item not received')}</span></div>
+                          <div className="text-emerald-400 pt-1">
+                            ⚡ AI Action: FedEx tracking #784920 proves delivered with recipient signature yesterday.
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Interactive Buttons (44px tap targets) */}
+                      <div className="space-y-2 pt-2">
+                        <button
+                          onClick={handleWhatsAppApprove}
+                          disabled={isTargetDefended}
+                          className="w-full min-h-[44px] py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition disabled:opacity-50"
+                        >
+                          {isTargetDefended ? (
+                            <>
+                              <Check className="w-4 h-4" />
+                              <span>Submitted & Defended in PayPal</span>
+                            </>
+                          ) : (
+                            <>
+                              <Send className="w-3.5 h-3.5" />
+                              <span>1. Approve & Auto-Submit Rebuttal</span>
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          onClick={() => targetDisputeForWhatsApp && setSelectedDispute(targetDisputeForWhatsApp)}
+                          className="w-full min-h-[44px] py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition"
+                        >
+                          2. Inspect POD & Evidence
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

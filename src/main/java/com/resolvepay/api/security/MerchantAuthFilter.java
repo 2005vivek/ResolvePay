@@ -52,8 +52,11 @@ public class MerchantAuthFilter extends OncePerRequestFilter {
             return true;
         }
 
-        // 2. Allow PayPal Webhooks (Protected independently by PayPal cryptographic signature verification)
+        // 2. Allow External Webhooks (PayPal and Meta WhatsApp)
         if (path.startsWith("/api/webhooks/paypal") && !path.contains("/simulate")) {
+            return true;
+        }
+        if (path.startsWith("/api/webhooks/whatsapp")) {
             return true;
         }
 
