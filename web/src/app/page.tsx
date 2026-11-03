@@ -26,8 +26,9 @@ import {
   Lock, Check, Send, X, ArrowUpRight, ArrowUpDown, Menu, MoreVertical,
   Smartphone, Database, Inbox, Shield, Sun, Moon, Eye, RotateCcw, Download,
   Radio, Activity,
-  Copy, ExternalLink, HelpCircle
+  Copy, ExternalLink, HelpCircle, Languages
 } from 'lucide-react';
+import { Language, SUPPORTED_LANGUAGES, getTranslation } from '../lib/translations';
 
 type Tab = 'DISPUTES' | 'WHATSAPP_AUTOPILOT' | 'CARRIER_RADAR' | 'EARLY_WARNING' | 'SETTINGS';
 type SortField = 'latest' | 'deadline' | 'amount' | 'reason' | 'id' | 'status';
@@ -205,6 +206,31 @@ export default function DashboardPage() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const moreMenuRef = useRef<HTMLDivElement | null>(null);
   const storeDropdownRef = useRef<HTMLDivElement | null>(null);
+  const langMenuRef = useRef<HTMLDivElement | null>(null);
+
+  // Internationalization (i18n) State
+  const [currentLang, setCurrentLang] = useState<Language>('en');
+  const [langMenuOpen, setLangMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const savedLang = localStorage.getItem('resolvepay_lang') as Language | null;
+    if (savedLang && (['en', 'zh', 'es', 'gu'] as Language[]).includes(savedLang)) {
+      setCurrentLang(savedLang);
+    }
+  }, []);
+
+  function handleSelectLanguage(code: Language) {
+    hapticLight();
+    setCurrentLang(code);
+    localStorage.setItem('resolvepay_lang', code);
+    setLangMenuOpen(false);
+    const langObj = SUPPORTED_LANGUAGES.find(l => l.code === code);
+    const toastMsg = getTranslation(code, 'toast_lang_switched');
+    showToast(toastMsg, 'info', langObj ? `${langObj.flag} ${langObj.label}` : 'Language');
+  }
+
+  const t = (key: Parameters<typeof getTranslation>[1], params?: Record<string, string | number>) =>
+    getTranslation(currentLang, key, params);
 
   const activeStore = useMemo(() => {
     return stores.find(s => s.id === activeStoreId) || stores[0];
@@ -218,6 +244,9 @@ export default function DashboardPage() {
       }
       if (storeDropdownRef.current && !storeDropdownRef.current.contains(e.target as Node)) {
         setStoreDropdownOpen(false);
+      }
+      if (langMenuRef.current && !langMenuRef.current.contains(e.target as Node)) {
+        setLangMenuOpen(false);
       }
       if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
         setSearchFocused(false);
@@ -1054,7 +1083,7 @@ export default function DashboardPage() {
               }`}
             >
               <Layers className="w-4 h-4 shrink-0" />
-              <span>Disputes Queue</span>
+              <span>{t('nav_disputes')}</span>
               <span 
                 className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-mono transition"
                 style={{
@@ -1535,6 +1564,56 @@ export default function DashboardPage() {
               )}
             </div>
 
+            {/* Translate / Language Switcher Button */}
+            <div className="relative" ref={langMenuRef}>
+              <button
+                onClick={() => setLangMenuOpen(!langMenuOpen)}
+                className="min-h-[44px] px-3 flex items-center gap-2 rounded-xl border transition hover:opacity-90 shadow-xs focus-visible:ring-2 focus-visible:ring-amber-500/70"
+                style={{
+                  backgroundColor: 'var(--surface-hover)',
+                  borderColor: 'var(--border-color)',
+                  color: 'var(--foreground)'
+                }}
+                title="Change Language / 切换语言 / Cambiar idioma"
+                aria-label="Language selector"
+              >
+                <Languages className="w-4 h-4 text-[var(--accent-primary)]" />
+                <span className="text-xs font-bold font-mono uppercase">{currentLang}</span>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition ${langMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {langMenuOpen && (
+                <div 
+                  className="absolute right-0 mt-2 w-48 rounded-2xl border shadow-2xl p-1.5 z-50 space-y-1 animate-slide-up text-xs font-sans-body"
+                  style={{
+                    backgroundColor: 'var(--surface)',
+                    borderColor: 'var(--border-color)',
+                    color: 'var(--foreground)'
+                  }}
+                >
+                  <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Language / 语言 / Idioma
+                  </div>
+                  {SUPPORTED_LANGUAGES.map((l) => (
+                    <button
+                      key={l.code}
+                      onClick={() => handleSelectLanguage(l.code)}
+                      className={`w-full min-h-[38px] px-3 py-2 rounded-xl flex items-center justify-between transition ${
+                        currentLang === l.code ? 'bg-[var(--accent-pill)]/20 text-[var(--accent-primary)] font-bold' : 'hover:bg-[var(--surface-hover)]'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span>{l.flag}</span>
+                        <span>{l.label}</span>
+                        <span className="text-[10px] text-slate-400 font-normal">({l.nativeName})</span>
+                      </span>
+                      {currentLang === l.code && <Check className="w-3.5 h-3.5 text-[var(--accent-primary)]" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* 3. Single Decluttered '⋯' More Options Menu (Holds Theme, Refresh, Sandbox Ping, & Dev Tools) */}
             <div className="relative" ref={moreMenuRef}>
               <button
@@ -1562,6 +1641,34 @@ export default function DashboardPage() {
                 >
                   <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     Preferences & Actions
+                  </div>
+
+                  {/* Language Selector inside More Menu */}
+                  <div className="p-2 rounded-xl border border-slate-500/20 mb-1" style={{ backgroundColor: 'var(--surface-hover)' }}>
+                    <div className="flex items-center justify-between pb-1.5 text-[10px] font-bold text-slate-400">
+                      <span className="flex items-center gap-1.5">
+                        <Languages className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
+                        <span>Language / 语言 / Idioma</span>
+                      </span>
+                      <span className="font-mono uppercase text-[var(--accent-primary)] font-bold">{currentLang}</span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-1">
+                      {SUPPORTED_LANGUAGES.map((l) => (
+                        <button
+                          key={l.code}
+                          onClick={() => { handleSelectLanguage(l.code); setMoreMenuOpen(false); }}
+                          className={`py-1.5 px-1 rounded-lg text-center text-[10px] font-bold transition flex flex-col items-center justify-center ${
+                            currentLang === l.code
+                              ? 'bg-[var(--accent-pill)] text-white shadow-xs'
+                              : 'hover:bg-slate-500/10 text-slate-400 hover:text-[var(--foreground)]'
+                          }`}
+                          title={l.label}
+                        >
+                          <span className="text-sm">{l.flag}</span>
+                          <span className="font-mono text-[9px] uppercase mt-0.5">{l.code}</span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Theme Toggle */}
@@ -1684,7 +1791,7 @@ export default function DashboardPage() {
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                      Total Value at Risk
+                      {t('kpi_risk_title')}
                     </span>
                     <div className="p-2 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
                       <DollarSign className="w-4 h-4" />
@@ -1716,7 +1823,7 @@ export default function DashboardPage() {
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                      Action Required
+                      {t('kpi_action_title')}
                     </span>
                     <div className="p-2 rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
                       <AlertCircle className="w-4 h-4" />
@@ -1747,7 +1854,7 @@ export default function DashboardPage() {
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                      Defended & In Review
+                      {t('kpi_defended_title')}
                     </span>
                     <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
                       <Clock className="w-4 h-4" />
@@ -1778,7 +1885,7 @@ export default function DashboardPage() {
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                      AI Defense Win Ratio
+                      {t('kpi_win_title')}
                     </span>
                     <div className="p-2 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
                       <Sparkles className="w-4 h-4" />
@@ -2279,51 +2386,66 @@ export default function DashboardPage() {
                   {/* Left Column: Live Sandbox Setup & Dispatcher */}
                   <div className="lg:col-span-7 space-y-5">
 
-                    {/* Customer Dispute Portal Card (Share with Friend) */}
-                    <div className="p-4 rounded-xl border space-y-3 bg-blue-50/60 dark:bg-gradient-to-r dark:from-blue-950/40 dark:to-indigo-950/40" style={{ borderColor: 'var(--border-color)' }}>
+                    {/* Customer Dispute Portal Card (Share with Friend) - Vibrant Color & High Contrast */}
+                    <div 
+                      className="p-5 rounded-2xl border space-y-3.5 shadow-sm transition"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.12) 0%, rgba(79, 70, 229, 0.08) 50%, var(--surface) 100%)',
+                        borderColor: 'rgba(59, 130, 246, 0.4)',
+                      }}
+                    >
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <ExternalLink className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                          <h4 className="text-sm font-bold text-[var(--foreground)]">
-                            Customer Dispute Filing Link (Share with Friend)
-                          </h4>
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/30 flex items-center justify-center">
+                            <ExternalLink className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-bold text-[var(--foreground)]">
+                              {t('cust_portal_title')}
+                            </h4>
+                            <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">
+                              Live Customer Filing Portal
+                            </span>
+                          </div>
                         </div>
-                        <span className="text-[10px] px-2 py-0.5 rounded bg-blue-500/15 text-blue-700 dark:text-blue-400 border border-blue-500/30 font-mono font-bold">
-                          End-to-End Live
+                        <span className="text-[10px] px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/40 font-mono font-bold tracking-wide">
+                          {t('cust_portal_badge')}
                         </span>
                       </div>
-                      <p className="text-xs text-[var(--text-muted)]">
-                        તમારા મિત્રને આ લિંક મોકલો. તે લિંક ખોલીને ફરિયાદ સબમિટ કરશે એટલે <strong>૨ સેકન્ડમાં સીધું તમારા વોટ્સએપ પર ૧-ટેપ એલર્ટ આવી જશે!</strong>
+
+                      <p className="text-xs text-[var(--foreground)] opacity-90 leading-relaxed font-medium">
+                        {t('cust_portal_desc')}
                       </p>
-                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
                         <input
                           type="text"
                           readOnly
                           value={typeof window !== 'undefined' ? `${window.location.origin}/report-issue` : 'https://resolvepay-autopilot.vercel.app/report-issue'}
-                          className="flex-1 min-w-0 px-3 py-2 rounded-lg text-xs font-mono border select-all"
+                          className="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl text-xs font-mono border select-all font-semibold focus:outline-none"
                           style={{
-                            backgroundColor: 'var(--surface)',
-                            borderColor: 'var(--border-color)',
+                            backgroundColor: 'var(--surface-hover)',
+                            borderColor: 'rgba(59, 130, 246, 0.45)',
                             color: 'var(--foreground)'
                           }}
                         />
                         <div className="flex items-center gap-2 shrink-0">
                           <button
                             onClick={copyCustomerPortalLink}
-                            className="flex-1 sm:flex-initial px-3.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition inline-flex items-center justify-center gap-1.5"
+                            className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-xs font-bold transition inline-flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/25"
                           >
                             {waCopiedCustomerLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                            <span>{waCopiedCustomerLink ? 'Copied' : 'Copy Link'}</span>
+                            <span>{waCopiedCustomerLink ? t('cust_portal_copied') : t('cust_portal_copy')}</span>
                           </button>
                           <a
                             href="/report-issue"
                             target="_blank"
                             rel="noreferrer"
-                            className="flex-1 sm:flex-initial px-3.5 py-2 rounded-lg border text-xs font-bold hover:bg-[var(--surface-hover)] transition inline-flex items-center justify-center gap-1 text-[var(--foreground)]"
-                            style={{ borderColor: 'var(--border-color)' }}
+                            className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl border border-blue-500/30 hover:bg-blue-500/10 text-xs font-bold transition inline-flex items-center justify-center gap-1.5 text-blue-600 dark:text-blue-400"
+                            style={{ backgroundColor: 'var(--surface)' }}
                           >
-                            <span>Open</span>
-                            <ExternalLink className="w-3 h-3" />
+                            <span>{t('cust_portal_open')}</span>
+                            <ExternalLink className="w-3.5 h-3.5" />
                           </a>
                         </div>
                       </div>
@@ -2335,19 +2457,19 @@ export default function DashboardPage() {
                         <div className="flex items-center gap-2">
                           <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                           <h4 className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider">
-                            ⚡ Instant Friend Dispute Simulator (લાઈવ ટેસ્ટ)
+                            {t('sim_title')}
                           </h4>
                         </div>
                         <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 font-mono font-bold">
-                          1-Click Trigger
+                          {t('sim_badge')}
                         </span>
                       </div>
                       <p className="text-xs text-[var(--text-muted)]">
-                        અહીંથી ૧-ક્લિક કરો: સિસ્ટમ નવો ડિસ્પ્યુટ બનાવશે અને સીધો તમારા WhatsApp પર 1-Tap Auto-Defend બટન સાથે મોકલશે.
+                        {t('sim_desc')}
                       </p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                         <div>
-                          <label className="text-[10px] font-bold text-[var(--text-muted)] block mb-1">Friend / Customer Name</label>
+                          <label className="text-[10px] font-bold text-[var(--text-muted)] block mb-1">{t('sim_name_label')}</label>
                           <input
                             type="text"
                             value={simCustomerName}
@@ -2361,7 +2483,7 @@ export default function DashboardPage() {
                           />
                         </div>
                         <div>
-                          <label className="text-[10px] font-bold text-[var(--text-muted)] block mb-1">Amount ($ USD)</label>
+                          <label className="text-[10px] font-bold text-[var(--text-muted)] block mb-1">{t('sim_amount_label')}</label>
                           <input
                             type="number"
                             value={simDisputeAmount}
@@ -2378,17 +2500,17 @@ export default function DashboardPage() {
                       <button
                         onClick={handleSimulateFriendDispute}
                         disabled={simDisputeFiling}
-                        className="w-full py-2 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 transition disabled:opacity-50 shadow-md shadow-amber-500/20"
+                        className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 transition disabled:opacity-50 shadow-md shadow-amber-500/20"
                       >
                         {simDisputeFiling ? (
                           <>
                             <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                            <span>Creating Dispute & Pushing to WhatsApp...</span>
+                            <span>{t('sim_btn_loading')}</span>
                           </>
                         ) : (
                           <>
                             <Send className="w-3.5 h-3.5" />
-                            <span>🚀 Dispatch Friend Dispute to My WhatsApp</span>
+                            <span>{t('sim_btn_dispatch')}</span>
                           </>
                         )}
                       </button>
@@ -2405,7 +2527,7 @@ export default function DashboardPage() {
                         <div className="flex items-center gap-2">
                           <Lock className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                           <h4 className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider">
-                            🔑 Meta Access Token Update (૨૪-કલાક ટોકન અપડેટ)
+                            {t('token_title')}
                           </h4>
                         </div>
                         <a
@@ -2414,19 +2536,19 @@ export default function DashboardPage() {
                           rel="noreferrer"
                           className="text-[11px] text-emerald-700 dark:text-emerald-400 hover:underline inline-flex items-center gap-1 font-bold"
                         >
-                          <span>Meta Step 1</span>
+                          <span>{t('token_step1')}</span>
                           <ExternalLink className="w-3 h-3" />
                         </a>
                       </div>
                       <p className="text-xs text-[var(--text-muted)]">
-                        જો Meta Developer નો ૨૪-કલાકનો ટેસ્ટ ટોકન expire થાય, તો Step 1 માંથી "Generate new token" કરી અહીં પેસ્ટ કરીને "Update Token" દબાવો.
+                        {t('token_desc')}
                       </p>
                       <div className="flex flex-col sm:flex-row gap-2">
                         <input
                           type="password"
                           value={waCustomToken}
                           onChange={(e) => setWaCustomToken(e.target.value)}
-                          placeholder="Paste Meta Access Token (EAADbNUHhHJoBS...)"
+                          placeholder={t('token_placeholder')}
                           className="flex-1 min-w-0 px-3 py-2 rounded-lg text-xs font-mono border focus:outline-none focus:ring-1 focus:ring-emerald-500"
                           style={{
                             backgroundColor: 'var(--surface)',
@@ -2439,7 +2561,7 @@ export default function DashboardPage() {
                           disabled={waUpdatingToken}
                           className="w-full sm:w-auto px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition disabled:opacity-50 shrink-0 flex items-center justify-center gap-1"
                         >
-                          {waUpdatingToken ? 'Verifying...' : 'Update & Test'}
+                          {waUpdatingToken ? t('token_verifying') : t('token_btn')}
                         </button>
                       </div>
                       {waTokenHealth && (
@@ -2455,20 +2577,20 @@ export default function DashboardPage() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Zap className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                          <h4 className="text-sm font-bold text-[var(--foreground)]">Send Live WhatsApp Alert to Your Phone</h4>
+                          <h4 className="text-sm font-bold text-[var(--foreground)]">{t('dispatch_title')}</h4>
                         </div>
                         <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 font-mono font-bold">
-                          Free Testing (₹0)
+                          {t('dispatch_badge')}
                         </span>
                       </div>
 
                       <p className="text-xs text-[var(--text-muted)]">
-                        Targeting active case: <strong className="text-amber-700 dark:text-amber-400 font-mono font-bold">{targetDisputeForWhatsApp?.paypalDisputeId || 'PP-D-849102'}</strong> ({formatCurrency(targetDisputeForWhatsApp?.amount || 249.99)})
+                        {t('dispatch_targeting')} <strong className="text-amber-700 dark:text-amber-400 font-mono font-bold">{targetDisputeForWhatsApp?.paypalDisputeId || 'PP-D-849102'}</strong> ({formatCurrency(targetDisputeForWhatsApp?.amount || 249.99)})
                       </p>
 
                       <div className="space-y-2">
                         <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] block">
-                          Your WhatsApp Phone Number (with Country Code)
+                          {t('dispatch_phone_label')}
                         </label>
                         <div className="flex flex-col sm:flex-row gap-2">
                           <input
@@ -2491,18 +2613,18 @@ export default function DashboardPage() {
                             {waSending ? (
                               <>
                                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                                <span>Sending...</span>
+                                <span>{t('dispatch_sending')}</span>
                               </>
                             ) : (
                               <>
                                 <Send className="w-3.5 h-3.5" />
-                                <span>Send WhatsApp Alert</span>
+                                <span>{t('dispatch_btn')}</span>
                               </>
                             )}
                           </button>
                         </div>
                         <p className="text-[10px] text-[var(--text-muted)]">
-                          Format: Include country code without symbols or spaces (e.g., <code className="text-emerald-700 dark:text-emerald-400 font-mono font-bold">919876543210</code>).
+                          {t('dispatch_hint')}
                         </p>
                       </div>
 
@@ -2621,7 +2743,7 @@ export default function DashboardPage() {
                         <div className="flex items-center gap-2">
                           <HelpCircle className="w-4 h-4 text-emerald-400" />
                           <span className="text-xs font-bold text-[var(--foreground)]">
-                            ૨ મિનિટ Meta Developer Setup ગાઈડ (૧૦૦% મફત Sandbox)
+                            {t('guide_title')}
                           </span>
                         </div>
                         <ChevronDown className={`w-4 h-4 transition text-[var(--text-muted)] ${showWaGuide ? 'rotate-180' : ''}`} />
@@ -2632,25 +2754,25 @@ export default function DashboardPage() {
                           <div className="flex gap-2">
                             <span className="w-5 h-5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 font-bold font-mono flex items-center justify-center shrink-0 text-[11px]">1</span>
                             <div>
-                              <strong className="text-[var(--foreground)]">developers.facebook.com</strong> પર જઈને નવું App બનાવો (Type: Other &gt; Business) અને તેમાં <strong>WhatsApp</strong> પ્રોડક્ટ ઉમેરો.
+                              {t('guide_step1')}
                             </div>
                           </div>
                           <div className="flex gap-2">
                             <span className="w-5 h-5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 font-bold font-mono flex items-center justify-center shrink-0 text-[11px]">2</span>
                             <div>
-                              <strong>WhatsApp &gt; API Setup</strong> માં જઈને "To" ના ડ્રોપડાઉન માં <em>Manage phone number list</em> પર ક્લિક કરીને તમારો સાચો WhatsApp મોબાઈલ નંબર નાખો અને 6-digit OTP થી વેરીફાય કરો.
+                              {t('guide_step2')}
                             </div>
                           </div>
                           <div className="flex gap-2">
                             <span className="w-5 h-5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 font-bold font-mono flex items-center justify-center shrink-0 text-[11px]">3</span>
                             <div>
-                              <strong>Configuration &gt; Webhook</strong> માં Edit ક્લિક કરીને ઉપર દર્શાવેલ <strong>Callback URL</strong> અને <strong>Verify Token</strong> પેસ્ટ કરો અને <strong>messages</strong> ફીલ્ડ સબસ્ક્રાઈબ કરો.
+                              {t('guide_step3')}
                             </div>
                           </div>
                           <div className="flex gap-2">
                             <span className="w-5 h-5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 font-bold font-mono flex items-center justify-center shrink-0 text-[11px]">4</span>
                             <div>
-                              હવે ઉપર આપેલા બોક્સમાં તમારો નંબર નાખીને <strong>Send WhatsApp Alert</strong> ક્લિક કરો — તમને તરત જ WhatsApp પર 1-Tap બટન સાથે મેસેજ આવી જશે!
+                              {t('guide_step4')}
                             </div>
                           </div>
                         </div>

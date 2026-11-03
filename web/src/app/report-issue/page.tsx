@@ -67,7 +67,7 @@ export default function CustomerDisputePortal() {
                 </span>
               </h1>
               <p className="text-xs text-slate-400">
-                ગ્રાહક ફરિયાદ પોર્ટલ — ગ્રાહક અહીં ફરિયાદ કરશે એટલે તરત જ વેપારીને WhatsApp Alert જશે
+                Customer Dispute Resolution Portal — Submitting an issue dispatches an instant 1-Tap alert to the merchant WhatsApp.
               </p>
             </div>
           </div>
@@ -87,10 +87,10 @@ export default function CustomerDisputePortal() {
             <div>
               <div className="flex items-center gap-2 text-amber-400 font-bold text-xs uppercase tracking-wider">
                 <AlertTriangle className="w-4 h-4" />
-                <span>File a Live Transaction Dispute / ફરિયાદ નોંધાવો</span>
+                <span>File a Live Transaction Dispute</span>
               </div>
               <p className="text-xs text-slate-400 mt-1">
-                આ ફોર્મ તમારા મિત્ર અથવા કસ્ટમર માટે છે. અહીં વિગતો ભરીને <strong>Submit Dispute</strong> બટન દબાવવાથી ક્ષણોમાં તમારા WhatsApp પર 1-Tap એલર્ટ આવી જશે!
+                Use this form to file or simulate a customer issue. Submitting will dispatch a real-time 1-Tap defense alert to WhatsApp in seconds!
               </p>
             </div>
 
@@ -137,7 +137,7 @@ export default function CustomerDisputePortal() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                    Customer / Friend Name (ફરિયાદીનું નામ)
+                    Customer / Friend Name
                   </label>
                   <input
                     type="text"
@@ -165,23 +165,23 @@ export default function CustomerDisputePortal() {
               {/* Row 3: Reason */}
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                  Reason for Dispute (ફરિયાદનું કારણ)
+                  Reason for Dispute
                 </label>
                 <select
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 text-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="MERCHANDISE_OR_SERVICE_NOT_RECEIVED">Item Not Received (વસ્તુ મળી નથી)</option>
-                  <option value="MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED">Item Significantly Not As Described (ખોટી/ક્ષતિગ્રસ્ત વસ્તુ)</option>
-                  <option value="UNAUTHORISED">Unauthorised Transaction (અજાણ્યો વ્યવહાર)</option>
+                  <option value="MERCHANDISE_OR_SERVICE_NOT_RECEIVED">Item Not Received</option>
+                  <option value="MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED">Item Significantly Not As Described</option>
+                  <option value="UNAUTHORISED">Unauthorised Transaction</option>
                 </select>
               </div>
 
               {/* Row 4: Details */}
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                  Customer Explanation / ફરિયાદની વિગત
+                  Customer Explanation & Dispute Details
                 </label>
                 <textarea
                   rows={3}
@@ -206,7 +206,7 @@ export default function CustomerDisputePortal() {
                 ) : (
                   <>
                     <Send className="w-4 h-4" />
-                    <span>Submit Customer Dispute (ફરિયાદ દાખલ કરો)</span>
+                    <span>Submit Customer Dispute</span>
                   </>
                 )}
               </button>
@@ -222,7 +222,7 @@ export default function CustomerDisputePortal() {
             <div className="space-y-1.5">
               <h2 className="text-xl font-black text-white">Dispute Lodged Successfully!</h2>
               <p className="text-xs text-slate-400">
-                ગ્રાહકની ફરિયાદ PayPal અને ResolvePay સિસ્ટમમાં સત્તાવાર રીતે દાખલ થઈ ગઈ છે.
+                The customer dispute has been officially registered in the ResolvePay & PayPal sandbox system.
               </p>
             </div>
 
@@ -258,7 +258,7 @@ export default function CustomerDisputePortal() {
                   📱 WhatsApp Alert Dispatched to Merchant Phone!
                 </div>
                 <div className="text-slate-300 leading-relaxed text-[11px]">
-                  વેપારીના રજીસ્ટર્ડ નંબર <strong className="text-white font-mono">+91 99744 42291</strong> પર ૧-ટેપ બટન સાથેનું લાઈવ એલર્ટ મોકલી દેવાયું છે. વેપારી વોટ્સએપ માંથી જ સીધું <strong>"1. Auto-Defend"</strong> દબાવીને કેસ ડિફેન્ડ કરી શકશે.
+                  A live 1-Tap rebuttal alert has been sent to the merchant registered WhatsApp number. The merchant can review and defend the dispute directly from their phone.
                 </div>
               </div>
             </div>
