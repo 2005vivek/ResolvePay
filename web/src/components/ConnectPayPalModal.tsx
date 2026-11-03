@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { testPayPalAuth } from '../lib/api';
 import { MerchantStore } from '../lib/types';
+import { useLanguage } from '../context/LanguageContext';
 
 interface ConnectPayPalModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export default function ConnectPayPalModal({
   onClose,
   onStoreConnected
 }: ConnectPayPalModalProps) {
+  const { t } = useLanguage();
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [storeName, setStoreName] = useState('Urban Feet Footwear');
   const [businessEmail, setBusinessEmail] = useState('merchant@urbanfeet.com');
@@ -89,8 +91,8 @@ export default function ConnectPayPalModal({
               PP
             </div>
             <div>
-              <h3 className="text-sm font-bold">Connect PayPal Business Account</h3>
-              <p className="text-[11px] text-slate-400">OAuth 2.0 Partner Onboarding & Auto-Sync</p>
+              <h3 className="text-sm font-bold">{t('modal_paypal_title')}</h3>
+              <p className="text-[11px] text-slate-400">{t('modal_paypal_sub')}</p>
             </div>
           </div>
           <button 
@@ -134,7 +136,7 @@ export default function ConnectPayPalModal({
 
               <div className="space-y-3">
                 <div>
-                  <label className="text-[11px] font-bold text-slate-300 block mb-1">Store / Business Name</label>
+                  <label className="text-[11px] font-bold text-slate-300 block mb-1">{t('modal_store_name')}</label>
                   <div className="relative">
                     <Store className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
                     <input 
@@ -149,7 +151,7 @@ export default function ConnectPayPalModal({
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-bold text-slate-300 block mb-1">Business Contact Email</label>
+                  <label className="text-[11px] font-bold text-slate-300 block mb-1">{t('modal_business_email')}</label>
                   <div className="relative">
                     <Mail className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
                     <input 
@@ -164,7 +166,7 @@ export default function ConnectPayPalModal({
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-bold text-slate-300 block mb-1">Primary Settlement Currency</label>
+                  <label className="text-[11px] font-bold text-slate-300 block mb-1">{t('modal_currency')}</label>
                   <select 
                     value={currency}
                     onChange={(e) => setCurrency(e.target.value)}

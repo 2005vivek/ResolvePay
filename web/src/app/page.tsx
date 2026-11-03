@@ -29,6 +29,7 @@ import {
   Copy, ExternalLink, HelpCircle, Languages
 } from 'lucide-react';
 import { Language, SUPPORTED_LANGUAGES, getTranslation } from '../lib/translations';
+import { useLanguage } from '../context/LanguageContext';
 
 type Tab = 'DISPUTES' | 'WHATSAPP_AUTOPILOT' | 'CARRIER_RADAR' | 'EARLY_WARNING' | 'SETTINGS';
 type SortField = 'latest' | 'deadline' | 'amount' | 'reason' | 'id' | 'status';
@@ -208,29 +209,18 @@ export default function DashboardPage() {
   const storeDropdownRef = useRef<HTMLDivElement | null>(null);
   const langMenuRef = useRef<HTMLDivElement | null>(null);
 
-  // Internationalization (i18n) State
-  const [currentLang, setCurrentLang] = useState<Language>('en');
+  // Internationalization (i18n) State via App-Wide Context
+  const { currentLang, setLanguage, t } = useLanguage();
   const [langMenuOpen, setLangMenuOpen] = useState(false);
-
-  useEffect(() => {
-    const savedLang = localStorage.getItem('resolvepay_lang') as Language | null;
-    if (savedLang && (['en', 'zh', 'es', 'gu'] as Language[]).includes(savedLang)) {
-      setCurrentLang(savedLang);
-    }
-  }, []);
 
   function handleSelectLanguage(code: Language) {
     hapticLight();
-    setCurrentLang(code);
-    localStorage.setItem('resolvepay_lang', code);
+    setLanguage(code);
     setLangMenuOpen(false);
     const langObj = SUPPORTED_LANGUAGES.find(l => l.code === code);
     const toastMsg = getTranslation(code, 'toast_lang_switched');
     showToast(toastMsg, 'info', langObj ? `${langObj.flag} ${langObj.label}` : 'Language');
   }
-
-  const t = (key: Parameters<typeof getTranslation>[1], params?: Record<string, string | number>) =>
-    getTranslation(currentLang, key, params);
 
   const activeStore = useMemo(() => {
     return stores.find(s => s.id === activeStoreId) || stores[0];
@@ -1584,15 +1574,15 @@ export default function DashboardPage() {
 
               {langMenuOpen && (
                 <div 
-                  className="absolute right-0 mt-2 w-48 rounded-2xl border shadow-2xl p-1.5 z-50 space-y-1 animate-slide-up text-xs font-sans-body"
+                  className="absolute right-0 mt-2 w-52 max-h-80 overflow-y-auto no-scrollbar rounded-2xl border shadow-2xl p-1.5 z-50 space-y-1 animate-slide-up text-xs font-sans-body"
                   style={{
                     backgroundColor: 'var(--surface)',
                     borderColor: 'var(--border-color)',
                     color: 'var(--foreground)'
                   }}
                 >
-                  <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Language / 语言 / Idioma
+                  <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 sticky top-0 bg-[var(--surface)] z-10">
+                    Select Language / 语言
                   </div>
                   {SUPPORTED_LANGUAGES.map((l) => (
                     <button
@@ -1652,7 +1642,7 @@ export default function DashboardPage() {
                       </span>
                       <span className="font-mono uppercase text-[var(--accent-primary)] font-bold">{currentLang}</span>
                     </div>
-                    <div className="grid grid-cols-4 gap-1">
+                    <div className="grid grid-cols-4 gap-1.5">
                       {SUPPORTED_LANGUAGES.map((l) => (
                         <button
                           key={l.code}

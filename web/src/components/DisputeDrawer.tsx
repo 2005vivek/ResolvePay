@@ -13,6 +13,7 @@ import {
   calculateDisputeTracking
 } from '../lib/utils';
 import { useToast } from './Toast';
+import { useLanguage } from '../context/LanguageContext';
 import { hapticLight, hapticMedium, hapticSuccess, hapticWarning } from '../lib/haptics';
 
 import { 
@@ -123,7 +124,16 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
   }
 
   // Smart Features States
-  const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>('en');
+  const { currentLang } = useLanguage();
+  const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>(
+    (['en', 'de', 'es', 'ja', 'zh', 'hi', 'gu'].includes(currentLang) ? currentLang : 'en') as SupportedLanguage
+  );
+
+  useEffect(() => {
+    if (['en', 'de', 'es', 'ja', 'zh', 'hi', 'gu'].includes(currentLang)) {
+      handleLanguageChange(currentLang as SupportedLanguage);
+    }
+  }, [currentLang]);
   const [carrierProof, setCarrierProof] = useState<CarrierProof | null>(dispute.carrierTracking || null);
   const [fetchingCarrier, setFetchingCarrier] = useState(false);
   const [selectedCarrier, setSelectedCarrier] = useState<'FEDEX' | 'DHL' | 'USPS' | 'SHIPROCKET'>('FEDEX');
@@ -825,18 +835,27 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
                   <span className="font-semibold">Reviewer Language:</span>
                 </div>
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  {(['en', 'de', 'fr', 'es', 'ja'] as SupportedLanguage[]).map((lang) => (
+                  {[
+                    { code: 'en', flag: '🇺🇸', label: 'EN' },
+                    { code: 'zh', flag: '🇨🇳', label: 'ZH' },
+                    { code: 'es', flag: '🇪🇸', label: 'ES' },
+                    { code: 'ja', flag: '🇯🇵', label: 'JA' },
+                    { code: 'de', flag: '🇩🇪', label: 'DE' },
+                    { code: 'hi', flag: '🇮🇳', label: 'HI' },
+                    { code: 'gu', flag: '🇮🇳', label: 'GU' }
+                  ].map(({ code, flag, label }) => (
                     <button
-                      key={lang}
-                      onClick={() => handleLanguageChange(lang)}
-                      className={`min-h-[40px] px-3.5 py-1.5 rounded-lg font-mono text-xs font-bold uppercase transition focus-visible:ring-2 focus-visible:ring-amber-500/50 ${
-                        selectedLanguage === lang
+                      key={code}
+                      onClick={() => handleLanguageChange(code as SupportedLanguage)}
+                      className={`min-h-[38px] px-3 py-1.5 rounded-lg font-mono text-xs font-bold uppercase transition focus-visible:ring-2 focus-visible:ring-amber-500/50 flex items-center gap-1.5 ${
+                        selectedLanguage === code
                           ? 'bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] shadow-xs'
                           : 'border text-[var(--text-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)]'
                       }`}
-                      style={{ borderColor: selectedLanguage === lang ? 'transparent' : 'var(--border-color)' }}
+                      style={{ borderColor: selectedLanguage === code ? 'transparent' : 'var(--border-color)' }}
                     >
-                      {lang === 'en' ? '🇺🇸 EN' : lang === 'de' ? '🇩🇪 DE' : lang === 'fr' ? '🇫🇷 FR' : lang === 'es' ? '🇪🇸 ES' : '🇯🇵 JA'}
+                      <span>{flag}</span>
+                      <span>{label}</span>
                     </button>
                   ))}
                 </div>
