@@ -44,6 +44,7 @@ public class DisputeService {
     private final DraftRepository draftRepository;
     private final AuditEventRepository auditEventRepository;
     private final OutboxEventRepository outboxEventRepository;
+    private final WhatsAppService whatsAppService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Cacheable(value = "disputes", key = "T(com.resolvepay.api.security.MerchantContext).getCurrentMerchantId() ?: 'merchant_resolvepay_01'")
@@ -169,6 +170,22 @@ public class DisputeService {
                 String.format("{\"disputeId\":\"%s\",\"paypalDisputeId\":\"%s\",\"newStatus\":\"UNDER_REVIEW\"}",
                         disputeId, dispute.getPaypalDisputeId()));
 
+        // 7. Instant WhatsApp notification to merchant on submission
+        try {
+            if (whatsAppService != null && whatsAppService.isConfigured()) {
+                String confirmMsg = "✅ *ResolvePay Rebuttal Submitted!*\n\n" +
+                        "• Case: *" + dispute.getPaypalDisputeId() + "*\n" +
+                        "• Amount: *" + (dispute.getAmount() != null ? "$" + dispute.getAmount().toPlainString() : "$249.99") + "*\n" +
+                        "• Status: *Defended (Under PayPal Review)*\n\n" +
+                        "Your defense statement has been safely lodged with PayPal Dispute Center.";
+                whatsAppService.sendTextMessage(null, confirmMsg);
+                log.info("Dispatched submission confirmation via WhatsApp for {}", dispute.getPaypalDisputeId());
+            }
+        } catch (Exception waEx) {
+            log.warn("WhatsApp notification on submit skipped: {}", waEx.getMessage());
+        }
+
+        
         return dispute;
     }
 

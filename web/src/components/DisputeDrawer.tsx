@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Dispute, EvidenceItem, CarrierProof, SupportedLanguage } from '../lib/types';
-import { fetchEvidenceItems, uploadEvidenceFile, generateAiDraft, submitDisputeResponse } from '../lib/api';
+import { fetchEvidenceItems, uploadEvidenceFile, generateAiDraft, submitDisputeResponse, sendTestWhatsAppAlert } from '../lib/api';
 import { 
   calculateDeadlineUrgency, 
   formatCurrency, 
@@ -22,7 +22,8 @@ import {
   AlertCircle, Undo2, Globe, Scale, Send, Shield, RefreshCw,
   RotateCcw,
   Radio,
-  Activity
+  Activity,
+  Smartphone
 } from 'lucide-react';
 
 interface Props {
@@ -77,7 +78,25 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
     setDragOffsetY(0);
   }
 
-  // Native Web Share API
+  // 1-Click WhatsApp Alert Dispatch
+  const [sendingWhatsApp, setSendingWhatsApp] = useState(false);
+
+  async function handleSendWhatsAppAlert() {
+    try {
+      setSendingWhatsApp(true);
+      hapticMedium();
+      await sendTestWhatsAppAlert('919974442291', dispute.paypalDisputeId);
+      hapticSuccess();
+      showToast('📲 1-Tap alert sent to your WhatsApp for ' + dispute.paypalDisputeId + '!', 'success', 'WhatsApp Dispatched');
+    } catch (e: any) {
+      hapticWarning();
+      showToast(e.message || 'Failed to dispatch WhatsApp alert', 'error', 'Error');
+    } finally {
+      setSendingWhatsApp(false);
+    }
+  }
+
+    // Native Web Share API
   async function handleShare() {
     hapticLight();
     const shareData = {
@@ -418,6 +437,18 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            {/* Direct 1-Click WhatsApp Dispatch */}
+            <button 
+              onClick={handleSendWhatsAppAlert}
+              disabled={sendingWhatsApp}
+              className="min-h-[44px] px-3 flex items-center justify-center gap-1.5 rounded-xl transition hover:opacity-90 touch-spring focus-visible:ring-2 focus-visible:ring-emerald-500/70 font-bold text-xs bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25 disabled:opacity-50"
+              title="Dispatch 1-Tap alert to WhatsApp"
+              aria-label="Send WhatsApp alert"
+            >
+              <Smartphone className="w-4 h-4 text-emerald-400" />
+              <span className="hidden sm:inline">{sendingWhatsApp ? 'Sending...' : 'Alert WhatsApp'}</span>
+            </button>
+
             {/* Native Web Share API */}
             <button 
               onClick={handleShare}
