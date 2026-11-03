@@ -80,6 +80,39 @@ export default function DashboardPage() {
   async function handleFullAppRefresh() {
     setSyncing(true);
     hapticSuccess();
+
+    // 1. Completely reset search query & dismiss mobile keyboard
+    setSearchQuery('');
+    setSearchFocused(false);
+    if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+
+    // 2. Completely reset filters, sorting, and pagination back to pristine defaults
+    setStatusFilter('ALL');
+    setCurrentPage(1);
+    setSortField('latest');
+    setSortOrder('desc');
+
+    // 3. Close any open overlays, drawers, sheets, and menus
+    setSelectedDispute(null);
+    setMobileMenuOpen(false);
+    setMoreMenuOpen(false);
+    setStoreDropdownOpen(false);
+    setWhatsAppModalOpen(false);
+    setConnectModalOpen(false);
+    setIdempotencyLog(null);
+    setFetchError(null);
+
+    // 4. Reset scroll positions back to top
+    if (mainScrollRef.current) {
+      mainScrollRef.current.scrollTop = 0;
+    }
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // 5. Fetch fresh live records from PayPal and backend
     try {
       await Promise.allSettled([
         syncDisputesFromPayPal(activeStoreId),
@@ -87,7 +120,7 @@ export default function DashboardPage() {
         testPayPalAuth(activeStoreId)
       ]);
       hapticSuccess();
-      showToast('Entire app refreshed with latest PayPal data', 'success', 'App Refreshed');
+      showToast('Search cleared, filters reset, and dispute records updated', 'success', 'App Fully Refreshed');
     } catch (err: any) {
       showToast(err.message || 'Refresh encountered an issue', 'error');
     } finally {
