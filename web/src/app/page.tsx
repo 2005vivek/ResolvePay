@@ -40,14 +40,17 @@ export default function DashboardPage() {
   // Theme State
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
-  // Mobile Pull-to-Refresh Gesture
+  // Mobile Pull-to-Refresh Gesture (Entire App from screen top)
   const [pullDistance, setPullDistance] = useState(0);
   const [isPulling, setIsPulling] = useState(false);
   const touchStartY = useRef(0);
   const pullTriggeredRef = useRef(false);
+  const mainScrollRef = useRef<HTMLElement | null>(null);
 
   function handleTouchStart(e: React.TouchEvent) {
-    if (typeof window !== 'undefined' && window.scrollY <= 5) {
+    const isAtTop = (typeof window === 'undefined' || window.scrollY <= 5) && 
+                    (!mainScrollRef.current || mainScrollRef.current.scrollTop <= 5);
+    if (isAtTop) {
       touchStartY.current = e.touches[0].clientY;
       setIsPulling(true);
       pullTriggeredRef.current = false;
@@ -56,16 +59,39 @@ export default function DashboardPage() {
 
   function handleTouchMove(e: React.TouchEvent) {
     if (!isPulling || syncing) return;
-    if (typeof window !== 'undefined' && window.scrollY <= 5) {
+    const isAtTop = (typeof window === 'undefined' || window.scrollY <= 5) && 
+                    (!mainScrollRef.current || mainScrollRef.current.scrollTop <= 5);
+    if (isAtTop) {
       const diff = e.touches[0].clientY - touchStartY.current;
       if (diff > 0) {
-        const distance = Math.min(85, diff * 0.4);
+        const distance = Math.min(90, diff * 0.42);
         setPullDistance(distance);
         if (distance >= 55 && !pullTriggeredRef.current) {
           pullTriggeredRef.current = true;
           hapticPullTrigger();
         }
       }
+    } else {
+      setPullDistance(0);
+      setIsPulling(false);
+    }
+  }
+
+  async function handleFullAppRefresh() {
+    setSyncing(true);
+    hapticSuccess();
+    try {
+      await Promise.allSettled([
+        syncDisputesFromPayPal(activeStoreId),
+        loadDisputes(activeStoreId),
+        testPayPalAuth(activeStoreId)
+      ]);
+      hapticSuccess();
+      showToast('Entire app refreshed with latest PayPal data', 'success', 'App Refreshed');
+    } catch (err: any) {
+      showToast(err.message || 'Refresh encountered an issue', 'error');
+    } finally {
+      setSyncing(false);
     }
   }
 
@@ -73,8 +99,7 @@ export default function DashboardPage() {
     if (!isPulling) return;
     setIsPulling(false);
     if (pullDistance >= 55) {
-      hapticSuccess();
-      handleSync();
+      handleFullAppRefresh();
     }
     setPullDistance(0);
   }
@@ -964,7 +989,32 @@ export default function DashboardPage() {
       {/* ======================================================== */}
       {/* 3. MAIN WORKSPACE WITH DECLUTTERED TOP BAR               */}
       {/* ======================================================== */}
-      <div className={`flex-1 flex flex-col min-w-0 md:h-screen md:overflow-hidden ${isStandalone ? 'pb-16' : 'pb-4'} md:pb-0`}>
+      <div 
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        className={`flex-1 flex flex-col min-w-0 md:h-screen md:overflow-hidden ${isStandalone ? 'pb-16' : 'pb-4'} md:pb-0`}
+        style={{
+          transform: pullDistance > 0 ? `translateY(${pullDistance * 0.35}px)` : undefined,
+          transition: isPulling ? 'none' : 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+        }}
+      >
+        {/* App-Wide Screen-Top Pull-to-Refresh Indicator (Fixed at very top of phone display, above searchbar) */}
+        {pullDistance > 0 && (
+          <div 
+            className="md:hidden fixed top-2 left-0 right-0 z-[100] flex justify-center pointer-events-none select-none transition-transform duration-75"
+            style={{ transform: `translateY(${Math.min(pullDistance, 60)}px)` }}
+          >
+            <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold shadow-2xl backdrop-blur-md border transition-all ${
+              pullDistance >= 55 
+                ? 'bg-amber-500 text-black scale-105 shadow-amber-500/30 border-amber-400' 
+                : 'bg-[var(--surface)] text-[var(--accent-primary)] border-[var(--border-color)]'
+            }`}>
+              <RefreshCw className={`w-4 h-4 ${pullDistance >= 55 || syncing ? 'animate-spin' : ''}`} style={{ transform: `rotate(${pullDistance * 4}deg)` }} />
+              <span>{syncing ? 'Refreshing Entire App...' : pullDistance >= 55 ? 'Release to Refresh App' : 'Pull down to refresh app'}</span>
+            </div>
+          </div>
+        )}
         
         {/* DECLUTTERED TOP NAVBAR (Static/Sticky at top=0 on both mobile and desktop; no jitter or partial scroll) */}
         <header 
@@ -1436,27 +1486,11 @@ export default function DashboardPage() {
       </header>
 
         {/* Dynamic Main Body */}
-        <main onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} className="p-4 sm:p-8 space-y-6 flex-1 overflow-y-auto max-w-[1700px] w-full mx-auto pb-safe">
+        <main ref={mainScrollRef} className="p-4 sm:p-8 space-y-6 flex-1 overflow-y-auto max-w-[1700px] w-full mx-auto pb-safe">
           
           {/* TAB 1: DISPUTES QUEUE (PRIMARY HUB) */}
           {currentTab === 'DISPUTES' && (
             <>
-              {/* Mobile Pull-to-Refresh Indicator */}
-              {pullDistance > 0 && (
-                <div 
-                  className="md:hidden flex items-center justify-center overflow-hidden transition-all duration-100 ease-out select-none mb-3"
-                  style={{ height: `${pullDistance}px` }}
-                >
-                  <div className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold shadow-lg transition-all ${
-                    pullDistance >= 55 
-                      ? 'bg-amber-500 text-black scale-105 shadow-amber-500/20' 
-                      : 'bg-[var(--surface)] text-[var(--accent-primary)] border border-[var(--border-color)]'
-                  }`}>
-                    <RefreshCw className={`w-3.5 h-3.5 ${pullDistance >= 55 || syncing ? 'animate-spin' : ''}`} style={{ transform: `rotate(${pullDistance * 4}deg)` }} />
-                    <span>{syncing ? 'Syncing PayPal...' : pullDistance >= 55 ? 'Release to Refresh' : 'Pull down to sync'}</span>
-                  </div>
-                </div>
-              )}
               {/* Executive Metrics Overview using CSS GRID auto-fit & clamp() font sizing */}
               <div 
                 className="grid gap-4"
