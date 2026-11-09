@@ -72,3 +72,10 @@ resolvepay:
     allowed-origins: ${RESOLVEPAY_CORS_ORIGINS:http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,https://*.vercel.app}
   simulation:
     enabled: ${RESOLVEPAY_SIMULATION_ENABLED:true}
+
+
+whatsapp:
+  api-token: ${WHATSAPP_API_TOKEN:EAAdbNUHhHJoBS8vwQYMGsFH28D3ugSsgMJYAwSZAEDnLpHrrJLZBRxxU6HH5s2djeFi3cU4GxJtpksS5cEyqc3HsMZAukOHclZC9nll984KLDrXD0zDOSIU41xBxFWkfA1ovu5FVXMDhoCGHcPwg3X0ZC05HzTpSnfgpuIy3MZBCMbW2QBLjavgV7QaCNQ38wvHNe75Lefu2jrGUDjUkKCOJbOFYib2CIjZB1ULHwC0s13fGej7eS2crATZCpKHYx41vLSfYMx83MZAz8zWW6AGCS}
+  phone-number-id: ${WHATSAPP_PHONE_NUMBER_ID:1416220361579008}
+  verify-token: ${WHATSAPP_VERIFY_TOKEN:resolvepay_wa_verify_2026}
+  merchant-phone: ${WHATSAPP_MERCHANT_PHONE:919974442291}

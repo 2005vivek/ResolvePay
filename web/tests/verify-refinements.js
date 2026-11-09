@@ -9,7 +9,8 @@ import {
   formatCurrency,
   calculateTacticalRecommendation,
   getPolicyMatch,
-  generateMultilingualRebuttal
+  generateMultilingualRebuttal,
+  calculateDisputeTracking
 } from '../src/lib/utils.ts';
 
 let passed = 0;
@@ -121,6 +122,49 @@ assert(rebuttalDE.includes('Sehr geehrtes PayPal') && rebuttalDE.includes('FEDEX
 
 const rebuttalFR = generateMultilingualRebuttal('fr', 'PP-999', 150, 'Alice', carrierDelivered);
 assert(rebuttalFR.includes('LITIGE PAYPAL') && rebuttalFR.includes('FEDEX'), 'Generates French legal rebuttal');
+
+
+// Test 11: Live Dispute Tracking Engine
+const pendingDispute = {
+  id: 'disp_1',
+  paypalDisputeId: 'PP-D-111111',
+  status: 'REQUIRED_ACTION',
+  amount: 249.99,
+  currency: 'USD',
+  reason: 'MERCHANDISE_OR_SERVICE_NOT_RECEIVED',
+  deadline: new Date(Date.now() + 48 * 3600 * 1000).toISOString()
+};
+const trackingPending = calculateDisputeTracking(pendingDispute, carrierDelivered);
+assert(trackingPending.totalStages === 5, 'Tracking engine computes 5 distinct lifecycle stages');
+assert(trackingPending.stages[0].status === 'COMPLETED', 'Stage 1 Ingestion is COMPLETED');
+assert(trackingPending.stages[2].status === 'ACTION_REQUIRED', 'Stage 3 Defense is ACTION_REQUIRED when unsubmitted');
+assert(trackingPending.stageStatus === 'ACTION_REQUIRED', 'Pending dispute reports ACTION_REQUIRED status');
+
+const defendedDispute = {
+  id: 'disp_2',
+  paypalDisputeId: 'PP-D-222222',
+  status: 'UNDER_REVIEW',
+  amount: 249.99,
+  currency: 'USD',
+  reason: 'MERCHANDISE_OR_SERVICE_NOT_RECEIVED'
+};
+const trackingDefended = calculateDisputeTracking(defendedDispute, carrierDelivered);
+assert(trackingDefended.currentStage === 4, 'Defended dispute advances to Stage 4 (PayPal Review)');
+assert(trackingDefended.stages[2].status === 'COMPLETED', 'Stage 3 Defense is COMPLETED when defended');
+assert(trackingDefended.stages[3].status === 'IN_PROGRESS', 'Stage 4 PayPal Review is IN_PROGRESS');
+assert(trackingDefended.ballInCourt === 'PayPal Dispute Team', 'Ball in court assigned to PayPal when under review');
+
+const resolvedDispute = {
+  id: 'disp_3',
+  paypalDisputeId: 'PP-D-333333',
+  status: 'RESOLVED',
+  amount: 249.99,
+  currency: 'USD',
+  reason: 'MERCHANDISE_OR_SERVICE_NOT_RECEIVED'
+};
+const trackingResolved = calculateDisputeTracking(resolvedDispute, carrierDelivered);
+assert(trackingResolved.currentStage === 5, 'Resolved dispute reaches Stage 5 (Won & Settled)');
+assert(trackingResolved.stages[4].status === 'COMPLETED', 'Stage 5 Settlement is COMPLETED');
 
 console.log(`\nResults: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

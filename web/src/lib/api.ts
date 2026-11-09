@@ -197,3 +197,87 @@ export async function simulateIdempotencyAttack(eventId: string, disputeId: stri
 export function getEvidenceContentUrl(disputeId: string, evidenceId: string): string {
   return `${API_BASE_URL}/disputes/${disputeId}/evidence/${evidenceId}/content`;
 }
+
+
+export async function sendTestWhatsAppAlert(phone?: string, disputeId?: string): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/webhooks/whatsapp/test-send`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${AUTH_TOKEN}`,
+      'X-Merchant-Id': currentMerchantId,
+    },
+    body: JSON.stringify({ phone, disputeId }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || data.error || `HTTP ${res.status}: WhatsApp dispatch failed`);
+  }
+  return data;
+}
+
+export async function fileCustomerDispute(payload: {
+  customerName: string;
+  customerEmail?: string;
+  amount: number;
+  reason: string;
+  details: string;
+  paypalDisputeId?: string;
+  notifyPhone?: string;
+}): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/disputes/customer-file`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || data.error || `HTTP ${res.status}: Failed to file customer dispute`);
+  }
+  return data;
+}
+
+export async function updateWhatsAppToken(token: string): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/webhooks/whatsapp/update-token`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${AUTH_TOKEN}`,
+      'X-Merchant-Id': currentMerchantId,
+    },
+    body: JSON.stringify({ token }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || data.error || `HTTP ${res.status}: Failed to update token`);
+  }
+  return data;
+}
+
+export async function fetchWhatsAppConfig(): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/webhooks/whatsapp/config`, {
+    cache: 'no-store',
+    headers: {
+      'Authorization': `Bearer ${AUTH_TOKEN}`,
+      'X-Merchant-Id': currentMerchantId,
+    },
+  });
+
+  if (!res.ok) {
+    return {
+      configured: false,
+      verifyToken: 'resolvepay_wa_verify_2026',
+      webhookUrl: 'https://resolvepay-api.onrender.com/api/webhooks/whatsapp',
+    };
+  }
+  return res.json().catch(() => ({
+    configured: false,
+    verifyToken: 'resolvepay_wa_verify_2026',
+    webhookUrl: 'https://resolvepay-api.onrender.com/api/webhooks/whatsapp',
+  }));
+}

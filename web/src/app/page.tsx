@@ -4,12 +4,16 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   fetchDisputes, syncDisputesFromPayPal, testPayPalAuth, 
   simulatePayPalDispute, simulateIdempotencyAttack,
-  submitDisputeResponse
+  submitDisputeResponse,
+  sendTestWhatsAppAlert,
+  updateWhatsAppToken,
+  fileCustomerDispute
 } from '../lib/api';
 import { Dispute, MerchantStore, EarlyWarningRisk } from '../lib/types';
 import { 
   calculateDeadlineUrgency, formatCurrency, 
-  humanizeReason, humanizeStatus 
+  humanizeReason, humanizeStatus,
+  calculateDisputeTracking
 } from '../lib/utils';
 import { useToast } from '../components/Toast';
 import DisputeDrawer from '../components/DisputeDrawer';
@@ -20,8 +24,12 @@ import {
   Clock, DollarSign, Sparkles, Filter, ChevronDown, ChevronLeft, ChevronRight, 
   Layers, MessageSquare, Truck, AlertTriangle, Settings, Store, 
   Lock, Check, Send, X, ArrowUpRight, ArrowUpDown, Menu, MoreVertical,
-  Smartphone, Database, Inbox, Shield, Sun, Moon, Eye, RotateCcw, Download
+  Smartphone, Database, Inbox, Shield, Sun, Moon, Eye, RotateCcw, Download,
+  Radio, Activity,
+  Copy, ExternalLink, HelpCircle, Languages
 } from 'lucide-react';
+import { Language, SUPPORTED_LANGUAGES, getTranslation } from '../lib/translations';
+import { useLanguage } from '../context/LanguageContext';
 
 type Tab = 'DISPUTES' | 'WHATSAPP_AUTOPILOT' | 'CARRIER_RADAR' | 'EARLY_WARNING' | 'SETTINGS';
 type SortField = 'latest' | 'deadline' | 'amount' | 'reason' | 'id' | 'status';
@@ -38,14 +46,17 @@ export default function DashboardPage() {
   // Theme State
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
-  // Mobile Pull-to-Refresh Gesture
+  // Mobile Pull-to-Refresh Gesture (Entire App from screen top)
   const [pullDistance, setPullDistance] = useState(0);
   const [isPulling, setIsPulling] = useState(false);
   const touchStartY = useRef(0);
   const pullTriggeredRef = useRef(false);
+  const mainScrollRef = useRef<HTMLElement | null>(null);
 
   function handleTouchStart(e: React.TouchEvent) {
-    if (typeof window !== 'undefined' && window.scrollY <= 5) {
+    const isAtTop = (typeof window === 'undefined' || window.scrollY <= 5) && 
+                    (!mainScrollRef.current || mainScrollRef.current.scrollTop <= 5);
+    if (isAtTop) {
       touchStartY.current = e.touches[0].clientY;
       setIsPulling(true);
       pullTriggeredRef.current = false;
@@ -54,16 +65,72 @@ export default function DashboardPage() {
 
   function handleTouchMove(e: React.TouchEvent) {
     if (!isPulling || syncing) return;
-    if (typeof window !== 'undefined' && window.scrollY <= 5) {
+    const isAtTop = (typeof window === 'undefined' || window.scrollY <= 5) && 
+                    (!mainScrollRef.current || mainScrollRef.current.scrollTop <= 5);
+    if (isAtTop) {
       const diff = e.touches[0].clientY - touchStartY.current;
       if (diff > 0) {
-        const distance = Math.min(85, diff * 0.4);
+        const distance = Math.min(90, diff * 0.42);
         setPullDistance(distance);
         if (distance >= 55 && !pullTriggeredRef.current) {
           pullTriggeredRef.current = true;
           hapticPullTrigger();
         }
       }
+    } else {
+      setPullDistance(0);
+      setIsPulling(false);
+    }
+  }
+
+  async function handleFullAppRefresh() {
+    setSyncing(true);
+    hapticSuccess();
+
+    // 1. Completely reset search query & dismiss mobile keyboard
+    setSearchQuery('');
+    setSearchFocused(false);
+    if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+
+    // 2. Completely reset filters, sorting, and pagination back to pristine defaults
+    setStatusFilter('ALL');
+    setCurrentPage(1);
+    setSortField('latest');
+    setSortOrder('desc');
+
+    // 3. Close any open overlays, drawers, sheets, and menus
+    setSelectedDispute(null);
+    setMobileMenuOpen(false);
+    setMoreMenuOpen(false);
+    setStoreDropdownOpen(false);
+    setWhatsAppModalOpen(false);
+    setConnectModalOpen(false);
+    setIdempotencyLog(null);
+    setFetchError(null);
+
+    // 4. Reset scroll positions back to top
+    if (mainScrollRef.current) {
+      mainScrollRef.current.scrollTop = 0;
+    }
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // 5. Fetch fresh live records from PayPal and backend
+    try {
+      await Promise.allSettled([
+        syncDisputesFromPayPal(activeStoreId),
+        loadDisputes(activeStoreId),
+        testPayPalAuth(activeStoreId)
+      ]);
+      hapticSuccess();
+      showToast('Search cleared, filters reset, and dispute records updated', 'success', 'App Fully Refreshed');
+    } catch (err: any) {
+      showToast(err.message || 'Refresh encountered an issue', 'error');
+    } finally {
+      setSyncing(false);
     }
   }
 
@@ -71,8 +138,7 @@ export default function DashboardPage() {
     if (!isPulling) return;
     setIsPulling(false);
     if (pullDistance >= 55) {
-      hapticSuccess();
-      handleSync();
+      handleFullAppRefresh();
     }
     setPullDistance(0);
   }
@@ -112,6 +178,7 @@ export default function DashboardPage() {
   const [simulating, setSimulating] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [selectedDispute, setSelectedDispute] = useState<Dispute | null>(null);
+  const [drawerInitialTab, setDrawerInitialTab] = useState<'ai' | 'carrier' | 'evidence' | 'policy' | 'tracking'>('tracking');
 
   // Filters & Pagination State
   const [searchQuery, setSearchQuery] = useState('');
@@ -140,6 +207,20 @@ export default function DashboardPage() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const moreMenuRef = useRef<HTMLDivElement | null>(null);
   const storeDropdownRef = useRef<HTMLDivElement | null>(null);
+  const langMenuRef = useRef<HTMLDivElement | null>(null);
+
+  // Internationalization (i18n) State via App-Wide Context
+  const { currentLang, setLanguage, t } = useLanguage();
+  const [langMenuOpen, setLangMenuOpen] = useState(false);
+
+  function handleSelectLanguage(code: Language) {
+    hapticLight();
+    setLanguage(code);
+    setLangMenuOpen(false);
+    const langObj = SUPPORTED_LANGUAGES.find(l => l.code === code);
+    const toastMsg = getTranslation(code, 'toast_lang_switched');
+    showToast(toastMsg, 'info', langObj ? `${langObj.flag} ${langObj.label}` : 'Language');
+  }
 
   const activeStore = useMemo(() => {
     return stores.find(s => s.id === activeStoreId) || stores[0];
@@ -153,6 +234,9 @@ export default function DashboardPage() {
       }
       if (storeDropdownRef.current && !storeDropdownRef.current.contains(e.target as Node)) {
         setStoreDropdownOpen(false);
+      }
+      if (langMenuRef.current && !langMenuRef.current.contains(e.target as Node)) {
+        setLangMenuOpen(false);
       }
       if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
         setSearchFocused(false);
@@ -668,6 +752,146 @@ export default function DashboardPage() {
     ).slice(0, 6);
   }, [disputes, searchQuery]);
 
+  // Meta WhatsApp Cloud API Live Integration State
+  const [waPhoneNumber, setWaPhoneNumber] = useState('');
+  const [waSending, setWaSending] = useState(false);
+  const [waDispatchResult, setWaDispatchResult] = useState<{
+    success: boolean;
+    mode?: string;
+    disputeId?: string;
+    recipient?: string;
+    message?: string;
+    status?: string;
+    previewText?: string;
+  } | null>(null);
+  const [waCopiedWebhook, setWaCopiedWebhook] = useState(false);
+  const [waCopiedToken, setWaCopiedToken] = useState(false);
+  const [showWaGuide, setShowWaGuide] = useState(false);
+
+  async function handleSendRealWhatsApp() {
+    const cleanDigits = (waPhoneNumber || '').replace(/[^0-9]/g, '');
+    if (!cleanDigits || cleanDigits.length < 10) {
+      showToast('Please enter your WhatsApp phone number with country code (e.g. +91 98765 43210)', 'warning');
+      hapticWarning();
+      return;
+    }
+
+    try {
+      setWaSending(true);
+      hapticMedium();
+      const result = await sendTestWhatsAppAlert(
+        waPhoneNumber,
+        targetDisputeForWhatsApp?.paypalDisputeId || 'PP-D-849102'
+      );
+      setWaDispatchResult(result);
+      hapticSuccess();
+      showToast(
+        result.mode === 'LIVE_META_API'
+          ? '🚀 Real WhatsApp alert dispatched via Meta Cloud API!'
+          : '⚡ WhatsApp Sandbox alert simulated and dispatched!',
+        'success',
+        'WhatsApp Alert'
+      );
+    } catch (err: any) {
+      hapticWarning();
+      showToast(err.message || 'Failed to dispatch WhatsApp alert', 'error');
+    } finally {
+      setWaSending(false);
+    }
+  }
+
+  function copyWebhookUrl() {
+    navigator.clipboard.writeText('https://resolvepay-api.onrender.com/api/webhooks/whatsapp');
+    setWaCopiedWebhook(true);
+    hapticLight();
+    showToast('Webhook URL copied to clipboard!', 'success');
+    setTimeout(() => setWaCopiedWebhook(false), 2000);
+  }
+
+  function copyVerifyToken() {
+    navigator.clipboard.writeText('resolvepay_wa_verify_2026');
+    setWaCopiedToken(true);
+    hapticLight();
+    showToast('Verify token copied to clipboard!', 'success');
+    setTimeout(() => setWaCopiedToken(false), 2000);
+  }
+
+  // Meta Access Token Dynamic Updater State
+  const [waCustomToken, setWaCustomToken] = useState('');
+  const [waUpdatingToken, setWaUpdatingToken] = useState(false);
+  const [waTokenHealth, setWaTokenHealth] = useState<any>(null);
+  const [waCopiedCustomerLink, setWaCopiedCustomerLink] = useState(false);
+
+  // Friend / Customer Real Dispute Ingestion Simulation
+  const [simCustomerName, setSimCustomerName] = useState('Ankit Patel (Friend)');
+  const [simDisputeAmount, setSimDisputeAmount] = useState('249.99');
+  const [simDisputeReason, setSimDisputeReason] = useState('MERCHANDISE_OR_SERVICE_NOT_RECEIVED');
+  const [simDisputeFiling, setSimDisputeFiling] = useState(false);
+  const [simDisputeResult, setSimDisputeResult] = useState<any>(null);
+
+  async function handleUpdateWaToken() {
+    if (!waCustomToken.trim()) {
+      showToast('Please paste a valid Meta access token from Step 1', 'warning');
+      hapticWarning();
+      return;
+    }
+    setWaUpdatingToken(true);
+    hapticMedium();
+    try {
+      const res = await updateWhatsAppToken(waCustomToken.trim());
+      setWaTokenHealth(res);
+      if (res.valid) {
+        showToast('✅ Meta Access Token updated and verified successfully!', 'success');
+        hapticSuccess();
+      } else {
+        showToast('⚠️ Token warning: ' + (res.message || 'Token check failed'), 'warning');
+        hapticWarning();
+      }
+    } catch (err: any) {
+      showToast('Failed to update token: ' + err.message, 'error');
+      hapticWarning();
+    } finally {
+      setWaUpdatingToken(false);
+    }
+  }
+
+  async function handleSimulateFriendDispute() {
+    setSimDisputeFiling(true);
+    setSimDisputeResult(null);
+    hapticMedium();
+    try {
+      const customCaseId = 'PP-D-' + Math.floor(100000 + Math.random() * 900000);
+      const res = await fileCustomerDispute({
+        customerName: simCustomerName,
+        amount: parseFloat(simDisputeAmount) || 249.99,
+        reason: simDisputeReason,
+        details: 'Friend test dispute: Package marked delivered by courier but not received by consignee.',
+        paypalDisputeId: customCaseId,
+        notifyPhone: waPhoneNumber || '919974442291',
+      });
+      setSimDisputeResult(res);
+      showToast('🚀 New dispute ' + res.paypalDisputeId + ' filed & alert sent to WhatsApp!', 'success');
+      hapticSuccess();
+      loadDisputes();
+    } catch (err: any) {
+      showToast('Failed to file friend dispute: ' + err.message, 'error');
+      hapticWarning();
+    } finally {
+      setSimDisputeFiling(false);
+    }
+  }
+
+  function copyCustomerPortalLink() {
+    if (typeof window !== 'undefined') {
+      const portalUrl = window.location.origin + '/report-issue';
+      navigator.clipboard.writeText(portalUrl);
+      setWaCopiedCustomerLink(true);
+      hapticLight();
+      showToast('Customer dispute portal link copied to clipboard!', 'success');
+      setTimeout(() => setWaCopiedCustomerLink(false), 2000);
+    }
+  }
+
   // Active top target for WhatsApp simulator
   const targetDisputeForWhatsApp = useMemo(() => {
     return disputes.find(d => d.status !== 'UNDER_REVIEW' && d.status !== 'RESOLVED') || disputes[0] || null;
@@ -849,7 +1073,7 @@ export default function DashboardPage() {
               }`}
             >
               <Layers className="w-4 h-4 shrink-0" />
-              <span>Disputes Queue</span>
+              <span>{t('nav_disputes')}</span>
               <span 
                 className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-mono transition"
                 style={{
@@ -961,7 +1185,32 @@ export default function DashboardPage() {
       {/* ======================================================== */}
       {/* 3. MAIN WORKSPACE WITH DECLUTTERED TOP BAR               */}
       {/* ======================================================== */}
-      <div className={`flex-1 flex flex-col min-w-0 md:h-screen md:overflow-hidden ${isStandalone ? 'pb-16' : 'pb-4'} md:pb-0`}>
+      <div 
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        className={`flex-1 flex flex-col min-w-0 md:h-screen md:overflow-hidden ${isStandalone ? 'pb-16' : 'pb-4'} md:pb-0`}
+        style={{
+          transform: pullDistance > 0 ? `translateY(${pullDistance * 0.35}px)` : undefined,
+          transition: isPulling ? 'none' : 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+        }}
+      >
+        {/* App-Wide Screen-Top Pull-to-Refresh Indicator (Fixed at very top of phone display, above searchbar) */}
+        {pullDistance > 0 && (
+          <div 
+            className="md:hidden fixed top-2 left-0 right-0 z-[100] flex justify-center pointer-events-none select-none transition-transform duration-75"
+            style={{ transform: `translateY(${Math.min(pullDistance, 60)}px)` }}
+          >
+            <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold shadow-2xl backdrop-blur-md border transition-all ${
+              pullDistance >= 55 
+                ? 'bg-amber-500 text-black scale-105 shadow-amber-500/30 border-amber-400' 
+                : 'bg-[var(--surface)] text-[var(--accent-primary)] border-[var(--border-color)]'
+            }`}>
+              <RefreshCw className={`w-4 h-4 ${pullDistance >= 55 || syncing ? 'animate-spin' : ''}`} style={{ transform: `rotate(${pullDistance * 4}deg)` }} />
+              <span>{syncing ? 'Refreshing Entire App...' : pullDistance >= 55 ? 'Release to Refresh App' : 'Pull down to refresh app'}</span>
+            </div>
+          </div>
+        )}
         
         {/* DECLUTTERED TOP NAVBAR (Static/Sticky at top=0 on both mobile and desktop; no jitter or partial scroll) */}
         <header 
@@ -1305,6 +1554,56 @@ export default function DashboardPage() {
               )}
             </div>
 
+            {/* Translate / Language Switcher Button */}
+            <div className="relative" ref={langMenuRef}>
+              <button
+                onClick={() => setLangMenuOpen(!langMenuOpen)}
+                className="min-h-[44px] px-3 flex items-center gap-2 rounded-xl border transition hover:opacity-90 shadow-xs focus-visible:ring-2 focus-visible:ring-amber-500/70"
+                style={{
+                  backgroundColor: 'var(--surface-hover)',
+                  borderColor: 'var(--border-color)',
+                  color: 'var(--foreground)'
+                }}
+                title="Change Language / 切换语言 / Cambiar idioma"
+                aria-label="Language selector"
+              >
+                <Languages className="w-4 h-4 text-[var(--accent-primary)]" />
+                <span className="text-xs font-bold font-mono uppercase">{currentLang}</span>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition ${langMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {langMenuOpen && (
+                <div 
+                  className="absolute right-0 mt-2 w-52 max-h-80 overflow-y-auto no-scrollbar rounded-2xl border shadow-2xl p-1.5 z-50 space-y-1 animate-slide-up text-xs font-sans-body"
+                  style={{
+                    backgroundColor: 'var(--surface)',
+                    borderColor: 'var(--border-color)',
+                    color: 'var(--foreground)'
+                  }}
+                >
+                  <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 sticky top-0 bg-[var(--surface)] z-10">
+                    Select Language / 语言
+                  </div>
+                  {SUPPORTED_LANGUAGES.map((l) => (
+                    <button
+                      key={l.code}
+                      onClick={() => handleSelectLanguage(l.code)}
+                      className={`w-full min-h-[38px] px-3 py-2 rounded-xl flex items-center justify-between transition ${
+                        currentLang === l.code ? 'bg-[var(--accent-pill)]/20 text-[var(--accent-primary)] font-bold' : 'hover:bg-[var(--surface-hover)]'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span>{l.flag}</span>
+                        <span>{l.label}</span>
+                        <span className="text-[10px] text-slate-400 font-normal">({l.nativeName})</span>
+                      </span>
+                      {currentLang === l.code && <Check className="w-3.5 h-3.5 text-[var(--accent-primary)]" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* 3. Single Decluttered '⋯' More Options Menu (Holds Theme, Refresh, Sandbox Ping, & Dev Tools) */}
             <div className="relative" ref={moreMenuRef}>
               <button
@@ -1332,6 +1631,34 @@ export default function DashboardPage() {
                 >
                   <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     Preferences & Actions
+                  </div>
+
+                  {/* Language Selector inside More Menu */}
+                  <div className="p-2 rounded-xl border border-slate-500/20 mb-1" style={{ backgroundColor: 'var(--surface-hover)' }}>
+                    <div className="flex items-center justify-between pb-1.5 text-[10px] font-bold text-slate-400">
+                      <span className="flex items-center gap-1.5">
+                        <Languages className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
+                        <span>Language / 语言 / Idioma</span>
+                      </span>
+                      <span className="font-mono uppercase text-[var(--accent-primary)] font-bold">{currentLang}</span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {SUPPORTED_LANGUAGES.map((l) => (
+                        <button
+                          key={l.code}
+                          onClick={() => { handleSelectLanguage(l.code); setMoreMenuOpen(false); }}
+                          className={`py-1.5 px-1 rounded-lg text-center text-[10px] font-bold transition flex flex-col items-center justify-center ${
+                            currentLang === l.code
+                              ? 'bg-[var(--accent-pill)] text-white shadow-xs'
+                              : 'hover:bg-slate-500/10 text-slate-400 hover:text-[var(--foreground)]'
+                          }`}
+                          title={l.label}
+                        >
+                          <span className="text-sm">{l.flag}</span>
+                          <span className="font-mono text-[9px] uppercase mt-0.5">{l.code}</span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Theme Toggle */}
@@ -1433,27 +1760,11 @@ export default function DashboardPage() {
       </header>
 
         {/* Dynamic Main Body */}
-        <main onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} className="p-4 sm:p-8 space-y-6 flex-1 overflow-y-auto max-w-[1700px] w-full mx-auto pb-safe">
+        <main ref={mainScrollRef} className="p-4 sm:p-8 space-y-6 flex-1 overflow-y-auto max-w-[1700px] w-full mx-auto pb-safe">
           
           {/* TAB 1: DISPUTES QUEUE (PRIMARY HUB) */}
           {currentTab === 'DISPUTES' && (
             <>
-              {/* Mobile Pull-to-Refresh Indicator */}
-              {pullDistance > 0 && (
-                <div 
-                  className="md:hidden flex items-center justify-center overflow-hidden transition-all duration-100 ease-out select-none mb-3"
-                  style={{ height: `${pullDistance}px` }}
-                >
-                  <div className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold shadow-lg transition-all ${
-                    pullDistance >= 55 
-                      ? 'bg-amber-500 text-black scale-105 shadow-amber-500/20' 
-                      : 'bg-[var(--surface)] text-[var(--accent-primary)] border border-[var(--border-color)]'
-                  }`}>
-                    <RefreshCw className={`w-3.5 h-3.5 ${pullDistance >= 55 || syncing ? 'animate-spin' : ''}`} style={{ transform: `rotate(${pullDistance * 4}deg)` }} />
-                    <span>{syncing ? 'Syncing PayPal...' : pullDistance >= 55 ? 'Release to Refresh' : 'Pull down to sync'}</span>
-                  </div>
-                </div>
-              )}
               {/* Executive Metrics Overview using CSS GRID auto-fit & clamp() font sizing */}
               <div 
                 className="grid gap-4"
@@ -1470,9 +1781,9 @@ export default function DashboardPage() {
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                      Total Value at Risk
+                      {t('kpi_risk_title')}
                     </span>
-                    <div className="p-2 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                    <div className="p-2 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
                       <DollarSign className="w-4 h-4" />
                     </div>
                   </div>
@@ -1486,7 +1797,7 @@ export default function DashboardPage() {
                       formatCurrency(totalAmountAtRisk)
                     )}
                   </div>
-                  <div className="text-[11px] text-amber-400 font-semibold flex items-center gap-1">
+                  <div className="text-[11px] text-amber-700 dark:text-amber-400 font-semibold flex items-center gap-1">
                     <span>{disputes.length} Total Disputes</span>
                     <span className="opacity-60">• Automated Defense</span>
                   </div>
@@ -1502,14 +1813,14 @@ export default function DashboardPage() {
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                      Action Required
+                      {t('kpi_action_title')}
                     </span>
-                    <div className="p-2 rounded-xl bg-rose-500/15 text-rose-400 border border-rose-500/30">
+                    <div className="p-2 rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
                       <AlertCircle className="w-4 h-4" />
                     </div>
                   </div>
                   <div 
-                    className="font-bold font-serif-heading text-rose-400"
+                    className="font-bold font-serif-heading text-rose-600 dark:text-rose-400"
                     style={{ fontSize: 'clamp(1.4rem, 2.2vw, 2rem)' }}
                   >
                     {loading ? (
@@ -1518,7 +1829,7 @@ export default function DashboardPage() {
                       <span>{pendingActionCount} <span className="text-xs font-normal" style={{ color: 'var(--text-muted)' }}>cases</span></span>
                     )}
                   </div>
-                  <div className="text-[11px] text-rose-400 font-semibold">
+                  <div className="text-[11px] text-rose-700 dark:text-rose-400 font-semibold">
                     Urgent SLA Deadlines Active
                   </div>
                 </div>
@@ -1533,14 +1844,14 @@ export default function DashboardPage() {
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                      Defended & In Review
+                      {t('kpi_defended_title')}
                     </span>
-                    <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                    <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
                       <Clock className="w-4 h-4" />
                     </div>
                   </div>
                   <div 
-                    className="font-bold font-serif-heading text-emerald-400"
+                    className="font-bold font-serif-heading text-emerald-600 dark:text-emerald-400"
                     style={{ fontSize: 'clamp(1.4rem, 2.2vw, 2rem)' }}
                   >
                     {loading ? (
@@ -1549,7 +1860,7 @@ export default function DashboardPage() {
                       <span>{underReviewCount} <span className="text-xs font-normal" style={{ color: 'var(--text-muted)' }}>defended</span></span>
                     )}
                   </div>
-                  <div className="text-[11px] text-emerald-400 font-semibold">
+                  <div className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">
                     Submitted via Outbox Pipeline
                   </div>
                 </div>
@@ -1564,9 +1875,9 @@ export default function DashboardPage() {
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                      AI Defense Win Ratio
+                      {t('kpi_win_title')}
                     </span>
-                    <div className="p-2 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                    <div className="p-2 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
                       <Sparkles className="w-4 h-4" />
                     </div>
                   </div>
@@ -1712,6 +2023,7 @@ export default function DashboardPage() {
                 {paginatedDisputes.map((dispute) => {
                   const deadlineInfo = calculateDeadlineUrgency(dispute.deadline);
                   const isPending = dispute.status !== 'UNDER_REVIEW' && dispute.status !== 'RESOLVED';
+                  const tracking = calculateDisputeTracking(dispute);
                   return (
                     <div
                       key={dispute.id}
@@ -1779,23 +2091,34 @@ export default function DashboardPage() {
                       </div>
 
                       {/* Bottom Action Footer */}
-                      <div className="pt-2.5 border-t flex items-center justify-between" style={{ borderColor: 'var(--border-color)' }}>
-                        <span className="text-[11px] font-semibold flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
-                          <Zap className="w-3.5 h-3.5 text-amber-500" />
-                          <span>AI Evidence Package</span>
-                        </span>
+                      {/* Bottom Action Footer with Dual Buttons */}
+                      <div className="pt-2.5 border-t flex items-center justify-between gap-2" style={{ borderColor: 'var(--border-color)' }}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            hapticMedium();
+                            setDrawerInitialTab('tracking');
+                            setSelectedDispute(dispute);
+                          }}
+                          className="flex-1 py-2 px-2.5 rounded-xl border border-[var(--border-color)] hover:border-[var(--accent-primary)] text-xs font-bold inline-flex items-center justify-center gap-1.5 transition text-[var(--foreground)] touch-spring"
+                          title="Open Live Tracking Journey"
+                        >
+                          <Radio className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                          <span>Track Live</span>
+                        </button>
 
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             hapticMedium();
+                            setDrawerInitialTab('ai');
                             setSelectedDispute(dispute);
                           }}
                           style={{
                             backgroundColor: 'var(--btn-primary-bg)',
                             color: 'var(--btn-primary-text)'
                           }}
-                          className="px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-xs transition hover:brightness-105 active:scale-95 touch-spring"
+                          className="flex-1 py-2 px-2.5 rounded-xl font-bold text-xs inline-flex items-center justify-center gap-1.5 shadow-xs transition hover:brightness-105 active:scale-95 touch-spring"
                         >
                           <span>Review Defense</span>
                           <ArrowUpRight className="w-3.5 h-3.5" />
@@ -1856,6 +2179,7 @@ export default function DashboardPage() {
                     {paginatedDisputes.map((dispute) => {
                       const deadlineInfo = calculateDeadlineUrgency(dispute.deadline);
                       const isPending = dispute.status !== 'UNDER_REVIEW' && dispute.status !== 'RESOLVED';
+                      const tracking = calculateDisputeTracking(dispute);
                       return (
                         <tr 
                           key={dispute.id}
@@ -1875,8 +2199,8 @@ export default function DashboardPage() {
                             {dispute.deadline ? (
                               <span className={`px-2.5 py-1 rounded-full font-bold inline-flex items-center gap-1.5 ${
                                 deadlineInfo.urgency === 'CRITICAL' 
-                                  ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30 animate-pulse'
-                                  : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                                  ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 animate-pulse'
+                                  : 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30'
                               }`}>
                                 <Clock className="w-3.5 h-3.5" />
                                 <span>{deadlineInfo.label}</span>
@@ -1888,28 +2212,48 @@ export default function DashboardPage() {
                           <td className="py-4 px-5">
                             <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] inline-flex items-center gap-1.5 ${
                               isPending
-                                ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-                                : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                                ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30'
+                                : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30'
                             }`}>
-                              {isPending ? <AlertCircle className="w-3 h-3" /> : <CheckCircle2 className="w-3 h-3" />}
+                              <span className={`w-2 h-2 rounded-full ${isPending ? 'bg-amber-400 animate-ping' : 'bg-emerald-400 animate-pulse'}`} />
                               <span>{isPending ? 'Action Required' : 'Defended'}</span>
                             </span>
                           </td>
                           <td className="py-4 px-5 text-right">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedDispute(dispute);
-                              }}
-                              style={{
-                                backgroundColor: 'var(--btn-primary-bg)',
-                                color: 'var(--btn-primary-text)'
-                              }}
-                              className="px-3.5 py-1.5 min-h-[36px] rounded-xl font-bold text-xs inline-flex items-center gap-1.5 transition shadow-xs hover:brightness-105 active:scale-98"
-                            >
-                              <span>Review defense</span>
-                              <ArrowUpRight className="w-3.5 h-3.5" />
-                            </button>
+                            <div className="flex items-center justify-end gap-2">
+                              {/* 1. Track Live Button */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  hapticMedium();
+                                  setDrawerInitialTab('tracking');
+                                  setSelectedDispute(dispute);
+                                }}
+                                className="px-3 py-1.5 min-h-[36px] rounded-xl font-bold text-xs inline-flex items-center gap-1.5 border border-[var(--border-color)] hover:border-[var(--accent-primary)] hover:bg-[var(--surface-hover)] transition text-[var(--foreground)] touch-spring"
+                                title="Track live dispute lifecycle"
+                              >
+                                <Radio className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                <span>Track Live</span>
+                              </button>
+
+                              {/* 2. Review Defense Button */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  hapticMedium();
+                                  setDrawerInitialTab('ai');
+                                  setSelectedDispute(dispute);
+                                }}
+                                style={{
+                                  backgroundColor: 'var(--btn-primary-bg)',
+                                  color: 'var(--btn-primary-text)'
+                                }}
+                                className="px-3.5 py-1.5 min-h-[36px] rounded-xl font-bold text-xs inline-flex items-center gap-1.5 transition shadow-xs hover:brightness-105 active:scale-98 touch-spring"
+                              >
+                                <span>Review defense</span>
+                                <ArrowUpRight className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -1992,89 +2336,500 @@ export default function DashboardPage() {
 
           {/* TAB 2: WHATSAPP 1-TAP AUTOPILOT */}
           {currentTab === 'WHATSAPP_AUTOPILOT' && (
-            <div className="space-y-6 max-w-4xl">
+            <div className="space-y-6 max-w-5xl">
+              {/* Top Banner Card */}
               <div 
-                className="p-6 rounded-2xl border space-y-4"
+                className="p-6 rounded-2xl border space-y-6"
                 style={{ 
                   backgroundColor: 'var(--surface)', 
                   borderColor: 'var(--border-color)' 
                 }}
               >
-                <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center justify-between flex-wrap gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
-                      <Smartphone className="w-5 h-5" />
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/25">
+                      <Smartphone className="w-6 h-6" />
                     </div>
                     <div>
-                      <h3 className="text-base font-black font-serif-heading">WhatsApp 1-Tap Dispute Resolution Engine</h3>
-                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        Enable merchants to resolve chargebacks right from WhatsApp without logging into any dashboard.
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-black font-serif-heading">Meta WhatsApp 1-Tap Autopilot</h3>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-mono text-[10px] font-bold border border-emerald-500/30">
+                          100% FREE DEV SANDBOX
+                        </span>
+                      </div>
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                        Direct Meta Cloud API integration. Resolve chargebacks from your actual WhatsApp in seconds with 0 dashboard logins.
                       </p>
                     </div>
                   </div>
 
-                  <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 font-mono text-xs font-bold border border-emerald-500/40">
-                    ONLINE • BOT ACTIVE
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-mono text-xs font-bold border border-emerald-500/30 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
+                      <span>ONLINE • BOT READY</span>
+                    </span>
+                  </div>
                 </div>
 
-                {/* Simulated Phone Mockup */}
-                <div className="max-w-md mx-auto rounded-3xl p-4 bg-[#0B141A] text-white shadow-2xl border border-slate-700/60 space-y-4">
-                  {/* WhatsApp Top Bar */}
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-xs">
-                        RP
-                      </div>
-                      <div>
-                        <div className="font-bold text-xs">ResolvePay Autopilot</div>
-                        <div className="text-[10px] text-emerald-400">verified business account</div>
-                      </div>
-                    </div>
-                    <Lock className="w-3.5 h-3.5 text-slate-400" />
-                  </div>
+                {/* Grid: Live Meta Sandbox Config (Left) + WhatsApp Phone Mockup (Right) */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                  {/* Left Column: Live Sandbox Setup & Dispatcher */}
+                  <div className="lg:col-span-7 space-y-5">
 
-                  {/* Incoming WhatsApp Alert Bubble */}
-                  <div className="p-3.5 rounded-2xl bg-[#202C33] text-xs space-y-2 border border-slate-700/50">
-                    <div className="text-amber-400 font-bold flex items-center gap-1.5">
-                      <AlertCircle className="w-3.5 h-3.5" />
-                      <span>🚨 PayPal Dispute Alert: {targetDisputeForWhatsApp?.paypalDisputeId || 'PP-D-849102'}</span>
-                    </div>
-                    <div className="text-slate-300 space-y-1 font-mono text-[11px]">
-                      <div>Amount at Risk: <span className="font-bold text-white">{formatCurrency(targetDisputeForWhatsApp?.amount || 249.99)}</span></div>
-                      <div>Reason: <span className="text-white">{humanizeReason(targetDisputeForWhatsApp?.reason || 'Item not received')}</span></div>
-                      <div className="text-emerald-400 pt-1">
-                        ⚡ AI Action: FedEx tracking #784920 proves delivered with recipient signature yesterday.
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Interactive Buttons (44px tap targets) */}
-                  <div className="space-y-2 pt-2">
-                    <button
-                      onClick={handleWhatsAppApprove}
-                      disabled={isTargetDefended}
-                      className="w-full min-h-[44px] py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition disabled:opacity-50"
+                    {/* Customer Dispute Portal Card (Share with Friend) - Vibrant Color & High Contrast */}
+                    <div 
+                      className="p-5 rounded-2xl border space-y-3.5 shadow-sm transition"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.12) 0%, rgba(79, 70, 229, 0.08) 50%, var(--surface) 100%)',
+                        borderColor: 'rgba(59, 130, 246, 0.4)',
+                      }}
                     >
-                      {isTargetDefended ? (
-                        <>
-                          <Check className="w-4 h-4" />
-                          <span>Submitted & Defended in PayPal</span>
-                        </>
-                      ) : (
-                        <>
-                          <Send className="w-3.5 h-3.5" />
-                          <span>1. Approve & Auto-Submit Rebuttal</span>
-                        </>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/30 flex items-center justify-center">
+                            <ExternalLink className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-bold text-[var(--foreground)]">
+                              {t('cust_portal_title')}
+                            </h4>
+                            <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">
+                              Live Customer Filing Portal
+                            </span>
+                          </div>
+                        </div>
+                        <span className="text-[10px] px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/40 font-mono font-bold tracking-wide">
+                          {t('cust_portal_badge')}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-[var(--foreground)] opacity-90 leading-relaxed font-medium">
+                        {t('cust_portal_desc')}
+                      </p>
+
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
+                        <input
+                          type="text"
+                          readOnly
+                          value={typeof window !== 'undefined' ? `${window.location.origin}/report-issue` : 'https://resolvepay-autopilot.vercel.app/report-issue'}
+                          className="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl text-xs font-mono border select-all font-semibold focus:outline-none"
+                          style={{
+                            backgroundColor: 'var(--surface-hover)',
+                            borderColor: 'rgba(59, 130, 246, 0.45)',
+                            color: 'var(--foreground)'
+                          }}
+                        />
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={copyCustomerPortalLink}
+                            className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-xs font-bold transition inline-flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/25"
+                          >
+                            {waCopiedCustomerLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                            <span>{waCopiedCustomerLink ? t('cust_portal_copied') : t('cust_portal_copy')}</span>
+                          </button>
+                          <a
+                            href="/report-issue"
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl border border-blue-500/30 hover:bg-blue-500/10 text-xs font-bold transition inline-flex items-center justify-center gap-1.5 text-blue-600 dark:text-blue-400"
+                            style={{ backgroundColor: 'var(--surface)' }}
+                          >
+                            <span>{t('cust_portal_open')}</span>
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Quick Friend Dispute Simulator Box */}
+                    <div className="p-4 rounded-xl border space-y-3" style={{ backgroundColor: 'var(--surface-hover)', borderColor: 'var(--border-color)' }}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                          <h4 className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider">
+                            {t('sim_title')}
+                          </h4>
+                        </div>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 font-mono font-bold">
+                          {t('sim_badge')}
+                        </span>
+                      </div>
+                      <p className="text-xs text-[var(--text-muted)]">
+                        {t('sim_desc')}
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <label className="text-[10px] font-bold text-[var(--text-muted)] block mb-1">{t('sim_name_label')}</label>
+                          <input
+                            type="text"
+                            value={simCustomerName}
+                            onChange={(e) => setSimCustomerName(e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg text-xs border"
+                            style={{
+                              backgroundColor: 'var(--surface)',
+                              borderColor: 'var(--border-color)',
+                              color: 'var(--foreground)'
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-[var(--text-muted)] block mb-1">{t('sim_amount_label')}</label>
+                          <input
+                            type="number"
+                            value={simDisputeAmount}
+                            onChange={(e) => setSimDisputeAmount(e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg text-xs border font-mono"
+                            style={{
+                              backgroundColor: 'var(--surface)',
+                              borderColor: 'var(--border-color)',
+                              color: 'var(--foreground)'
+                            }}
+                          />
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleSimulateFriendDispute}
+                        disabled={simDisputeFiling}
+                        className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 transition disabled:opacity-50 shadow-md shadow-amber-500/20"
+                      >
+                        {simDisputeFiling ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            <span>{t('sim_btn_loading')}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Send className="w-3.5 h-3.5" />
+                            <span>{t('sim_btn_dispatch')}</span>
+                          </>
+                        )}
+                      </button>
+                      {simDisputeResult && (
+                        <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-mono">
+                          ✅ Case {simDisputeResult.paypalDisputeId} filed! WhatsApp alert dispatched to merchant phone.
+                        </div>
                       )}
-                    </button>
+                    </div>
 
-                    <button
-                      onClick={() => targetDisputeForWhatsApp && setSelectedDispute(targetDisputeForWhatsApp)}
-                      className="w-full min-h-[44px] py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition"
-                    >
-                      2. Inspect POD & Evidence
-                    </button>
+                    {/* Meta Cloud API Token Dynamic Updater */}
+                    <div className="p-4 rounded-xl border space-y-3" style={{ backgroundColor: 'var(--surface-hover)', borderColor: 'var(--border-color)' }}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Lock className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                          <h4 className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider">
+                            {t('token_title')}
+                          </h4>
+                        </div>
+                        <a
+                          href="https://developers.facebook.com/apps"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[11px] text-emerald-700 dark:text-emerald-400 hover:underline inline-flex items-center gap-1 font-bold"
+                        >
+                          <span>{t('token_step1')}</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                      <p className="text-xs text-[var(--text-muted)]">
+                        {t('token_desc')}
+                      </p>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          type="password"
+                          value={waCustomToken}
+                          onChange={(e) => setWaCustomToken(e.target.value)}
+                          placeholder={t('token_placeholder')}
+                          className="flex-1 min-w-0 px-3 py-2 rounded-lg text-xs font-mono border focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                          style={{
+                            backgroundColor: 'var(--surface)',
+                            borderColor: 'var(--border-color)',
+                            color: 'var(--foreground)'
+                          }}
+                        />
+                        <button
+                          onClick={handleUpdateWaToken}
+                          disabled={waUpdatingToken}
+                          className="w-full sm:w-auto px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition disabled:opacity-50 shrink-0 flex items-center justify-center gap-1"
+                        >
+                          {waUpdatingToken ? t('token_verifying') : t('token_btn')}
+                        </button>
+                      </div>
+                      {waTokenHealth && (
+                        <div className={`p-2 rounded-lg text-xs font-mono ${
+                          waTokenHealth.valid ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/10 text-red-400 border border-red-500/30'
+                        }`}>
+                          {waTokenHealth.valid ? '✅ Meta Token is ACTIVE & CONNECTED!' : `⚠️ ${waTokenHealth.message || 'Token check failed'}`}
+                        </div>
+                      )}
+                    </div>
+                    {/* Live Dispatcher Box */}
+                    <div className="p-4 rounded-xl border space-y-3.5" style={{ backgroundColor: 'var(--surface-hover)', borderColor: 'var(--border-color)' }}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Zap className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                          <h4 className="text-sm font-bold text-[var(--foreground)]">{t('dispatch_title')}</h4>
+                        </div>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 font-mono font-bold">
+                          {t('dispatch_badge')}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-[var(--text-muted)]">
+                        {t('dispatch_targeting')} <strong className="text-amber-700 dark:text-amber-400 font-mono font-bold">{targetDisputeForWhatsApp?.paypalDisputeId || 'PP-D-849102'}</strong> ({formatCurrency(targetDisputeForWhatsApp?.amount || 249.99)})
+                      </p>
+
+                      <div className="space-y-2">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] block">
+                          {t('dispatch_phone_label')}
+                        </label>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <input
+                            type="tel"
+                            value={waPhoneNumber}
+                            onChange={(e) => setWaPhoneNumber(e.target.value)}
+                            placeholder="+91 98765 43210"
+                            className="flex-1 min-w-0 px-3 py-2.5 rounded-xl text-xs font-mono border focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            style={{
+                              backgroundColor: 'var(--surface)',
+                              borderColor: 'var(--border-color)',
+                              color: 'var(--foreground)'
+                            }}
+                          />
+                          <button
+                            onClick={handleSendRealWhatsApp}
+                            disabled={waSending}
+                            className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition disabled:opacity-50 shadow-md shadow-emerald-500/20 shrink-0"
+                          >
+                            {waSending ? (
+                              <>
+                                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                <span>{t('dispatch_sending')}</span>
+                              </>
+                            ) : (
+                              <>
+                                <Send className="w-3.5 h-3.5" />
+                                <span>{t('dispatch_btn')}</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-[var(--text-muted)]">
+                          {t('dispatch_hint')}
+                        </p>
+                      </div>
+
+                      {/* Live Dispatch Result Banner */}
+                      {waDispatchResult && (
+                        <div className={`p-3 rounded-xl border text-xs space-y-1.5 ${
+                          waDispatchResult.success 
+                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' 
+                            : 'bg-red-500/10 border-red-500/30 text-red-300'
+                        }`}>
+                          <div className="flex items-center justify-between font-bold">
+                            <span className="flex items-center gap-1.5">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                              <span>WhatsApp Alert Dispatched</span>
+                            </span>
+                            <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-black/30">
+                              {waDispatchResult.mode || 'SANDBOX'}
+                            </span>
+                          </div>
+                          <div className="text-[11px] font-mono text-slate-300">
+                            Recipient: <span className="text-white font-bold">{waDispatchResult.recipient}</span> • Dispute: <span className="text-white font-bold">{waDispatchResult.disputeId}</span>
+                          </div>
+                          {waDispatchResult.previewText && (
+                            <div className="p-2 rounded bg-black/40 text-[10px] font-mono text-slate-300 whitespace-pre-line mt-1 border border-slate-700/40">
+                              {waDispatchResult.previewText}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Meta Webhook Connection Credentials */}
+                    <div className="p-4 rounded-xl border space-y-3" style={{ backgroundColor: 'var(--surface-hover)', borderColor: 'var(--border-color)' }}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Lock className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                          <h4 className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider">
+                            Meta Cloud API Webhook Handshake Config
+                          </h4>
+                        </div>
+                        <a 
+                          href="https://developers.facebook.com/apps" 
+                          target="_blank" 
+                          rel="noreferrer"
+                          className="text-[11px] text-sky-600 dark:text-sky-400 hover:underline inline-flex items-center gap-1 font-bold"
+                        >
+                          <span>Meta Developers</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        {/* 1. Callback URL */}
+                        <div>
+                          <label className="text-[10px] font-bold text-[var(--text-muted)] block mb-1">
+                            Callback URL (Webhook URL)
+                          </label>
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                            <input
+                              type="text"
+                              readOnly
+                              value="https://resolvepay-api.onrender.com/api/webhooks/whatsapp"
+                              className="flex-1 min-w-0 px-3 py-2 rounded-lg text-xs font-mono border select-all"
+                              style={{
+                                backgroundColor: 'var(--surface)',
+                                borderColor: 'var(--border-color)',
+                                color: 'var(--foreground)'
+                              }}
+                            />
+                            <button
+                              onClick={copyWebhookUrl}
+                              className="px-3.5 py-2 rounded-lg border text-xs font-bold hover:bg-[var(--surface-hover)] transition inline-flex items-center justify-center gap-1 text-[var(--foreground)] shrink-0"
+                              style={{ borderColor: 'var(--border-color)' }}
+                            >
+                              {waCopiedWebhook ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                              <span>{waCopiedWebhook ? 'Copied' : 'Copy'}</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* 2. Verify Token */}
+                        <div>
+                          <label className="text-[10px] font-bold text-[var(--text-muted)] block mb-1">
+                            Verify Token
+                          </label>
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                            <input
+                              type="text"
+                              readOnly
+                              value="resolvepay_wa_verify_2026"
+                              className="flex-1 min-w-0 px-3 py-2 rounded-lg text-xs font-mono border select-all font-bold text-emerald-700 dark:text-emerald-400"
+                              style={{
+                                backgroundColor: 'var(--surface)',
+                                borderColor: 'var(--border-color)'
+                              }}
+                            />
+                            <button
+                              onClick={copyVerifyToken}
+                              className="px-3.5 py-2 rounded-lg border text-xs font-bold hover:bg-[var(--surface-hover)] transition inline-flex items-center justify-center gap-1 text-[var(--foreground)] shrink-0"
+                              style={{ borderColor: 'var(--border-color)' }}
+                            >
+                              {waCopiedToken ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                              <span>{waCopiedToken ? 'Copied' : 'Copy'}</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Step-by-Step Meta Setup Guide Toggle */}
+                    <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border-color)' }}>
+                      <button
+                        onClick={() => setShowWaGuide(!showWaGuide)}
+                        className="w-full p-3.5 text-left flex items-center justify-between hover:bg-[var(--surface-hover)] transition"
+                      >
+                        <div className="flex items-center gap-2">
+                          <HelpCircle className="w-4 h-4 text-emerald-400" />
+                          <span className="text-xs font-bold text-[var(--foreground)]">
+                            {t('guide_title')}
+                          </span>
+                        </div>
+                        <ChevronDown className={`w-4 h-4 transition text-[var(--text-muted)] ${showWaGuide ? 'rotate-180' : ''}`} />
+                      </button>
+
+                      {showWaGuide && (
+                        <div className="p-4 pt-1 border-t space-y-2.5 text-xs text-[var(--text-muted)]" style={{ borderColor: 'var(--border-color)' }}>
+                          <div className="flex gap-2">
+                            <span className="w-5 h-5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 font-bold font-mono flex items-center justify-center shrink-0 text-[11px]">1</span>
+                            <div>
+                              {t('guide_step1')}
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <span className="w-5 h-5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 font-bold font-mono flex items-center justify-center shrink-0 text-[11px]">2</span>
+                            <div>
+                              {t('guide_step2')}
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <span className="w-5 h-5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 font-bold font-mono flex items-center justify-center shrink-0 text-[11px]">3</span>
+                            <div>
+                              {t('guide_step3')}
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <span className="w-5 h-5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 font-bold font-mono flex items-center justify-center shrink-0 text-[11px]">4</span>
+                            <div>
+                              {t('guide_step4')}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right Column: Simulated Phone Mockup */}
+                  <div className="lg:col-span-5">
+                    <div className="rounded-3xl p-4 bg-[#0B141A] text-white shadow-2xl border border-slate-700/60 space-y-4 max-w-sm mx-auto">
+                      {/* WhatsApp Top Bar */}
+                      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-xs">
+                            RP
+                          </div>
+                          <div>
+                            <div className="font-bold text-xs">ResolvePay Autopilot</div>
+                            <div className="text-[10px] text-emerald-400">verified business account</div>
+                          </div>
+                        </div>
+                        <Lock className="w-3.5 h-3.5 text-slate-400" />
+                      </div>
+
+                      {/* Incoming WhatsApp Alert Bubble */}
+                      <div className="p-3.5 rounded-2xl bg-[#202C33] text-xs space-y-2 border border-slate-700/50">
+                        <div className="text-amber-400 font-bold flex items-center gap-1.5">
+                          <AlertCircle className="w-3.5 h-3.5" />
+                          <span>🚨 PayPal Dispute Alert: {targetDisputeForWhatsApp?.paypalDisputeId || 'PP-D-849102'}</span>
+                        </div>
+                        <div className="text-slate-300 space-y-1 font-mono text-[11px]">
+                          <div>Amount at Risk: <span className="font-bold text-white">{formatCurrency(targetDisputeForWhatsApp?.amount || 249.99)}</span></div>
+                          <div>Reason: <span className="text-white">{humanizeReason(targetDisputeForWhatsApp?.reason || 'Item not received')}</span></div>
+                          <div className="text-emerald-400 pt-1">
+                            ⚡ AI Action: FedEx tracking #784920 proves delivered with recipient signature yesterday.
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Interactive Buttons (44px tap targets) */}
+                      <div className="space-y-2 pt-2">
+                        <button
+                          onClick={handleWhatsAppApprove}
+                          disabled={isTargetDefended}
+                          className="w-full min-h-[44px] py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition disabled:opacity-50"
+                        >
+                          {isTargetDefended ? (
+                            <>
+                              <Check className="w-4 h-4" />
+                              <span>Submitted & Defended in PayPal</span>
+                            </>
+                          ) : (
+                            <>
+                              <Send className="w-3.5 h-3.5" />
+                              <span>1. Approve & Auto-Submit Rebuttal</span>
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          onClick={() => targetDisputeForWhatsApp && setSelectedDispute(targetDisputeForWhatsApp)}
+                          className="w-full min-h-[44px] py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition"
+                        >
+                          2. Inspect POD & Evidence
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2095,20 +2850,20 @@ export default function DashboardPage() {
                   <div>
                     <h3 className="text-base font-black font-serif-heading flex items-center gap-2">
                       <Truck className="w-5 h-5 text-[var(--accent-primary)]" />
-                      <span>Live Logistics EDI & Carrier Proof Integrations</span>
+                      <span>{t('carrier_title')}</span>
                     </h3>
                     <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                      Synchronized carrier gateways providing automatic GPS-verified proof of delivery.
+                      {t('carrier_sub')}
                     </p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                   {[
-                    { carrier: 'FedEx Express', status: 'Connected (EDI 214)', latency: '34ms', icon: Truck },
-                    { carrier: 'DHL Express Global', status: 'Connected (REST API)', latency: '52ms', icon: Truck },
-                    { carrier: 'USPS Priority WebTools', status: 'Connected (SOAP)', latency: '88ms', icon: Truck },
-                    { carrier: 'Shiprocket & BlueDart', status: 'Connected (India API)', latency: '41ms', icon: Truck }
+                    { carrier: 'FedEx Express', status: t('carrier_status_edi'), latency: '34ms', icon: Truck },
+                    { carrier: 'DHL Express Global', status: t('carrier_status_rest'), latency: '52ms', icon: Truck },
+                    { carrier: 'USPS Priority WebTools', status: t('carrier_status_soap'), latency: '88ms', icon: Truck },
+                    { carrier: 'Shiprocket & BlueDart', status: t('carrier_status_india'), latency: '41ms', icon: Truck }
                   ].map((c) => (
                     <div 
                       key={c.carrier}
@@ -2122,7 +2877,7 @@ export default function DashboardPage() {
                         <c.icon className="w-5 h-5 text-[var(--accent-primary)]" />
                         <div>
                           <div className="font-bold">{c.carrier}</div>
-                          <div className="text-[10px] text-emerald-400 font-mono">{c.status}</div>
+                          <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-mono font-semibold">{c.status}</div>
                         </div>
                       </div>
                       <span className="font-mono text-slate-400 text-[11px]">{c.latency}</span>
@@ -2146,10 +2901,10 @@ export default function DashboardPage() {
                 <div>
                   <h3 className="text-base font-black font-serif-heading flex items-center gap-2 text-amber-400">
                     <AlertTriangle className="w-5 h-5" />
-                    <span>Pre-Dispute Threat & Sentiment Scanner</span>
+                    <span>{t('warning_title')}</span>
                   </h3>
                   <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                    AI monitors customer support tickets to intercept dispute threats before they turn into costly PayPal chargebacks.
+                    {t('warning_sub')}
                   </p>
                 </div>
 
@@ -2175,11 +2930,11 @@ export default function DashboardPage() {
                       <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-t border-slate-700/60">
                         <span className="text-[var(--accent-primary)] font-semibold leading-snug">{risk.recommendedAction}</span>
                         <button 
-                          onClick={() => showToast(`Sent 1-click preemptive resolution for ${risk.orderNumber}`, 'success', 'Interception Sent')}
+                          onClick={() => showToast(t('warning_sent_toast', { order: risk.orderNumber }), 'success', 'Interception Sent')}
                           style={{ backgroundColor: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)' }}
                           className="min-h-[44px] px-4 py-2 rounded-xl font-bold text-xs self-start sm:self-auto shrink-0 transition hover:brightness-105 active:scale-98 shadow-xs"
                         >
-                          Intercept Now
+                          {t('warning_btn_intercept')}
                         </button>
                       </div>
                     </div>
@@ -2195,9 +2950,9 @@ export default function DashboardPage() {
               {/* Header */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
                 <div>
-                  <h2 className="text-xl font-black font-serif-heading">Merchant Security & Live PayPal Integration</h2>
+                  <h2 className="text-xl font-black font-serif-heading">{t('sec_title')}</h2>
                   <p className="text-xs text-slate-400 mt-1">
-                    Multi-tenant data isolation, zero-trust token auth, and real-time PayPal Sandbox telemetry.
+                    {t('sec_sub')}
                   </p>
                 </div>
                 <button
@@ -2207,7 +2962,7 @@ export default function DashboardPage() {
                   className="min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition disabled:opacity-50 self-start sm:self-auto hover:brightness-105 active:scale-98"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${checkingPayPal ? 'animate-spin' : ''}`} />
-                  <span>{checkingPayPal ? 'Pinging PayPal...' : 'Test PayPal Connection Ping'}</span>
+                  <span>{checkingPayPal ? t('sec_pinging') : t('sec_btn_ping')}</span>
                 </button>
               </div>
 
@@ -2220,15 +2975,15 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-2.5">
                     <MessageSquare className="w-5 h-5 text-emerald-400" />
                     <div>
-                      <h4 className="text-sm font-bold text-emerald-400">WhatsApp 1-Tap Autopilot Dispatch</h4>
-                      <p className="text-[11px] text-slate-300">Resolves incoming dispute alerts right from merchant phone without login</p>
+                      <h4 className="text-sm font-bold text-emerald-400">{t('sec_wa_title')}</h4>
+                      <p className="text-[11px] text-slate-300">{t('sec_wa_sub')}</p>
                     </div>
                   </div>
                   <button
                     onClick={() => setWhatsAppModalOpen(true)}
                     className="min-h-[40px] px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs transition shadow-sm"
                   >
-                    Open Bot Preview
+                    {t('sec_btn_bot_preview')}
                   </button>
                 </div>
               </div>
@@ -2244,8 +2999,8 @@ export default function DashboardPage() {
                       <Zap className="w-4 h-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold font-serif-heading">PayPal Sandbox REST API Connection</h3>
-                      <p className="text-[11px] text-slate-400">Direct OAuth2 & Disputes Engine Handshake</p>
+                      <h3 className="text-sm font-bold font-serif-heading">{t('sec_paypal_card_title')}</h3>
+                      <p className="text-[11px] text-slate-400">{t('sec_paypal_card_sub')}</p>
                     </div>
                   </div>
                   <div 
@@ -2257,7 +3012,7 @@ export default function DashboardPage() {
                     }}
                   >
                     <span className={`w-2 h-2 rounded-full ${payPalHealth?.connected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
-                    <span>{payPalHealth?.connected ? 'ACTIVE & CONNECTED' : 'DISCONNECTED'}</span>
+                    <span>{payPalHealth?.connected ? t('sec_active_connected') : t('sec_disconnected')}</span>
                   </div>
                 </div>
 
@@ -2288,8 +3043,8 @@ export default function DashboardPage() {
                       <Lock className="w-4 h-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold font-serif-heading">Active Store & Tenant Isolation</h3>
-                      <p className="text-[11px] text-slate-400">Multi-tenant database partition for {activeStore.name}</p>
+                      <h3 className="text-sm font-bold font-serif-heading">{t('sec_tenant_title')}</h3>
+                      <p className="text-[11px] text-slate-400">{t('sec_tenant_sub', { name: activeStore.name })}</p>
                     </div>
                   </div>
                   <button
@@ -2298,25 +3053,25 @@ export default function DashboardPage() {
                     className="min-h-[44px] px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 transition shadow-xs self-start sm:self-auto shrink-0 hover:brightness-105 active:scale-98"
                   >
                     <Zap className="w-3.5 h-3.5" />
-                    <span>+ Connect Another Store</span>
+                    <span>{t('sec_btn_connect_another')}</span>
                   </button>
                 </div>
 
                 <div className="space-y-2.5 text-xs">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border font-mono gap-2 transition-colors" style={{ backgroundColor: 'var(--surface-hover)', borderColor: 'var(--border-color)' }}>
                     <div>
-                      <span style={{ color: 'var(--text-muted)' }}>Active Business Store: </span>
+                      <span style={{ color: 'var(--text-muted)' }}>{t('sec_active_store_label')} </span>
                       <span className="font-bold font-sans" style={{ color: 'var(--foreground)' }}>{activeStore.name}</span>
                     </div>
                     <span className="text-[10px] px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 self-start sm:self-auto font-sans font-bold flex items-center gap-1">
                       <Check className="w-3 h-3" />
-                      <span>PayPal Verified Account</span>
+                      <span>{t('sec_verified_badge')}</span>
                     </span>
                   </div>
 
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border font-mono gap-2 transition-colors" style={{ backgroundColor: 'var(--surface-hover)', borderColor: 'var(--border-color)' }}>
                     <div>
-                      <span style={{ color: 'var(--text-muted)' }}>Merchant Tenant ID: </span>
+                      <span style={{ color: 'var(--text-muted)' }}>{t('sec_tenant_id_label')} </span>
                       <span className="font-bold" style={{ color: 'var(--foreground)' }}>{activeStore.id}</span>
                     </div>
                     <span className="text-[10px] px-2.5 py-1 rounded-md border self-start sm:self-auto font-bold" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-strong)', color: 'var(--accent-primary)' }}>
@@ -2326,15 +3081,15 @@ export default function DashboardPage() {
 
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border font-mono gap-2 transition-colors" style={{ backgroundColor: 'var(--surface-hover)', borderColor: 'var(--border-color)' }}>
                     <div>
-                      <span style={{ color: 'var(--text-muted)' }}>PayPal Payer ID: </span>
+                      <span style={{ color: 'var(--text-muted)' }}>{t('sec_payer_id_label')} </span>
                       <span className="text-emerald-400 font-bold">{activeStore.paypalPayerId}</span>
                     </div>
-                    <div className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>Linked: {activeStore.connectedAt}</div>
+                    <div className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>{t('sec_linked_label')} {activeStore.connectedAt}</div>
                   </div>
 
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border font-mono gap-2 transition-colors" style={{ backgroundColor: 'var(--surface-hover)', borderColor: 'var(--border-color)' }}>
                     <div className="truncate">
-                      <span style={{ color: 'var(--text-muted)' }}>Internal Auth Token: </span>
+                      <span style={{ color: 'var(--text-muted)' }}>{t('sec_auth_token_label')} </span>
                       <span className="text-amber-400 font-bold font-mono">rzp_live_sec_789f2a4b8c1d</span>
                     </div>
                     <button
@@ -2345,7 +3100,7 @@ export default function DashboardPage() {
                       className="min-h-[36px] text-[11px] px-3 py-1 rounded-lg border transition font-sans font-bold flex items-center gap-1 self-start sm:self-auto shadow-2xs hover:opacity-90"
                       style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-strong)', color: 'var(--foreground)' }}
                     >
-                      <span>Copy Token</span>
+                      <span>{t('sec_btn_copy_token')}</span>
                     </button>
                   </div>
                 </div>
@@ -2362,8 +3117,8 @@ export default function DashboardPage() {
                       <Shield className="w-4 h-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold font-serif-heading">Live Webhook Idempotency Engine Test</h3>
-                      <p className="text-[11px] text-slate-400">Simulate network re-transmissions and duplicate dispute attacks</p>
+                      <h3 className="text-sm font-bold font-serif-heading">{t('idem_title')}</h3>
+                      <p className="text-[11px] text-slate-400">{t('idem_sub')}</p>
                     </div>
                   </div>
                   <button
@@ -2373,7 +3128,7 @@ export default function DashboardPage() {
                     className="min-h-[44px] px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition disabled:opacity-50 self-start sm:self-auto shadow-sm hover:brightness-105 active:scale-98"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${idempotencyLoading ? 'animate-spin' : ''}`} />
-                    <span>{idempotencyLoading ? 'Testing Idempotency...' : 'Simulate Duplicate Webhook'}</span>
+                    <span>{idempotencyLoading ? t('idem_btn_testing') : t('idem_btn_simulate')}</span>
                   </button>
                 </div>
 
@@ -2396,7 +3151,7 @@ export default function DashboardPage() {
                     </div>
                   ) : (
                     <div className="text-slate-400 py-3 text-center text-[11px] leading-relaxed">
-                      Click "Simulate Duplicate Webhook" to send two identical webhook events concurrently and witness the unique index block duplicate financial deductions in real-time.
+                      {t('idem_empty_hint')}
                     </div>
                   )}
                 </div>
@@ -2432,7 +3187,7 @@ export default function DashboardPage() {
               </span>
             )}
           </div>
-          <span>Disputes</span>
+          <span>{t('nav_disputes')}</span>
         </button>
 
         <button
@@ -2444,7 +3199,7 @@ export default function DashboardPage() {
             <Smartphone className="w-5 h-5" />
             <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400" />
           </div>
-          <span>WhatsApp</span>
+          <span>{t('nav_whatsapp')}</span>
         </button>
 
         <button
@@ -2453,7 +3208,7 @@ export default function DashboardPage() {
           style={{ color: currentTab === 'CARRIER_RADAR' ? 'var(--accent-primary)' : 'var(--text-muted)' }}
         >
           <Truck className="w-5 h-5" />
-          <span>Carrier</span>
+          <span>{t('nav_carrier')}</span>
         </button>
 
         <button
@@ -2467,7 +3222,7 @@ export default function DashboardPage() {
               2
             </span>
           </div>
-          <span>Radar</span>
+          <span>{t('nav_warning')}</span>
         </button>
 
         <button
@@ -2476,7 +3231,7 @@ export default function DashboardPage() {
           style={{ color: currentTab === 'SETTINGS' ? 'var(--accent-primary)' : 'var(--text-muted)' }}
         >
           <Settings className="w-5 h-5" />
-          <span>Security</span>
+          <span>{t('nav_settings')}</span>
         </button>
       </nav>
       )}
@@ -2485,6 +3240,7 @@ export default function DashboardPage() {
       {selectedDispute && (
         <DisputeDrawer
           dispute={selectedDispute}
+          initialTab={drawerInitialTab}
           onClose={() => setSelectedDispute(null)}
           onDisputeUpdated={loadDisputes}
         />

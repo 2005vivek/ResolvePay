@@ -37,6 +37,7 @@ public class PayPalWebhookService {
     private final DisputeRepository disputeRepository;
     private final OutboxEventRepository outboxEventRepository;
     private final AuditEventRepository auditEventRepository;
+    private final WhatsAppService whatsAppService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public boolean verifySignature(
@@ -115,6 +116,16 @@ public class PayPalWebhookService {
 
                 inbox.setProcessingStatus("PROCESSED");
                 webhookInboxRepository.save(inbox);
+
+                // Trigger real-time dynamic WhatsApp alert to merchant
+                if (updatedDispute != null) {
+                    try {
+                        whatsAppService.sendDisputeAlert(updatedDispute, null);
+                        log.info("Dispatched dynamic WhatsApp dispute alert for case {}", updatedDispute.getPaypalDisputeId());
+                    } catch (Exception waEx) {
+                        log.warn("WhatsApp dynamic dispatch skipped: {}", waEx.getMessage());
+                    }
+                }
 
                 result.put("status", "SUCCESS");
                 result.put("disputeId", updatedDispute.getId());

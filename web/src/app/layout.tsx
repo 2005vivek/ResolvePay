@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ToastProvider } from "../components/Toast";
+import { LanguageProvider } from "../context/LanguageContext";
 
 export const metadata: Metadata = {
   title: "ResolvePay — Real-Time AI Dispute Resolution Engine",
@@ -72,7 +73,9 @@ export default function RootLayout({
       </head>
       <body className="antialiased min-h-screen selection:bg-[var(--accent-primary)]/20 selection:text-[var(--accent-primary)]" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
         <ToastProvider>
-          {children}
+          <LanguageProvider>
+            {children}
+          </LanguageProvider>
         </ToastProvider>
       </body>
     </html>

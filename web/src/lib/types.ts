@@ -43,7 +43,7 @@ export interface PolicyMatch {
   summary: string;
 }
 
-export type SupportedLanguage = 'en' | 'de' | 'fr' | 'es' | 'ja';
+export type SupportedLanguage = 'en' | 'zh' | 'es' | 'ja' | 'de' | 'hi' | 'fr';
 
 export interface EvidenceItem {
   id: string;
@@ -88,4 +88,29 @@ export interface MerchantStore {
   connectedAt: string;
   currency: string;
   appId?: string;
+}
+
+export interface DisputeTrackingStage {
+  stageNumber: number;
+  id: 'INGESTED' | 'EVIDENCE_READY' | 'DEFENSE_TRANSMITTED' | 'PAYPAL_REVIEW' | 'SETTLEMENT';
+  title: string;
+  subtitle: string;
+  status: 'COMPLETED' | 'IN_PROGRESS' | 'PENDING' | 'ACTION_REQUIRED';
+  timestamp?: string;
+  details?: string;
+  ballInCourt?: 'MERCHANT' | 'PAYPAL' | 'BUYER' | 'SETTLED';
+}
+
+export interface DisputeTrackingInfo {
+  currentStage: number; // 1 to 5
+  totalStages: 5;
+  stageName: string;
+  stageStatus: 'ACTION_REQUIRED' | 'UNDER_REVIEW' | 'RESOLVED';
+  ballInCourt: string;
+  estimatedResolutionWindow: string;
+  stages: DisputeTrackingStage[];
+  carrierProof?: CarrierProof;
+  outboxEventId?: string;
+  slaLabel?: string;
+  slaUrgency?: string;
 }
