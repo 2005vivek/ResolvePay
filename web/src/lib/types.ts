@@ -14,6 +14,8 @@ export interface Dispute {
   carrierTracking?: CarrierProof;
   customerEmail?: string;
   buyerName?: string;
+  fraudAlertStatus?: string;
+  paypalIncidentId?: string;
 }
 
 export interface CarrierProof {
@@ -52,6 +54,9 @@ export interface EvidenceItem {
   filename: string;
   contentHash: string;
   extractionStatus: string;
+  documentType?: string;
+  isManipulated?: boolean;
+  paypalIncidentId?: string;
   extractedFacts?: string;
   fileUrl?: string;
   timestamp: string;

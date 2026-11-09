@@ -48,6 +48,15 @@ public class EvidenceItem {
     @Column(name = "extraction_status", length = 50)
     private String extractionStatus;
 
+    @Column(name = "document_type", length = 100)
+    private String documentType;
+
+    @Column(name = "is_manipulated")
+    private Boolean isManipulated = false;
+
+    @Column(name = "paypal_incident_id", length = 100)
+    private String paypalIncidentId;
+
     @Column(name = "content_hash", length = 64)
     private String contentHash;
 

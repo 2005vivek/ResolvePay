@@ -1,5 +1,6 @@
 package com.resolvepay.api.controller;
 
+import com.resolvepay.api.client.PayPalClient;
 import com.resolvepay.api.exception.DisputeNotFoundException;
 import com.resolvepay.api.model.AuditEvent;
 import com.resolvepay.api.model.Dispute;
@@ -9,6 +10,7 @@ import com.resolvepay.api.repository.DisputeRepository;
 import com.resolvepay.api.repository.EvidenceItemRepository;
 import com.resolvepay.api.security.MerchantContext;
 import com.resolvepay.api.service.AiDraftService;
+import com.resolvepay.api.service.AiDraftService.EvidenceForensicResult;
 import com.resolvepay.api.service.FirestoreSyncService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -19,7 +21,6 @@ import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -44,6 +45,7 @@ public class EvidenceController {
     private final AiDraftService aiDraftService;
     private final FirestoreSyncService firestoreSyncService;
     private final AuditEventRepository auditEventRepository;
+    private final PayPalClient payPalClient;
 
     @GetMapping
     public ResponseEntity<List<EvidenceItem>> getEvidenceForDispute(@PathVariable UUID id) {
@@ -92,16 +94,74 @@ public class EvidenceController {
             Path filePath = dirPath.resolve(sha256 + "_" + sanitizedFilename);
             Files.write(filePath, fileBytes);
 
-            // 3. Multimodal AI Extraction using Gemini
-            log.info("Analyzing evidence file {} with Gemini AI...", sanitizedFilename);
-            String extractedFacts = aiDraftService.extractFactsFromEvidence(
+            // 3. AI Forensic Integrity & PayPal-Approved Format Verification
+            log.info("Inspecting evidence file [{}] with AI Forensic Shield for PayPal compliance...", sanitizedFilename);
+            EvidenceForensicResult forensicResult = aiDraftService.verifyAndAnalyzeEvidence(
                     fileBytes,
                     file.getContentType(),
                     sanitizedFilename,
                     dispute.getReason()
             );
 
-            // 4. Persist Evidence Record in PostgreSQL with Merchant Isolation
+            // 4. Handle Rejected / Manipulated Evidence (Inform PayPal)
+            if (!forensicResult.isApproved()) {
+                log.warn("🚨 [EVIDENCE_REJECTED] File [{}] failed forensic verification for dispute {}: {}",
+                        sanitizedFilename, dispute.getPaypalDisputeId(), forensicResult.getForensicSummary());
+
+                // Inform PayPal Security / Trust & Safety
+                String incidentId = payPalClient.reportEvidenceTampering(
+                        dispute.getPaypalDisputeId(),
+                        sanitizedFilename,
+                        sha256,
+                        forensicResult.getForensicSummary(),
+                        merchantId
+                );
+
+                // Persist rejected item to database for forensic record and audit trail
+                EvidenceItem rejectedItem = new EvidenceItem();
+                rejectedItem.setDispute(dispute);
+                rejectedItem.setMerchantId(merchantId);
+                rejectedItem.setType(type);
+                rejectedItem.setSource("MERCHANT_UPLOAD");
+                rejectedItem.setFilename(sanitizedFilename);
+                rejectedItem.setContentHash(sha256);
+                rejectedItem.setExtractionStatus(forensicResult.getStatus());
+                rejectedItem.setDocumentType(forensicResult.getDocumentType());
+                rejectedItem.setIsManipulated(forensicResult.isManipulated());
+                rejectedItem.setPaypalIncidentId(incidentId);
+                rejectedItem.setExtractedFacts(forensicResult.getForensicSummary() + "\n[Formal alert dispatched to PayPal Trust & Safety. Incident #" + incidentId + "]");
+                rejectedItem.setFileUrl(filePath.toAbsolutePath().toString());
+                evidenceItemRepository.save(rejectedItem);
+
+                // Flag the dispute
+                dispute.setFraudAlertStatus("PAYPAL_ALERTED_TAMPERED_EVIDENCE");
+                dispute.setPaypalIncidentId(incidentId);
+                disputeRepository.save(dispute);
+
+                // Audit event for fraud alert dispatch
+                recordAuditEvent(
+                        merchantId,
+                        dispute,
+                        "REPORT_EVIDENCE_TAMPERING_TO_PAYPAL",
+                        "ALERT_DISPATCHED",
+                        String.format("{\"incidentId\":\"%s\",\"filename\":\"%s\",\"sha256\":\"%s\",\"reason\":\"%s\"}",
+                                incidentId, sanitizedFilename, sha256, forensicResult.getForensicSummary())
+                );
+
+                return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(Map.of(
+                        "success", false,
+                        "rejected", true,
+                        "status", forensicResult.getStatus(),
+                        "documentType", forensicResult.getDocumentType(),
+                        "error", "AI Forensic Shield: Document rejected. Only authentic PayPal-approved receipts or carrier PODs are accepted. Suspected manipulation or format non-compliance detected. Incident reported to PayPal Trust & Safety.",
+                        "incidentId", incidentId,
+                        "forensicReason", forensicResult.getForensicSummary(),
+                        "paypalInformed", true,
+                        "evidenceId", rejectedItem.getId()
+                ));
+            }
+
+            // 5. Persist Approved Evidence Record in PostgreSQL
             EvidenceItem item = new EvidenceItem();
             item.setDispute(dispute);
             item.setMerchantId(merchantId);
@@ -109,33 +169,34 @@ public class EvidenceController {
             item.setSource("MERCHANT_UPLOAD");
             item.setFilename(sanitizedFilename);
             item.setContentHash(sha256);
-            item.setExtractionStatus("COMPLETED");
-            item.setExtractedFacts(extractedFacts);
+            item.setExtractionStatus("APPROVED_PAYPAL_RECEIPT");
+            item.setDocumentType(forensicResult.getDocumentType());
+            item.setIsManipulated(false);
+            item.setExtractedFacts(forensicResult.getExtractedFacts());
             item.setFileUrl(filePath.toAbsolutePath().toString());
 
             EvidenceItem savedItem = evidenceItemRepository.save(item);
 
-            // 5. Real-time Firestore sync
+            // 6. Real-time Firestore sync
             List<EvidenceItem> allEvidence = evidenceItemRepository.findByDisputeIdAndMerchantId(id, merchantId);
             firestoreSyncService.syncEvidenceCount(id.toString(), allEvidence.size());
 
-            // 6. Append Audit Event
-            try {
-                AuditEvent audit = new AuditEvent();
-                audit.setActor("MERCHANT:" + merchantId);
-                audit.setAction("UPLOAD_EVIDENCE");
-                audit.setTarget("Dispute:" + dispute.getPaypalDisputeId() + " File:" + sanitizedFilename);
-                audit.setTimestamp(LocalDateTime.now());
-                audit.setOutcome("SUCCESS");
-                audit.setRedactedDetails(String.format("{\"sha256\":\"%s\",\"size\":%d,\"merchantId\":\"%s\"}", 
-                        sha256, file.getSize(), merchantId));
-                auditEventRepository.save(audit);
-            } catch (Exception ex) {
-                log.warn("Failed to save audit event: {}", ex.getMessage());
-            }
+            // 7. Append Audit Event
+            recordAuditEvent(
+                    merchantId,
+                    dispute,
+                    "UPLOAD_EVIDENCE",
+                    "SUCCESS",
+                    String.format("{\"sha256\":\"%s\",\"size\":%d,\"docType\":\"%s\",\"merchantId\":\"%s\"}",
+                            sha256, file.getSize(), forensicResult.getDocumentType(), merchantId)
+            );
 
             return ResponseEntity.ok(Map.of(
                     "success", true,
+                    "rejected", false,
+                    "status", "APPROVED_PAYPAL_RECEIPT",
+                    "documentType", forensicResult.getDocumentType(),
+                    "message", "AI Verification: Official PayPal-approved receipt verified successfully.",
                     "evidenceId", savedItem.getId(),
                     "filename", savedItem.getFilename(),
                     "contentHash", savedItem.getContentHash(),
@@ -201,6 +262,21 @@ public class EvidenceController {
         } catch (IOException e) {
             log.error("Failed to read evidence file content: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    private void recordAuditEvent(String merchantId, Dispute dispute, String action, String outcome, String details) {
+        try {
+            AuditEvent audit = new AuditEvent();
+            audit.setActor("MERCHANT:" + merchantId);
+            audit.setAction(action);
+            audit.setTarget("Dispute:" + dispute.getPaypalDisputeId());
+            audit.setTimestamp(LocalDateTime.now());
+            audit.setOutcome(outcome);
+            audit.setRedactedDetails(details);
+            auditEventRepository.save(audit);
+        } catch (Exception ex) {
+            log.warn("Failed to save audit event: {}", ex.getMessage());
         }
     }
 

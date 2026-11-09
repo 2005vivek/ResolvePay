@@ -165,6 +165,16 @@ export default function DashboardPage() {
       connectedAt: 'Oct 29, 2026',
       currency: 'GBP',
       appId: 'APP-88401929UK012'
+    },
+    {
+      id: 'merchant_jeet_jajal',
+      name: 'Jeet Global Commerce',
+      businessEmail: 'jajaljeet2005@gmail.com',
+      paypalPayerId: 'PP-PAYER-991201',
+      isVerified: true,
+      connectedAt: 'Nov 09, 2026',
+      currency: 'USD',
+      appId: 'APP-77291039US991'
     }
   ]);
   const [activeStoreId, setActiveStoreId] = useState<string>('merchant_resolvepay_01');
@@ -559,7 +569,14 @@ export default function DashboardPage() {
     const targetMerchant = merchantId || activeStoreId;
 
     try {
-      const data = await fetchDisputes(controller.signal, targetMerchant);
+      let data = await fetchDisputes(controller.signal, targetMerchant);
+      if (!data || data.length === 0) {
+        // Direct PayPal live sync for this user
+        try {
+          await syncDisputesFromPayPal(targetMerchant);
+          data = await fetchDisputes(controller.signal, targetMerchant);
+        } catch (_) {}
+      }
       setDisputes(data);
       try {
         sessionStorage.setItem(`resolvepay_disputes_${targetMerchant}`, JSON.stringify(data));

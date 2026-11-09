@@ -45,6 +45,12 @@ public class Dispute {
     @Column(name = "dispute_channel", length = 100)
     private String disputeChannel;
 
+    @Column(name = "fraud_alert_status", length = 100)
+    private String fraudAlertStatus;
+
+    @Column(name = "paypal_incident_id", length = 100)
+    private String paypalIncidentId;
+
     @CreationTimestamp
     @Column(name = "last_synced_time", updatable = false)
     private LocalDateTime lastSyncedTime;

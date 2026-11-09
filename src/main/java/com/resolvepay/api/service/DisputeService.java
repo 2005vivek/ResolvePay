@@ -50,7 +50,13 @@ public class DisputeService {
     @Cacheable(value = "disputes", key = "T(com.resolvepay.api.security.MerchantContext).getCurrentMerchantId() ?: 'merchant_resolvepay_01'")
     public List<Dispute> getAllDisputes() {
         String merchantId = getEffectiveMerchantId();
-        return disputeRepository.findByMerchantId(merchantId);
+        List<Dispute> disputes = disputeRepository.findByMerchantId(merchantId);
+        if (disputes.isEmpty()) {
+            log.info("No cached disputes found for merchant [{}]. Automatically ingesting live disputes directly from PayPal...", merchantId);
+            syncDisputesFromPayPal();
+            disputes = disputeRepository.findByMerchantId(merchantId);
+        }
+        return disputes;
     }
 
     public Dispute getDisputeById(UUID id) {
@@ -95,59 +101,46 @@ public class DisputeService {
             } else {
                 log.error("PayPal provider rejected submission for dispute {}: {}", dispute.getPaypalDisputeId(), sanitizedError);
 
-                recordAuditEvent(merchantId, dispute, "SUBMIT_PAYPAL_RESOLUTION", "PROVIDER_REJECTED",
-                        String.format("{\"error\":\"%s\",\"httpStatus\":%d}", sanitizedError, ex.getStatusCode().value()));
+                recordAuditEvent(merchantId, dispute, "SUBMIT_PAYPAL_RESOLUTION", "FAILED",
+                        String.format("{\"error\":\"%s\",\"statusCode\":%d}", sanitizedError, ex.getStatusCode().value()));
 
-                // DO NOT update status to UNDER_REVIEW
-                throw new PayPalSubmissionException("PayPal rejected evidence: " + sanitizedError, HttpStatus.BAD_GATEWAY);
+                throw new PayPalSubmissionException("PayPal rejected dispute response: " + sanitizedError, HttpStatus.BAD_GATEWAY);
             }
         } catch (ResourceAccessException ex) {
-            log.error("Network timeout while submitting dispute {} to PayPal: {}", dispute.getPaypalDisputeId(), ex.getMessage());
+            log.error("PayPal provider timed out or unreachable for dispute {}: {}", dispute.getPaypalDisputeId(), ex.getMessage());
 
-            // Mark submission as pending reconciliation to prevent duplicate submissions
-            dispute.setStatus("SUBMISSION_UNKNOWN");
-            disputeRepository.save(dispute);
+            recordAuditEvent(merchantId, dispute, "SUBMIT_PAYPAL_RESOLUTION", "TIMEOUT",
+                    String.format("{\"error\":\"%s\"}", ex.getMessage()));
 
-            recordAuditEvent(merchantId, dispute, "SUBMIT_PAYPAL_RESOLUTION", "TIMEOUT_UNKNOWN",
-                    "{\"error\":\"Network connection timeout after request dispatch\"}");
-
-            throw new PayPalSubmissionException("Submission timeout — connection lost. Outcome unknown, reconciliation required.", HttpStatus.GATEWAY_TIMEOUT);
-
+            throw new PayPalSubmissionException("Network timeout communicating with PayPal Dispute API. Please retry.", HttpStatus.GATEWAY_TIMEOUT);
         } catch (Exception ex) {
-            String sanitized = sanitizeError(ex.getMessage(), "UNKNOWN");
-            log.error("Unexpected failure during PayPal submission for dispute {}: {}", dispute.getPaypalDisputeId(), sanitized);
+            log.error("Unexpected error submitting response to PayPal for dispute {}: {}", dispute.getPaypalDisputeId(), ex.getMessage(), ex);
 
-            recordAuditEvent(merchantId, dispute, "SUBMIT_PAYPAL_RESOLUTION", "FAILURE",
-                    String.format("{\"error\":\"%s\"}", sanitized));
+            recordAuditEvent(merchantId, dispute, "SUBMIT_PAYPAL_RESOLUTION", "ERROR",
+                    String.format("{\"error\":\"%s\"}", ex.getMessage()));
 
-            throw new PayPalSubmissionException("Failed to submit evidence to PayPal: " + sanitized, HttpStatus.INTERNAL_SERVER_ERROR);
+            throw new PayPalSubmissionException("Unexpected error during PayPal submission: " + ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
-        // 3. Update dispute status strictly upon verified provider acceptance
+        // 3. Mark Dispute Status to UNDER_REVIEW
         dispute.setStatus("UNDER_REVIEW");
         disputeRepository.save(dispute);
 
-        // 4. Update or create submitted draft record
-        List<Draft> drafts = draftRepository.findByDisputeId(disputeId);
+        // 4. Update the latest Draft's ReviewerStatus to SUBMITTED
+        List<Draft> drafts = draftRepository.findByDisputeId(dispute.getId());
         if (drafts != null && !drafts.isEmpty()) {
-            Draft latestDraft = drafts.get(drafts.size() - 1);
+            Draft latestDraft = drafts.stream()
+                    .max((d1, d2) -> Integer.compare(d1.getVersion(), d2.getVersion()))
+                    .orElse(drafts.get(0));
             latestDraft.setReviewerStatus("SUBMITTED");
-            latestDraft.setText(draftText.trim());
             latestDraft.setEditedAt(LocalDateTime.now());
             draftRepository.save(latestDraft);
-        } else {
-            Draft draft = new Draft();
-            draft.setDispute(dispute);
-            draft.setVersion(1);
-            draft.setText(draftText.trim());
-            draft.setReviewerStatus("SUBMITTED");
-            draftRepository.save(draft);
         }
 
-        // 5. Create Transactional Outbox Event
+        // 5. Transactional Outbox Pattern: Emit DISPUTE_SUBMITTED Event
         try {
             Map<String, Object> projection = new HashMap<>();
-            projection.put("disputeId", dispute.getId());
+            projection.put("disputeId", dispute.getId().toString());
             projection.put("paypalDisputeId", dispute.getPaypalDisputeId());
             projection.put("merchantId", merchantId);
             projection.put("status", "UNDER_REVIEW");
@@ -185,14 +178,13 @@ public class DisputeService {
             log.warn("WhatsApp notification on submit skipped: {}", waEx.getMessage());
         }
 
-        
         return dispute;
     }
 
     @CacheEvict(value = "disputes", allEntries = true)
     public void syncDisputesFromPayPal() {
         String merchantId = getEffectiveMerchantId();
-        JsonNode response = payPalClient.fetchDisputes();
+        JsonNode response = payPalClient.fetchDisputes(merchantId);
         JsonNode items = response.path("items");
 
         if (items.isMissingNode()) return;

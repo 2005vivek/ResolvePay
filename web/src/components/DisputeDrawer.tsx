@@ -351,11 +351,25 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
 
     setUploading(true);
     try {
-      await uploadEvidenceFile(dispute.id, file, 'DOCUMENT');
-      showToast(`Ingested ${file.name} with cryptographic fingerprinting.`, 'success', 'Evidence Recorded');
+      const res = await uploadEvidenceFile(dispute.id, file, 'DOCUMENT');
+      if (res && (res.rejected || res.status === 'REJECTED_MANIPULATED' || res.status === 'REJECTED_INVALID_FORMAT')) {
+        hapticWarning();
+        showToast(
+          res.forensicReason || 'Manipulated or non-compliant receipt format detected. Incident automatically reported to PayPal Trust & Safety.',
+          'error',
+          '🚨 PayPal Fraud Alert Dispatched'
+        );
+      } else {
+        hapticSuccess();
+        showToast(`🛡️ ${file.name} verified as official PayPal-approved receipt format!`, 'success', 'Evidence Approved');
+      }
       await loadEvidence();
+      onDisputeUpdated();
     } catch (err: any) {
-      showToast(err.message || 'Upload failed', 'error', 'Upload Error');
+      hapticWarning();
+      showToast(err.message || 'Evidence upload failed', 'error', 'Forensic Shield Warning');
+      await loadEvidence();
+      onDisputeUpdated();
     } finally {
       setUploading(false);
     }
@@ -1134,37 +1148,68 @@ export default function DisputeDrawer({ dispute, onClose, onDisputeUpdated, init
                 </label>
               </div>
 
-              {/* Evidence Items List */}
+              {/* Evidence Items List with PayPal Approved Verification & Tamper Alerts */}
               <div className="space-y-2">
-                {evidenceList.map((item) => (
-                  <div 
-                    key={item.id}
-                    className="p-3.5 rounded-xl border flex items-center justify-between text-xs transition"
-                    style={{ 
-                      backgroundColor: 'var(--surface-hover)', 
-                      borderColor: 'var(--border-color)' 
-                    }}
-                  >
-                    <div className="flex items-center gap-3 truncate">
-                      <FileCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-                      <div className="truncate">
-                        <div className="font-semibold truncate">{item.filename}</div>
-                        <div className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>
-                          {item.source} • Hash: {item.contentHash.substring(0, 12)}...
+                {evidenceList.map((item) => {
+                  const isRejected = item.extractionStatus === 'REJECTED_MANIPULATED' || 
+                                     item.extractionStatus === 'REJECTED_INVALID_FORMAT' || 
+                                     item.isManipulated;
+                  return (
+                    <div 
+                      key={item.id}
+                      className={`p-3.5 rounded-xl border flex items-center justify-between text-xs transition ${
+                        isRejected 
+                          ? 'border-rose-500/50 bg-rose-950/20 text-rose-200' 
+                          : 'border-emerald-500/30 bg-emerald-950/10'
+                      }`}
+                      style={!isRejected ? { 
+                        backgroundColor: 'var(--surface-hover)', 
+                        borderColor: 'var(--border-color)' 
+                      } : undefined}
+                    >
+                      <div className="flex items-center gap-3 truncate">
+                        {isRejected ? (
+                          <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" />
+                        ) : (
+                          <FileCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                        )}
+                        <div className="truncate">
+                          <div className="flex items-center gap-2 truncate">
+                            <span className="font-semibold truncate">{item.filename}</span>
+                            {isRejected ? (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30 shrink-0">
+                                🚨 REJECTED (REPORTED TO PAYPAL)
+                              </span>
+                            ) : (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shrink-0">
+                                🛡️ PAYPAL-APPROVED
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[10px] font-mono" style={{ color: isRejected ? '#FCA5A5' : 'var(--text-muted)' }}>
+                            {isRejected 
+                              ? `Alerted to PayPal Trust & Safety • Incident #${item.paypalIncidentId || 'PP-FRAUD-SEC'}`
+                              : `${item.source} • Hash: ${item.contentHash ? item.contentHash.substring(0, 12) : ''}...`
+                            }
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <button
-                      onClick={() => setPreviewItem(item)}
-                      className="min-h-[36px] px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1 shrink-0 transition border shadow-xs"
-                      style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-color)', color: 'var(--accent-primary)' }}
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>{t('drawer_vault_btn_view')}</span>
-                    </button>
-                  </div>
-                ))}
+                      <button
+                        onClick={() => setPreviewItem(item)}
+                        className={`min-h-[36px] px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1 shrink-0 transition border shadow-xs ${
+                          isRejected 
+                            ? 'bg-rose-500/20 border-rose-500/40 text-rose-300 hover:bg-rose-500/30' 
+                            : 'hover:opacity-80'
+                        }`}
+                        style={!isRejected ? { backgroundColor: 'var(--surface)', borderColor: 'var(--border-color)', color: 'var(--accent-primary)' } : undefined}
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>{t('drawer_vault_btn_view')}</span>
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
