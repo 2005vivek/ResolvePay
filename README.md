@@ -10,6 +10,12 @@
 
 > **ResolvePay** is an enterprise-grade dispute resolution engine engineered to automate, defend, and settle merchant PayPal disputes using Google Gemini Generative AI and automated evidence aggregation.
 
+### 🌐 Live Hackathon Deployments
+- **Live Hosted Application**: [https://resolvepay-autopilot.vercel.app](https://resolvepay-autopilot.vercel.app)
+- **Alternate Mirror**: [https://resolvepay-ten.vercel.app](https://resolvepay-ten.vercel.app)
+- **Live Spring Boot Backend**: [https://resolvepay-api.onrender.com/api/health](https://resolvepay-api.onrender.com/api/health)
+- **GitHub Repositories**: [jeetjajal/paypal](https://github.com/jeetjajal/paypal) | [2005vivek/ResolvePay](https://github.com/2005vivek/ResolvePay)
+
 ---
 
 ## 🚀 The Problem & The Solution
@@ -81,6 +87,11 @@
 - Interactive dispute drawer, real-time status updates, haptic feedback, and toast notification system.
 - Full **Progressive Web App (PWA)** offline service worker support with responsive mobile views.
 
+### 🛡️ 5. AI Forensic Evidence Shield & Tamper Detection
+- Strictly validates incoming merchant evidence against PayPal-approved receipt specifications and official carrier POD formats (FedEx, DHL, USPS, Shiprocket).
+- Autonomous heuristic and Gemini AI forensic analysis detects manipulated, doctored, or mismatched documents.
+- If tampering or invalid formats are detected, ResolvePay automatically flags the dispute, alerts the merchant with incident IDs, and securely relays a formal security report to PayPal.
+
 ---
 
 ## 📂 Project Structure
@@ -97,7 +108,7 @@ ResolvePay/
 │   │   ├── security/             # Merchant Auth Filter & Context Holder
 │   │   └── service/              # DisputeService, AiDraftService, WebhookService
 │   └── main/resources/
-│       ├── db/migration/         # Flyway Schema Migrations (V1 to V4)
+│       ├── db/migration/         # Flyway Schema Migrations (V1 to V5)
 │       └── application.yaml      # Configuration & Fallback Defaults
 ├── web/                          # Modern Next.js 14 App Router Dashboard
 │   ├── src/app/                  # Layouts, Global Styles & Interactive Page
